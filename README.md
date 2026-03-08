@@ -1,0 +1,88 @@
+# Riff
+
+Record a riff, chord, or arpeggio — see every note you played.
+
+Riff is a browser-based music tool that uses [Spotify's Basic Pitch](https://github.com/spotify/basic-pitch) to perform polyphonic pitch detection entirely client-side. No backend, no account, no data leaves your device.
+
+## How It Works
+
+1. **Tap Record** — the app captures audio from your microphone
+2. **Play something** — a chord, a riff, an arpeggio, on any instrument
+3. **Tap Stop** — Basic Pitch (a lightweight neural network running via TensorFlow.js) analyzes the audio
+4. **See results** — individual notes, chord name, and a piano-roll timeline
+
+```
+Mic → Web Audio API → Basic Pitch (TF.js, in-browser) → Notes + Chord Name
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| UI | React 19 + TypeScript |
+| Bundler | Vite |
+| Audio capture | Web Audio API |
+| Pitch detection | [@spotify/basic-pitch](https://www.npmjs.com/package/@spotify/basic-pitch) (~8 MB model, runs in browser via WebGL) |
+| Music theory | [Tonal](https://github.com/tonaljs/tonal) (MIDI → note names, chord detection) |
+| Deployment | PWA — installable, works offline on any device with a modern browser |
+
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Production build
+npm run build
+```
+
+The dev server runs at `http://localhost:3000`. Open it in a browser and allow microphone access when prompted.
+
+## Project Structure
+
+```
+src/
+├── hooks/
+│   ├── useAudioRecorder.ts      # Mic recording → Float32Array (22050 Hz mono)
+│   └── usePitchDetection.ts     # Float32Array → detected notes via Basic Pitch
+├── lib/
+│   ├── noteMapper.ts            # MIDI numbers → note names (C4, E4, G4)
+│   └── chordDetector.ts         # Pitch class set → chord name via Tonal
+├── components/
+│   ├── Recorder.tsx             # Record / stop button
+│   ├── NoteDisplay.tsx          # Note chips for each detected note
+│   ├── ChordDisplay.tsx         # Chord name display
+│   ├── PianoRoll.tsx            # Visual note timeline
+│   └── ProgressBar.tsx          # Model inference progress bar
+├── styles/
+│   ├── index.css                # Global reset + dark theme
+│   └── App.css                  # App layout
+├── App.tsx                      # Root — wires hooks, libs, and components
+└── main.tsx                     # Entry point
+```
+
+## Browser Support
+
+Works in any modern browser with Web Audio API and WebGL support:
+- Chrome / Edge (desktop & Android)
+- Firefox
+- Safari (iOS 14.5+ / macOS)
+
+> **iOS note:** `AudioContext` must be created from a user gesture (tap). The app handles this — recording starts on button press.
+
+## Future Ideas
+
+- Real-time note display while playing
+- Scale / key detection
+- Saved riff library
+- Guitar tablature output
+- Tuner mode
+- Tempo / BPM detection
+- Capacitor wrapper for native App Store / Play Store distribution
+
+## License
+
+ISC
