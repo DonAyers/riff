@@ -1,0 +1,31 @@
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: #222;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #3498db;
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.progress-text {
+  font-size: 0.75rem;
+  color: #888;
+  min-width: 36px;
+  text-align: right;
+  font-family: "SF Mono", "Fira Code", monospace;
+}

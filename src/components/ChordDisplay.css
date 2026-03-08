@@ -1,0 +1,19 @@
+.chord-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.chord-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #888;
+}
+
+.chord-name {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+}

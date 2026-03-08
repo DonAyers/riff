@@ -1,0 +1,62 @@
+.piano-roll {
+  width: 100%;
+}
+
+.piano-roll h2 {
+  font-size: 1rem;
+  color: #ccc;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.piano-roll-container {
+  display: flex;
+  gap: 0;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 200px;
+}
+
+.piano-roll-labels {
+  display: flex;
+  flex-direction: column;
+  background: #111;
+  min-width: 48px;
+  border-right: 1px solid #333;
+}
+
+.piano-roll-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: #666;
+  font-family: "SF Mono", "Fira Code", monospace;
+}
+
+.piano-roll-grid {
+  flex: 1;
+  position: relative;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent calc(100% / var(--rows) - 1px),
+    #1a1a1a calc(100% / var(--rows))
+  );
+}
+
+.piano-roll-note {
+  position: absolute;
+  background: #3498db;
+  border-radius: 3px;
+  opacity: 0.85;
+  min-width: 4px;
+  transition: opacity 0.15s;
+}
+
+.piano-roll-note:hover {
+  opacity: 1;
+}

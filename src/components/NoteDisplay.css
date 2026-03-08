@@ -1,0 +1,32 @@
+.note-display {
+  text-align: center;
+}
+
+.note-display h2 {
+  font-size: 1rem;
+  color: #ccc;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.note-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.note-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: "SF Mono", "Fira Code", monospace;
+}
