@@ -1,4 +1,7 @@
 import type { NoteEventTime } from "@spotify/basic-pitch";
+import * as tf from "@tensorflow/tfjs";
+
+import { createBundledModelUrl } from "./basicPitchModel";
 
 interface DetectRequest {
   type: "detect";
@@ -35,12 +38,18 @@ interface PreloadCompleteResponse {
 }
 
 type WorkerRequest = DetectRequest | PreloadRequest;
-const MODEL_URL = new URL("@spotify/basic-pitch/model/model.json", import.meta.url).href;
+const MODEL_MANIFEST_URL = new URL("@spotify/basic-pitch/model/model.json", import.meta.url).href;
+const MODEL_WEIGHT_URLS = [
+  new URL("@spotify/basic-pitch/model/group1-shard1of1.bin", import.meta.url).href,
+];
 
 type BasicPitchModule = typeof import("@spotify/basic-pitch");
+type BasicPitchModelPromise = Exclude<ConstructorParameters<BasicPitchModule["BasicPitch"]>[0], string>;
 
 let basicPitchModule: BasicPitchModule | null = null;
 let modelInstance: InstanceType<BasicPitchModule["BasicPitch"]> | null = null;
+let bundledModelUrlPromise: Promise<string> | null = null;
+let graphModelPromise: BasicPitchModelPromise | null = null;
 
 const loadBasicPitchModule = async (): Promise<BasicPitchModule> => {
   if (basicPitchModule) {
@@ -61,6 +70,25 @@ const loadBasicPitchModule = async (): Promise<BasicPitchModule> => {
   return basicPitchModule;
 };
 
+const getBundledModelUrl = async (): Promise<string> => {
+  if (!bundledModelUrlPromise) {
+    bundledModelUrlPromise = createBundledModelUrl({
+      manifestUrl: MODEL_MANIFEST_URL,
+      weightUrls: MODEL_WEIGHT_URLS,
+    });
+  }
+
+  return bundledModelUrlPromise;
+};
+
+const getGraphModel = (): BasicPitchModelPromise => {
+  if (!graphModelPromise) {
+    graphModelPromise = getBundledModelUrl().then((modelUrl) => tf.loadGraphModel(modelUrl)) as BasicPitchModelPromise;
+  }
+
+  return graphModelPromise;
+};
+
 const getModel = async (): Promise<InstanceType<BasicPitchModule["BasicPitch"]>> => {
   const module = await loadBasicPitchModule();
 
@@ -68,7 +96,7 @@ const getModel = async (): Promise<InstanceType<BasicPitchModule["BasicPitch"]>>
     return modelInstance;
   }
 
-  modelInstance = new module.BasicPitch(MODEL_URL);
+  modelInstance = new module.BasicPitch(getGraphModel());
   return modelInstance;
 };
 
