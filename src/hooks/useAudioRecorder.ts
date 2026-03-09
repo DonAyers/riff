@@ -51,14 +51,17 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   }, []);
 
   const disconnectCaptureGraph = useCallback(() => {
-    if (captureNodeRef.current) {
-      if (captureBackendRef.current === "worklet") {
-        captureNodeRef.current.port.onmessage = null;
-      } else {
-        captureNodeRef.current.onaudioprocess = null;
+    const captureNode = captureNodeRef.current;
+    const captureBackend = captureBackendRef.current;
+
+    if (captureNode) {
+      if (captureBackend === "worklet") {
+        (captureNode as AudioWorkletNode).port.onmessage = null;
+      } else if (captureBackend === "script-processor") {
+        (captureNode as ScriptProcessorNode).onaudioprocess = null;
       }
 
-      captureNodeRef.current.disconnect();
+      captureNode.disconnect();
       captureNodeRef.current = null;
       captureBackendRef.current = null;
     }
