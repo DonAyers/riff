@@ -1,0 +1,13 @@
+{
+    "battlestation.display.showIcon": false,
+    "battlestation.display.showType": false,
+    "battlestation.display.showCommand": true,
+    "battlestation.display.showGroup": true,
+    "battlestation.display.hideIcon": "eye-closed",
+    "battlestation.display.actionToolbar": [
+        "hide",
+        "setColor",
+        "edit",
+        "delete"
+    ]
+}
