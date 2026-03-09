@@ -8,3 +8,4 @@ test-results
 .vercel
 .vscode/battle.json
 .vscode/battle.history.jsonl
+tsconfig.tsbuildinfo
