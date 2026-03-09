@@ -86,6 +86,21 @@
   height: 16px;
 }
 
+.storage-format-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.storage-format-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
 .analyze-btn:hover:not(:disabled) {
   filter: brightness(1.06);
   transform: translateY(-1px);

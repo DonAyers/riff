@@ -5,6 +5,8 @@ const SAMPLE_RATE = 22050;
 export interface UseAudioPlaybackReturn {
   /** Call with the raw PCM Float32Array to prepare playback */
   load: (pcm: Float32Array) => void;
+  /** Call with a pre-encoded audio Blob (MP3, WebM, etc.) to prepare playback */
+  loadBlob: (blob: Blob) => void;
   play: () => void;
   pause: () => void;
   isPlaying: boolean;
@@ -80,6 +82,21 @@ export function useAudioPlayback(): UseAudioPlaybackReturn {
     setIsPlaying(false);
   }, []);
 
+  const loadBlob = useCallback((blob: Blob) => {
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current);
+    }
+
+    const url = URL.createObjectURL(blob);
+    urlRef.current = url;
+
+    const audio = new Audio(url);
+    audio.onended = () => setIsPlaying(false);
+    audio.onloadedmetadata = () => setDuration(audio.duration);
+    audioRef.current = audio;
+    setIsPlaying(false);
+  }, []);
+
   const play = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -95,5 +112,5 @@ export function useAudioPlayback(): UseAudioPlaybackReturn {
     setIsPlaying(false);
   }, []);
 
-  return { load, play, pause, isPlaying, duration };
+  return { load, loadBlob, play, pause, isPlaying, duration };
 }

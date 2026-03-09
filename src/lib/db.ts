@@ -1,5 +1,6 @@
 import { openDB, type DBSchema } from "idb";
 import type { MappedNote } from "./noteMapper";
+import type { AudioFormat } from "./audioEncoder";
 
 export interface StoredRiff {
   id: string;
@@ -9,6 +10,10 @@ export interface StoredRiff {
   notes: MappedNote[];
   chord: string | null;
   audioFileName: string | null;
+  /** Storage format: "pcm" (raw Float32) or "compressed" (WebM/Opus, MP4/AAC, etc.) */
+  audioFormat?: AudioFormat;
+  /** MIME type of the stored compressed audio (e.g. "audio/webm;codecs=opus") */
+  audioMime?: string;
 }
 
 interface RiffDb extends DBSchema {

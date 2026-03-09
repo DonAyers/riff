@@ -6,7 +6,9 @@ import { useMidiPlayback } from "./useMidiPlayback";
 import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes } from "../lib/noteMapper";
 import { detectChord, formatChordName } from "../lib/chordDetector";
 import { listRiffs, saveRiff, type StoredRiff } from "../lib/db";
-import { readPcmFromOpfs, savePcmToOpfs } from "../lib/audioStorage";
+import { readPcmFromOpfs, savePcmToOpfs, saveBlobToOpfs, readBlobFromOpfs } from "../lib/audioStorage";
+import { decodeAudioFile } from "../lib/audioImport";
+import { encodeCompressed, mimeToExtension, type AudioFormat } from "../lib/audioEncoder";
 import type { MappedNote } from "../lib/noteMapper";
 
 const DEMO_NOTES: MappedNote[] = [
@@ -73,6 +75,12 @@ export function useRiffSession() {
     return stored === "true";
   });
   const [savedRiffs, setSavedRiffs] = useState<StoredRiff[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [storageFormat, setStorageFormat] = useState<AudioFormat>(() => {
+    const stored = localStorage.getItem("riff:storage-format");
+    return stored === "compressed" ? "compressed" : "pcm";
+  });
   const pendingAudioRef = useRef<Float32Array | null>(null);
 
   // Preload the ML model when the session hooks mount
@@ -85,6 +93,10 @@ export function useRiffSession() {
   useEffect(() => {
     localStorage.setItem("riff:auto-process", autoProcess ? "true" : "false");
   }, [autoProcess]);
+
+  useEffect(() => {
+    localStorage.setItem("riff:storage-format", storageFormat);
+  }, [storageFormat]);
 
   useEffect(() => {
     listRiffs()
@@ -120,8 +132,33 @@ export function useRiffSession() {
     setHasPendingAnalysis(false);
 
     if (mapped.length > 0) {
-      const audioFileName = `riff-${crypto.randomUUID()}.f32`;
-      const didPersistAudio = await savePcmToOpfs(audioFileName, audio);
+      let audioFileName: string | null = null;
+      let audioFormat: AudioFormat = "pcm";
+      let audioMime: string | undefined;
+
+      if (storageFormat === "compressed") {
+        const result = await encodeCompressed(audio, 22050);
+        if (result) {
+          const ext = mimeToExtension(result.mime);
+          audioFileName = `riff-${crypto.randomUUID()}.${ext}`;
+          const saved = await saveBlobToOpfs(audioFileName, result.blob);
+          if (saved) {
+            audioFormat = "compressed";
+            audioMime = result.mime;
+          } else {
+            audioFileName = null;
+          }
+        }
+      }
+
+      // Fall back to PCM if compressed wasn't selected or failed
+      if (!audioFileName) {
+        audioFileName = `riff-${crypto.randomUUID()}.f32`;
+        const didPersist = await savePcmToOpfs(audioFileName, audio);
+        if (!didPersist) audioFileName = null;
+        audioFormat = "pcm";
+        audioMime = undefined;
+      }
 
       const newRiff: StoredRiff = {
         id: crypto.randomUUID(),
@@ -130,7 +167,9 @@ export function useRiffSession() {
         durationS: audio.length / 22050,
         notes: mapped,
         chord: chordName,
-        audioFileName: didPersistAudio ? audioFileName : null,
+        audioFileName,
+        audioFormat,
+        audioMime,
       };
 
       try {
@@ -140,7 +179,7 @@ export function useRiffSession() {
         // Ignore save errors
       }
     }
-  }, [detect, midiPlayback]);
+  }, [detect, midiPlayback, storageFormat]);
 
   const handleStop = useCallback(async () => {
     const audio = await stopRecording();
@@ -161,18 +200,60 @@ export function useRiffSession() {
     }
   }, [stopRecording, audioPlayback, midiPlayback, autoProcess, handleAnalyze]);
 
+  const handleImport = useCallback(async (file: File) => {
+    setIsImporting(true);
+    setImportError(null);
+    setNotes([]);
+    setChord(null);
+    setHasRecording(false);
+    setHasPendingAnalysis(false);
+    pendingAudioRef.current = null;
+    midiPlayback.stop();
+
+    try {
+      const audio = await decodeAudioFile(file);
+
+      audioPlayback.load(audio);
+      setHasRecording(true);
+      pendingAudioRef.current = audio;
+
+      if (autoProcess) {
+        setHasPendingAnalysis(false);
+        await handleAnalyze(audio);
+      } else {
+        setHasPendingAnalysis(true);
+      }
+    } catch {
+      setImportError("Could not decode this audio file. Try WAV, MP3, or FLAC.");
+    } finally {
+      setIsImporting(false);
+    }
+  }, [audioPlayback, midiPlayback, autoProcess, handleAnalyze]);
+
   const handleLoadSavedRiff = useCallback(async (riff: StoredRiff) => {
     midiPlayback.stop();
     pendingAudioRef.current = null;
     setHasPendingAnalysis(false);
 
     if (riff.audioFileName) {
-      const restoredAudio = await readPcmFromOpfs(riff.audioFileName);
-      if (restoredAudio) {
-        audioPlayback.load(restoredAudio);
-        setHasRecording(true);
+      const format = riff.audioFormat ?? "pcm";
+
+      if (format === "compressed" && riff.audioMime) {
+        const blob = await readBlobFromOpfs(riff.audioFileName, riff.audioMime);
+        if (blob) {
+          audioPlayback.loadBlob(blob);
+          setHasRecording(true);
+        } else {
+          setHasRecording(false);
+        }
       } else {
-        setHasRecording(false);
+        const restoredAudio = await readPcmFromOpfs(riff.audioFileName);
+        if (restoredAudio) {
+          audioPlayback.load(restoredAudio);
+          setHasRecording(true);
+        } else {
+          setHasRecording(false);
+        }
       }
     } else {
       setHasRecording(false);
@@ -198,7 +279,7 @@ export function useRiffSession() {
   }, [midiPlayback]);
 
   const uniqueNotes = getUniqueNotes(notes);
-  const error = recorderError || detectionError;
+  const error = recorderError || detectionError || importError;
 
   return {
     // Recorder state
@@ -220,6 +301,12 @@ export function useRiffSession() {
     hasRecording,
     hasPendingAnalysis,
     handleLoadDemoAnalysis,
+    // Import
+    handleImport,
+    isImporting,
+    // Storage format
+    storageFormat,
+    setStorageFormat,
     // Riffs DB
     savedRiffs,
     handleLoadSavedRiff,

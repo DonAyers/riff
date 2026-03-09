@@ -25,6 +25,10 @@ function App() {
     hasRecording,
     hasPendingAnalysis,
     handleLoadDemoAnalysis,
+    handleImport,
+    isImporting,
+    storageFormat,
+    setStorageFormat,
     savedRiffs,
     handleLoadSavedRiff,
     audioPlayback,
@@ -44,6 +48,8 @@ function App() {
             state={isLoading ? "processing" : recorderState}
             onStart={handleStart}
             onStop={() => void handleStop()}
+            onImport={(file) => void handleImport(file)}
+            isImporting={isImporting}
             error={error}
           />
 
@@ -55,6 +61,16 @@ function App() {
               disabled={recorderState !== "idle" || isLoading}
             />
             Auto-process after recording
+          </label>
+
+          <label className="storage-format-toggle">
+            <input
+              type="checkbox"
+              checked={storageFormat === "compressed"}
+              onChange={(e) => setStorageFormat(e.target.checked ? "compressed" : "pcm")}
+              disabled={recorderState !== "idle" || isLoading}
+            />
+            Compress saved audio
           </label>
 
           <button

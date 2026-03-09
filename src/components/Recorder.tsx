@@ -6,13 +6,17 @@ interface RecorderProps {
   state: RecorderState;
   onStart: () => void;
   onStop: () => void;
+  onImport: (file: File) => void;
+  isImporting: boolean;
   error: string | null;
 }
 
-export function Recorder({ state, onStart, onStop, error }: RecorderProps) {
+export function Recorder({ state, onStart, onStop, onImport, isImporting, error }: RecorderProps) {
   const isRecording = state === "recording";
+  const isBusy = state === "processing" || isImporting;
   const [seconds, setSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isRecording) {
@@ -43,17 +47,37 @@ export function Recorder({ state, onStart, onStop, error }: RecorderProps) {
       <button
         className={`record-btn ${isRecording ? "recording" : ""}`}
         onClick={isRecording ? onStop : onStart}
-        disabled={state === "processing"}
+        disabled={isBusy}
         aria-label={isRecording ? "Stop recording" : "Start recording"}
       >
         <span className="record-icon" />
       </button>
 
       <p className="recorder-label">
-        {state === "idle" && "Tap to record"}
+        {state === "idle" && !isImporting && "Tap to record"}
         {state === "recording" && "Listening…"}
-        {state === "processing" && "Processing…"}
+        {(state === "processing" || isImporting) && "Processing…"}
       </p>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        className="import-file-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onImport(file);
+          e.target.value = "";
+        }}
+      />
+      <button
+        className="import-btn"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isRecording || isBusy}
+        aria-label="Import audio file"
+      >
+        Import file
+      </button>
 
       {error && <p className="recorder-error">{error}</p>}
     </div>

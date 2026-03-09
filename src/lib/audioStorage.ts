@@ -33,3 +33,35 @@ export async function readPcmFromOpfs(fileName: string): Promise<Float32Array | 
     return null;
   }
 }
+
+export async function saveBlobToOpfs(fileName: string, blob: Blob): Promise<boolean> {
+  if (!("storage" in navigator) || !("getDirectory" in navigator.storage)) {
+    return false;
+  }
+
+  try {
+    const root = await navigator.storage.getDirectory();
+    const fileHandle = await root.getFileHandle(fileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function readBlobFromOpfs(fileName: string, mime: string): Promise<Blob | null> {
+  if (!("storage" in navigator) || !("getDirectory" in navigator.storage)) {
+    return null;
+  }
+
+  try {
+    const root = await navigator.storage.getDirectory();
+    const fileHandle = await root.getFileHandle(fileName);
+    const file = await fileHandle.getFile();
+    return new Blob([await file.arrayBuffer()], { type: mime });
+  } catch {
+    return null;
+  }
+}

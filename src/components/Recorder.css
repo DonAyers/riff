@@ -75,3 +75,31 @@
   font-size: 0.8rem;
   margin: 0;
 }
+
+.import-file-input {
+  display: none;
+}
+
+.import-btn {
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.import-btn:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.import-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
