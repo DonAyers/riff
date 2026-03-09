@@ -6,3 +6,5 @@ coverage
 playwright-report
 test-results
 .vercel
+.vscode/battle.json
+.vscode/battle.history.jsonl

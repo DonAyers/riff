@@ -22,6 +22,34 @@
       "group": "NPM Scripts"
     },
     {
+      "name": "npm: test",
+      "command": "npm run test",
+      "type": "npm",
+      "cwd": "c:\\Users\\bings\\Desktop\\projects\\riff",
+      "group": "NPM Scripts"
+    },
+    {
+      "name": "npm: test:coverage",
+      "command": "npm run test:coverage",
+      "type": "npm",
+      "cwd": "c:\\Users\\bings\\Desktop\\projects\\riff",
+      "group": "NPM Scripts"
+    },
+    {
+      "name": "npm: test:e2e",
+      "command": "npm run test:e2e",
+      "type": "npm",
+      "cwd": "c:\\Users\\bings\\Desktop\\projects\\riff",
+      "group": "NPM Scripts"
+    },
+    {
+      "name": "npm: test:watch",
+      "command": "npm run test:watch",
+      "type": "npm",
+      "cwd": "c:\\Users\\bings\\Desktop\\projects\\riff",
+      "group": "NPM Scripts"
+    },
+    {
       "name": "Task: Dev Server: Start",
       "command": "workbench.action.tasks.runTask|Dev Server: Start",
       "type": "task",
