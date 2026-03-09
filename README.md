@@ -59,6 +59,42 @@ npm run test:coverage
 npm run test:e2e
 ```
 
+## Versioning and Releases
+
+Riff now exposes its deployed build identity directly in the app.
+
+- The bottom-right badge shows `v<package-version> · <short-commit-sha>`.
+- The same build label is logged to the browser console on startup.
+- This makes it easy to verify what is deployed in Vercel production or preview without checking the dashboard first.
+
+### Standard release flow
+
+For a small app like this, the practical standard is:
+
+1. Bump the semantic version.
+2. Run tests and a production build.
+3. Commit the release change.
+4. Create a Git tag like `v1.0.1`.
+5. Push `main` and the tag.
+6. Let Vercel deploy `main`, and let GitHub create release notes from the tag.
+
+### Commands
+
+```bash
+# patch release example
+npm version patch
+
+# validate the release candidate
+npm run release:check
+
+# push the commit and tag
+git push origin main --follow-tags
+```
+
+`npm version patch|minor|major` updates `package.json` and `package-lock.json`, creates a release commit, and creates the matching Git tag.
+
+When a tag like `v1.0.1` is pushed, GitHub Actions creates a GitHub Release with generated notes.
+
 ## Deploy to Vercel
 
 Riff is a static Vite app, so deployment to Vercel is straightforward.

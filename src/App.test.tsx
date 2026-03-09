@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import App from "./App";
 import { useRiffSession } from "./hooks/useRiffSession";
+import { buildLabel } from "./lib/buildInfo";
 
 vi.mock("./hooks/useRiffSession", () => ({
   useRiffSession: vi.fn(),
@@ -87,6 +88,7 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     expect(screen.getByText(/capture a take\. hear what you played\./i)).toBeInTheDocument();
+    expect(screen.getByText(buildLabel)).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: /record a take or import audio/i })
     ).toBeInTheDocument();

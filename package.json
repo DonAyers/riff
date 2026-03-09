@@ -1,6 +1,6 @@
 {
   "name": "riff",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Record a riff, chord, or arpeggio — see every note you played.",
   "type": "module",
   "scripts": {
@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "release:check": "npm run test && npm run build"
   },
   "keywords": [],
   "author": "",

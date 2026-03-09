@@ -6,6 +6,7 @@ import { PianoRoll } from "./components/PianoRoll";
 import { ProgressBar } from "./components/ProgressBar";
 import { Playback } from "./components/Playback";
 import { SavedRiffs } from "./components/SavedRiffs";
+import { buildLabel } from "./lib/buildInfo";
 import "./styles/App.css";
 
 function App() {
@@ -172,6 +173,10 @@ function App() {
             </div>
           </section>
         </main>
+
+        <div className="build-badge" aria-label={`Build ${buildLabel}`} title={`Build ${buildLabel}`}>
+          {buildLabel}
+        </div>
       </div>
     </div>
   );

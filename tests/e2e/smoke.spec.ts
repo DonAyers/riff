@@ -4,6 +4,7 @@ test("landing page shows key recording controls", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1, name: /riff/i })).toBeVisible();
+  await expect(page.getByLabel(/build v/i)).toBeVisible();
   await expect(page.getByRole("button", { name: /start recording/i })).toBeVisible();
   await expect(page.getByText(/capture a take\. hear what you played\./i)).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /detect notes after recording/i })).toBeVisible();
