@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Soundfont } from "smplr";
 import type { MappedNote } from "../lib/noteMapper";
 
 export interface UseMidiPlaybackReturn {
   load: (notes: MappedNote[]) => void;
   play: () => Promise<void>;
+  previewNote: (midi: number, amplitude?: number) => Promise<void>;
   stop: () => void;
   isPlaying: boolean;
   duration: number;
-}
-
-function midiToFrequency(midi: number): number {
-  return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
 function getDuration(notes: MappedNote[]): number {
@@ -24,9 +22,25 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
 
   const notesRef = useRef<MappedNote[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const oscillatorsRef = useRef<OscillatorNode[]>([]);
-  const gainsRef = useRef<GainNode[]>([]);
+  const samplerRef = useRef<Soundfont | null>(null);
   const endTimerRef = useRef<number | null>(null);
+
+  const getAudioContext = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new window.AudioContext();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const getSampler = useCallback(() => {
+    if (!samplerRef.current) {
+      const ctx = getAudioContext();
+      samplerRef.current = new Soundfont(ctx, {
+        instrument: "acoustic_grand_piano",
+      });
+    }
+    return samplerRef.current;
+  }, [getAudioContext]);
 
   const clearPlayback = useCallback(() => {
     if (endTimerRef.current !== null) {
@@ -34,20 +48,9 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       endTimerRef.current = null;
     }
 
-    for (const osc of oscillatorsRef.current) {
-      try {
-        osc.stop();
-      } catch {
-        // Ignore nodes already stopped
-      }
-      osc.disconnect();
+    if (samplerRef.current) {
+      samplerRef.current.stop();
     }
-    oscillatorsRef.current = [];
-
-    for (const gain of gainsRef.current) {
-      gain.disconnect();
-    }
-    gainsRef.current = [];
   }, []);
 
   const load = useCallback(
@@ -56,18 +59,17 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       setDuration(getDuration(notes));
       clearPlayback();
       setIsPlaying(false);
+      // Initialize sampler in the background when mapped
+      getSampler();
     },
-    [clearPlayback]
+    [clearPlayback, getSampler]
   );
 
   const play = useCallback(async () => {
     const notes = notesRef.current;
     if (notes.length === 0) return;
 
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext();
-    }
-    const ctx = audioContextRef.current;
+    const ctx = getAudioContext();
     if (ctx.state === "suspended") {
       await ctx.resume();
     }
@@ -75,42 +77,47 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     clearPlayback();
     setIsPlaying(true);
 
+    const sampler = getSampler();
+    await sampler.load; // wait for instrument to be loaded if not already
+
     const startAt = ctx.currentTime + 0.03;
     const clipDuration = getDuration(notes);
 
     for (const note of notes) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      const noteStart = startAt + note.startTimeS;
-      const noteDuration = Math.max(note.durationS, 0.06);
-      const noteEnd = noteStart + noteDuration;
-      const velocity = Math.max(0.05, Math.min(0.35, note.amplitude || 0.2));
-
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(midiToFrequency(note.midi), noteStart);
-
-      // Very short attack/release makes playback less clicky.
-      gain.gain.setValueAtTime(0, noteStart);
-      gain.gain.linearRampToValueAtTime(velocity, noteStart + 0.01);
-      gain.gain.setValueAtTime(velocity, Math.max(noteStart + 0.01, noteEnd - 0.02));
-      gain.gain.linearRampToValueAtTime(0.0001, noteEnd);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(noteStart);
-      osc.stop(noteEnd + 0.01);
-
-      oscillatorsRef.current.push(osc);
-      gainsRef.current.push(gain);
+      const velocity = Math.max(10, Math.min(100, Math.round((note.amplitude || 0.2) * 127 * 3))); // Scale amplitude safely
+      
+      sampler.start({
+        note: note.midi,
+        velocity,
+        time: startAt + note.startTimeS,
+        duration: note.durationS,
+      });
     }
 
     endTimerRef.current = window.setTimeout(() => {
       setIsPlaying(false);
       clearPlayback();
     }, Math.ceil((clipDuration + 0.1) * 1000));
-  }, [clearPlayback]);
+  }, [clearPlayback, getAudioContext, getSampler]);
+
+  const previewNote = useCallback(async (midi: number, amplitude = 0.2) => {
+    const ctx = getAudioContext();
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    const sampler = getSampler();
+    
+    // Scale basic-pitch amplitude (usually 0.1-0.4) to 0-127 velocity
+    const velocity = Math.max(20, Math.min(100, Math.round(amplitude * 127 * 3)));
+    
+    sampler.start({
+      note: midi,
+      velocity,
+      time: ctx.currentTime,
+      duration: 0.5,
+    });
+  }, [getAudioContext, getSampler]);
 
   const stop = useCallback(() => {
     clearPlayback();
@@ -121,10 +128,10 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     return () => {
       clearPlayback();
       if (audioContextRef.current) {
-        audioContextRef.current.close();
+        audioContextRef.current.close().catch(() => {});
       }
     };
   }, [clearPlayback]);
 
-  return { load, play, stop, isPlaying, duration };
+  return { load, play, previewNote, stop, isPlaying, duration };
 }

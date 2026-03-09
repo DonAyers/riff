@@ -1,0 +1,60 @@
+.saved-riffs {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.saved-riffs h2 {
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: 0.75rem;
+}
+
+.saved-riffs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.saved-riff-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--surface-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.saved-riff-meta {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+}
+
+.saved-riff-meta strong {
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+
+.saved-riff-load {
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  background: var(--accent);
+  color: #000;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.saved-riff-load:hover {
+  filter: brightness(1.05);
+}

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import audioCaptureWorkletUrl from "../worklets/audio-capture.worklet?url";
 
 export type RecorderState = "idle" | "recording" | "processing";
 
@@ -18,7 +19,47 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const muteGainRef = useRef<GainNode | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
+  const sampleRateRef = useRef<number>(TARGET_SAMPLE_RATE);
+
+  const ensureAudioContext = useCallback(async (): Promise<AudioContext> => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+      await audioContextRef.current.audioWorklet.addModule(audioCaptureWorkletUrl);
+    }
+
+    if (audioContextRef.current.state === "suspended") {
+      await audioContextRef.current.resume();
+    }
+
+    return audioContextRef.current;
+  }, []);
+
+  const resampleToTarget = useCallback(
+    async (pcm: Float32Array, inputSampleRate: number): Promise<Float32Array> => {
+      if (inputSampleRate === TARGET_SAMPLE_RATE) {
+        return pcm;
+      }
+
+      const frameCount = Math.ceil(
+        (pcm.length * TARGET_SAMPLE_RATE) / inputSampleRate
+      );
+      const offlineContext = new OfflineAudioContext(1, frameCount, TARGET_SAMPLE_RATE);
+      const buffer = offlineContext.createBuffer(1, pcm.length, inputSampleRate);
+      buffer.getChannelData(0).set(pcm);
+
+      const source = offlineContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(offlineContext.destination);
+      source.start();
+
+      const rendered = await offlineContext.startRendering();
+      return rendered.getChannelData(0).slice();
+    },
+    []
+  );
 
   const startRecording = useCallback(async () => {
     try {
@@ -34,24 +75,31 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       });
       streamRef.current = stream;
 
-      const audioContext = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE });
-      audioContextRef.current = audioContext;
+      const audioContext = await ensureAudioContext();
+      sampleRateRef.current = audioContext.sampleRate;
 
-      // Use a ScriptProcessor as a fallback-friendly way to capture raw PCM.
-      // AudioWorklet is preferred in production but ScriptProcessor is simpler
-      // to scaffold and works in all browsers today.
       const source = audioContext.createMediaStreamSource(stream);
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      sourceNodeRef.current = source;
 
-      processor.onaudioprocess = (e) => {
-        const input = e.inputBuffer.getChannelData(0);
-        chunksRef.current.push(new Float32Array(input));
+      const workletNode = new AudioWorkletNode(audioContext, "audio-capture-processor", {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+      });
+      workletNodeRef.current = workletNode;
+
+      const muteGain = audioContext.createGain();
+      muteGain.gain.value = 0;
+      muteGainRef.current = muteGain;
+
+      workletNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
+        chunksRef.current.push(event.data);
       };
 
-      source.connect(processor);
-      processor.connect(audioContext.destination);
+      source.connect(workletNode);
+      workletNode.connect(muteGain);
+      muteGain.connect(audioContext.destination);
 
-      workletNodeRef.current = processor as unknown as AudioWorkletNode;
       setState("recording");
     } catch (err) {
       const message =
@@ -70,13 +118,23 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
 
     if (workletNodeRef.current) {
+      workletNodeRef.current.port.onmessage = null;
       workletNodeRef.current.disconnect();
       workletNodeRef.current = null;
     }
 
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
+    }
+
+    if (muteGainRef.current) {
+      muteGainRef.current.disconnect();
+      muteGainRef.current = null;
+    }
+
     if (audioContextRef.current) {
-      await audioContextRef.current.close();
-      audioContextRef.current = null;
+      await audioContextRef.current.suspend();
     }
 
     // Merge captured chunks into a single Float32Array
@@ -96,8 +154,9 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
 
     chunksRef.current = [];
     setState("idle");
-    return merged;
-  }, []);
+
+    return resampleToTarget(merged, sampleRateRef.current);
+  }, [resampleToTarget]);
 
   return { state, startRecording, stopRecording, error };
 }

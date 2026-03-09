@@ -41,6 +41,59 @@ npm run build
 
 The dev server runs at `http://localhost:3000`. Open it in a browser and allow microphone access when prompted.
 
+## Testing
+
+Riff uses both unit/component tests and browser end-to-end tests.
+
+```bash
+# Run Vitest once
+npm run test
+
+# Run Vitest in watch mode
+npm run test:watch
+
+# Run Vitest with coverage report
+npm run test:coverage
+
+# Run Playwright end-to-end tests
+npm run test:e2e
+```
+
+## Deploy to Vercel
+
+Riff is a static Vite app, so deployment to Vercel is straightforward.
+
+### Option 1: Vercel Dashboard (recommended first deploy)
+
+1. Push this repo to GitHub.
+2. In Vercel, click **Add New... -> Project**.
+3. Import `DonAyers/riff`.
+4. Confirm build settings:
+	- Build Command: `npm run build`
+	- Output Directory: `dist`
+5. Deploy.
+
+### Option 2: Vercel CLI
+
+```bash
+# one-time login
+npx vercel login
+
+# preview deployment
+npx vercel
+
+# production deployment
+npx vercel --prod
+```
+
+`vercel.json` is included in this repo to pin the Vite build/output configuration.
+It uses `npm install` (not `npm ci`) to avoid cross-version lockfile strictness issues on Vercel.
+
+### Notes for this app
+
+- Microphone access requires a secure origin. Vercel deployments are HTTPS by default, so recording works in production.
+- If your app grows into multiple client-side routes, keep SPA fallback behavior in mind.
+
 ## Project Structure
 
 ```

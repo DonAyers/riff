@@ -1,63 +1,35 @@
-import { useState } from "react";
-import { useAudioRecorder } from "./hooks/useAudioRecorder";
-import { usePitchDetection } from "./hooks/usePitchDetection";
-import { useAudioPlayback } from "./hooks/useAudioPlayback";
-import { useMidiPlayback } from "./hooks/useMidiPlayback";
-import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes } from "./lib/noteMapper";
-import { detectChord, formatChordName } from "./lib/chordDetector";
+import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
 import { NoteDisplay } from "./components/NoteDisplay";
 import { ChordDisplay } from "./components/ChordDisplay";
 import { PianoRoll } from "./components/PianoRoll";
 import { ProgressBar } from "./components/ProgressBar";
 import { Playback } from "./components/Playback";
-import type { MappedNote } from "./lib/noteMapper";
+import { SavedRiffs } from "./components/SavedRiffs";
 import "./styles/App.css";
 
 function App() {
-  const { state, startRecording, stopRecording, error: recorderError } = useAudioRecorder();
-  const { detect, isLoading, progress, error: detectionError } = usePitchDetection();
-  const { load: loadPlayback, play, pause, isPlaying, duration } = useAudioPlayback();
   const {
-    load: loadMidiPlayback,
-    play: playMidi,
-    stop: stopMidi,
-    isPlaying: isMidiPlaying,
-    duration: midiDuration,
-  } = useMidiPlayback();
-
-  const [notes, setNotes] = useState<MappedNote[]>([]);
-  const [chord, setChord] = useState<string | null>(null);
-  const [hasRecording, setHasRecording] = useState(false);
-
-  const handleStart = () => {
-    setNotes([]);
-    setChord(null);
-    setHasRecording(false);
-    stopMidi();
-    startRecording();
-  };
-
-  const handleStop = async () => {
-    const audio = await stopRecording();
-    if (!audio) return;
-
-    loadPlayback(audio);
-    setHasRecording(true);
-
-    const events = await detect(audio);
-    const mapped = mapNoteEvents(events);
-    setNotes(mapped);
-    loadMidiPlayback(mapped);
-
-    // Detect chord from unique pitch classes
-    const pitchClasses = getUniquePitchClasses(mapped);
-    const detected = detectChord(pitchClasses);
-    setChord(detected ? formatChordName(detected) : null);
-  };
-
-  const uniqueNotes = getUniqueNotes(notes);
-  const error = recorderError || detectionError;
+    recorderState,
+    handleStart,
+    handleStop,
+    isLoading,
+    progress,
+    handleAnalyze,
+    notes,
+    uniqueNotes,
+    chord,
+    error,
+    autoProcess,
+    setAutoProcess,
+    hasRecording,
+    hasPendingAnalysis,
+    handleLoadDemoAnalysis,
+    savedRiffs,
+    handleLoadSavedRiff,
+    audioPlayback,
+    midiPlayback,
+  } = useRiffSession();
 
   return (
     <div className="app">
@@ -69,40 +41,79 @@ function App() {
       <main className="app-main">
         <div className="recorder-card">
           <Recorder
-            state={isLoading ? "processing" : state}
+            state={isLoading ? "processing" : recorderState}
             onStart={handleStart}
-            onStop={handleStop}
+            onStop={() => void handleStop()}
             error={error}
           />
+
+          <label className="auto-process-toggle">
+            <input
+              type="checkbox"
+              checked={autoProcess}
+              onChange={(e) => setAutoProcess(e.target.checked)}
+              disabled={recorderState !== "idle" || isLoading}
+            />
+            Auto-process after recording
+          </label>
+
+          <button
+            className="analyze-btn"
+            onClick={() => {
+              void handleAnalyze();
+            }}
+            disabled={
+              autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"
+            }
+          >
+            Analyze Clip
+          </button>
+
+          {error && notes.length === 0 && (
+            <button
+              className="analyze-btn"
+              onClick={handleLoadDemoAnalysis}
+              disabled={isLoading || recorderState !== "idle"}
+            >
+              Load Demo Analysis
+            </button>
+          )}
 
           <ProgressBar progress={progress} visible={isLoading} />
         </div>
 
         <Playback
           label="Original"
-          isPlaying={isPlaying}
-          duration={duration}
-          onPlay={play}
-          onPause={pause}
+          isPlaying={audioPlayback.isPlaying}
+          duration={audioPlayback.duration}
+          onPlay={audioPlayback.play}
+          onPause={audioPlayback.pause}
           visible={hasRecording && !isLoading}
         />
 
         <Playback
           label="MIDI"
-          isPlaying={isMidiPlaying}
-          duration={midiDuration}
-          onPlay={playMidi}
-          onPause={stopMidi}
+          isPlaying={midiPlayback.isPlaying}
+          duration={midiPlayback.duration}
+          onPlay={midiPlayback.play}
+          onPause={midiPlayback.stop}
           visible={notes.length > 0 && !isLoading}
         />
 
         {notes.length > 0 && (
           <div className="results" style={{width: "100%"}}>
             <ChordDisplay chordName={chord} />
-            <NoteDisplay notes={uniqueNotes} />
+            <NoteDisplay
+              notes={uniqueNotes}
+              onNoteClick={(note) => {
+                void midiPlayback.previewNote(note.midi, note.amplitude);
+              }}
+            />
             <PianoRoll notes={notes} />
           </div>
         )}
+
+        <SavedRiffs riffs={savedRiffs} onLoad={handleLoadSavedRiff} />
       </main>
     </div>
   );

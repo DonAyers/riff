@@ -3,9 +3,10 @@ import "./NoteDisplay.css";
 
 interface NoteDisplayProps {
   notes: MappedNote[];
+  onNoteClick?: (note: MappedNote) => void;
 }
 
-export function NoteDisplay({ notes }: NoteDisplayProps) {
+export function NoteDisplay({ notes, onNoteClick }: NoteDisplayProps) {
   if (notes.length === 0) return null;
 
   return (
@@ -13,9 +14,15 @@ export function NoteDisplay({ notes }: NoteDisplayProps) {
       <h2>Notes Detected</h2>
       <div className="note-chips">
         {notes.map((note, i) => (
-          <span key={`${note.midi}-${i}`} className="note-chip">
+          <button
+            key={`${note.midi}-${i}`}
+            type="button"
+            className="note-chip"
+            onClick={() => onNoteClick?.(note)}
+            aria-label={`Play note ${note.name}`}
+          >
             {note.name}
-          </span>
+          </button>
         ))}
       </div>
     </div>
