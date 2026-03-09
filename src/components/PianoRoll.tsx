@@ -19,7 +19,7 @@ export function PianoRoll({ notes }: PianoRollProps) {
 
   return (
     <div className="piano-roll">
-      <h2>Timeline</h2>
+      <h2>Performance timeline</h2>
       <div className="piano-roll-container">
         {/* Y-axis: pitch labels */}
         <div className="piano-roll-labels">

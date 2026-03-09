@@ -2,37 +2,58 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  width: 100%;
+    min-width: 0;
+    padding: 0.95rem 1rem;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
 }
 
 .playback-label {
-  width: 64px;
-  font-size: 0.75rem;
-  color: #888;
+  min-width: 76px;
+    font-size: 0.72rem;
+    color: var(--fg-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
 }
 
 .playback-btn {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 2px solid #3498db;
+  border: 2px solid var(--accent);
   background: transparent;
-  color: #3498db;
+  color: var(--accent);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    touch-action: manipulation;
 }
 
 .playback-btn:hover {
-  background: #3498db;
-  color: #fff;
+  background: var(--accent);
+    color: #05030c;
+    transform: translateY(-1px);
+  }
+  
+  .playback-btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 3px;
 }
 
 .playback-duration {
   font-size: 0.8rem;
-  color: #888;
+  color: var(--fg-muted);
   font-family: "SF Mono", "Fira Code", monospace;
+  font-variant-numeric: tabular-nums;
+    margin-left: auto;
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .playback-btn {
+      transition: none;
+    }
 }

@@ -56,8 +56,8 @@ describe("Recorder", () => {
     expect(onImport).toHaveBeenCalledWith(file);
   });
 
-  it("shows 'Processing…' when isImporting is true", () => {
+  it("shows 'Preparing audio…' when isImporting is true", () => {
     render(<Recorder {...defaultProps} isImporting={true} />);
-    expect(screen.getByText("Processing…")).toBeTruthy();
+    expect(screen.getByText("Preparing audio…")).toBeTruthy();
   });
 });

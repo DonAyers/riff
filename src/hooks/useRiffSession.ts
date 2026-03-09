@@ -162,7 +162,7 @@ export function useRiffSession() {
 
       const newRiff: StoredRiff = {
         id: crypto.randomUUID(),
-        name: `Riff ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        name: `Take ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
         timestamp: Date.now(),
         durationS: audio.length / 22050,
         notes: mapped,

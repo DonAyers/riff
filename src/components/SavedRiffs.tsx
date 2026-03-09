@@ -13,7 +13,7 @@ export function SavedRiffs({ riffs, onLoad }: SavedRiffsProps) {
 
   return (
     <section className="saved-riffs">
-      <h2>Saved Riffs</h2>
+      <h2>Recent takes</h2>
       <ul className="saved-riffs-list">
         {riffs.map((riff) => (
           <li key={riff.id} className="saved-riff-item">
@@ -24,7 +24,7 @@ export function SavedRiffs({ riffs, onLoad }: SavedRiffsProps) {
               <span>{formatDuration(riff.durationS)}</span>
             </div>
             <button className="saved-riff-load" onClick={() => onLoad(riff)}>
-              Load
+              Open
             </button>
           </li>
         ))}

@@ -11,6 +11,9 @@ export interface UseAudioRecorderReturn {
 }
 
 const TARGET_SAMPLE_RATE = 22050;
+const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096;
+type CaptureNode = AudioWorkletNode | ScriptProcessorNode;
+type CaptureBackend = "worklet" | "script-processor";
 
 export function useAudioRecorder(): UseAudioRecorderReturn {
   const [state, setState] = useState<RecorderState>("idle");
@@ -18,16 +21,17 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const captureNodeRef = useRef<CaptureNode | null>(null);
+  const captureBackendRef = useRef<CaptureBackend | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const muteGainRef = useRef<GainNode | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
   const sampleRateRef = useRef<number>(TARGET_SAMPLE_RATE);
+  const workletModuleLoadedRef = useRef(false);
 
   const ensureAudioContext = useCallback(async (): Promise<AudioContext> => {
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext();
-      await audioContextRef.current.audioWorklet.addModule(audioCaptureWorkletUrl);
     }
 
     if (audioContextRef.current.state === "suspended") {
@@ -36,6 +40,108 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
 
     return audioContextRef.current;
   }, []);
+
+  const stopActiveStream = useCallback(() => {
+    if (!streamRef.current) {
+      return;
+    }
+
+    streamRef.current.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  }, []);
+
+  const disconnectCaptureGraph = useCallback(() => {
+    if (captureNodeRef.current) {
+      if (captureBackendRef.current === "worklet") {
+        captureNodeRef.current.port.onmessage = null;
+      } else {
+        captureNodeRef.current.onaudioprocess = null;
+      }
+
+      captureNodeRef.current.disconnect();
+      captureNodeRef.current = null;
+      captureBackendRef.current = null;
+    }
+
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
+    }
+
+    if (muteGainRef.current) {
+      muteGainRef.current.disconnect();
+      muteGainRef.current = null;
+    }
+  }, []);
+
+  const ensureWorkletModule = useCallback(async (audioContext: AudioContext) => {
+    if (workletModuleLoadedRef.current) {
+      return;
+    }
+
+    if (!audioContext.audioWorklet) {
+      throw new Error("AudioWorklet is unavailable in this browser.");
+    }
+
+    await audioContext.audioWorklet.addModule(audioCaptureWorkletUrl);
+    workletModuleLoadedRef.current = true;
+  }, []);
+
+  const createCaptureNode = useCallback(
+    async (audioContext: AudioContext): Promise<{ node: CaptureNode; backend: CaptureBackend }> => {
+      let workletError: unknown;
+
+      if (audioContext.audioWorklet && typeof AudioWorkletNode !== "undefined") {
+        try {
+          await ensureWorkletModule(audioContext);
+
+          const workletNode = new AudioWorkletNode(audioContext, "audio-capture-processor", {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            outputChannelCount: [1],
+          });
+
+          workletNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
+            chunksRef.current.push(event.data);
+          };
+
+          return { node: workletNode, backend: "worklet" };
+        } catch (error) {
+          workletError = error;
+        }
+      }
+
+      if (typeof audioContext.createScriptProcessor === "function") {
+        const scriptProcessor = audioContext.createScriptProcessor(
+          SCRIPT_PROCESSOR_BUFFER_SIZE,
+          1,
+          1
+        );
+
+        scriptProcessor.onaudioprocess = (event: AudioProcessingEvent) => {
+          if (event.inputBuffer.numberOfChannels === 0) {
+            return;
+          }
+
+          const inputChannel = event.inputBuffer.getChannelData(0);
+          chunksRef.current.push(new Float32Array(inputChannel));
+
+          if (event.outputBuffer.numberOfChannels > 0) {
+            event.outputBuffer.getChannelData(0).set(inputChannel);
+          }
+        };
+
+        return { node: scriptProcessor, backend: "script-processor" };
+      }
+
+      if (workletError instanceof Error) {
+        throw workletError;
+      }
+
+      throw new Error("Audio capture is not supported in this browser.");
+    },
+    [ensureWorkletModule]
+  );
 
   const resampleToTarget = useCallback(
     async (pcm: Float32Array, inputSampleRate: number): Promise<Float32Array> => {
@@ -81,57 +187,35 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       const source = audioContext.createMediaStreamSource(stream);
       sourceNodeRef.current = source;
 
-      const workletNode = new AudioWorkletNode(audioContext, "audio-capture-processor", {
-        numberOfInputs: 1,
-        numberOfOutputs: 1,
-        outputChannelCount: [1],
-      });
-      workletNodeRef.current = workletNode;
+      const { node: captureNode, backend } = await createCaptureNode(audioContext);
+      captureNodeRef.current = captureNode;
+      captureBackendRef.current = backend;
 
       const muteGain = audioContext.createGain();
       muteGain.gain.value = 0;
       muteGainRef.current = muteGain;
 
-      workletNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
-        chunksRef.current.push(event.data);
-      };
-
-      source.connect(workletNode);
-      workletNode.connect(muteGain);
+      source.connect(captureNode);
+      captureNode.connect(muteGain);
       muteGain.connect(audioContext.destination);
 
       setState("recording");
     } catch (err) {
+      disconnectCaptureGraph();
+      stopActiveStream();
+
       const message =
         err instanceof Error ? err.message : "Failed to start recording";
       setError(message);
     }
-  }, []);
+  }, [createCaptureNode, disconnectCaptureGraph, ensureAudioContext, stopActiveStream]);
 
   const stopRecording = useCallback(async (): Promise<Float32Array | null> => {
     setState("processing");
 
     // Stop all tracks and disconnect audio nodes
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-
-    if (workletNodeRef.current) {
-      workletNodeRef.current.port.onmessage = null;
-      workletNodeRef.current.disconnect();
-      workletNodeRef.current = null;
-    }
-
-    if (sourceNodeRef.current) {
-      sourceNodeRef.current.disconnect();
-      sourceNodeRef.current = null;
-    }
-
-    if (muteGainRef.current) {
-      muteGainRef.current.disconnect();
-      muteGainRef.current = null;
-    }
+    stopActiveStream();
+    disconnectCaptureGraph();
 
     if (audioContextRef.current) {
       await audioContextRef.current.suspend();
@@ -156,7 +240,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     setState("idle");
 
     return resampleToTarget(merged, sampleRateRef.current);
-  }, [resampleToTarget]);
+  }, [disconnectCaptureGraph, resampleToTarget, stopActiveStream]);
 
   return { state, startRecording, stopRecording, error };
 }

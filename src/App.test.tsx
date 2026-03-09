@@ -79,6 +79,42 @@ describe("App mic permission fallback", () => {
     useRiffSessionMock.mockReset();
   });
 
+  it("renders capture and analysis workspace regions", () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState() as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByText(/capture a take\. hear what you played\./i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: /record a take or import audio/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", {
+        name: /notes, chord, and timing/i,
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/ready for a take/i)).toBeInTheDocument();
+  });
+
+  it("renders analysis widgets when notes are available", () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        uniqueNotes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        chord: "C",
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.queryByText(/ready for a take/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId("chord-display")).toBeInTheDocument();
+    expect(screen.getByTestId("note-display")).toBeInTheDocument();
+    expect(screen.getByTestId("piano-roll")).toBeInTheDocument();
+  });
+
   it("shows and triggers demo analysis button when recording fails", () => {
     const handleLoadDemoAnalysis = vi.fn();
 
@@ -91,7 +127,7 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    const button = screen.getByRole("button", { name: /load demo analysis/i });
+    const button = screen.getByRole("button", { name: /try demo take/i });
     fireEvent.click(button);
 
     expect(handleLoadDemoAnalysis).toHaveBeenCalledTimes(1);
@@ -105,7 +141,7 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     expect(
-      screen.queryByRole("button", { name: /load demo analysis/i })
+      screen.queryByRole("button", { name: /try demo take/i })
     ).not.toBeInTheDocument();
   });
 });

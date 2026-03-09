@@ -11,7 +11,7 @@ export function NoteDisplay({ notes, onNoteClick }: NoteDisplayProps) {
 
   return (
     <div className="note-display">
-      <h2>Notes Detected</h2>
+      <h2>Notes in this take</h2>
       <div className="note-chips">
         {notes.map((note, i) => (
           <button

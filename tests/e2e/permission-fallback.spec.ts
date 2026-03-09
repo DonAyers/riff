@@ -20,10 +20,10 @@ test("shows demo analysis fallback when microphone permission is denied", async 
 
   await expect(page.getByText("Permission denied")).toBeVisible();
 
-  const demoButton = page.getByRole("button", { name: /load demo analysis/i });
+  const demoButton = page.getByRole("button", { name: /try demo take/i });
   await expect(demoButton).toBeVisible();
   await demoButton.click();
 
-  await expect(page.getByText("Notes Detected")).toBeVisible();
+  await expect(page.getByText("Notes in this take")).toBeVisible();
   await expect(page.locator(".note-chip", { hasText: "C4" })).toBeVisible();
 });

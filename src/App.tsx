@@ -35,102 +35,144 @@ function App() {
     midiPlayback,
   } = useRiffSession();
 
+  const hasResults = notes.length > 0;
+  const showPlaybackStack = !isLoading && (hasRecording || hasResults);
+
   return (
     <div className="app">
-      <header className="app-header">
-        <h1><i className="note-icon">♪</i> Riff</h1>
-        <p className="tagline">Capture your musical ideas</p>
-      </header>
+      <div className="app-shell">
+        <header className="app-header">
+          <h1><i className="note-icon">♪</i> Riff</h1>
+          <p className="tagline">Capture a take. Hear what you played.</p>
+        </header>
 
-      <main className="app-main">
-        <div className="recorder-card">
-          <Recorder
-            state={isLoading ? "processing" : recorderState}
-            onStart={handleStart}
-            onStop={() => void handleStop()}
-            onImport={(file) => void handleImport(file)}
-            isImporting={isImporting}
-            error={error}
-          />
+        <main className="app-main">
+          <section className="workspace-pane workspace-pane--capture" aria-labelledby="capture-workspace-title">
+            <div className="pane-header">
+              <p className="pane-kicker">Capture</p>
+              <h2 id="capture-workspace-title">Record a take or import audio</h2>
+              <p className="pane-copy">
+                Start with a live recording or bring in a file to hear the notes and chord.
+              </p>
+            </div>
 
-          <label className="auto-process-toggle">
-            <input
-              type="checkbox"
-              checked={autoProcess}
-              onChange={(e) => setAutoProcess(e.target.checked)}
-              disabled={recorderState !== "idle" || isLoading}
-            />
-            Auto-process after recording
-          </label>
+            <div className="recorder-card">
+              <Recorder
+                state={isLoading ? "processing" : recorderState}
+                onStart={handleStart}
+                onStop={() => void handleStop()}
+                onImport={(file) => void handleImport(file)}
+                isImporting={isImporting}
+                error={error}
+              />
 
-          <label className="storage-format-toggle">
-            <input
-              type="checkbox"
-              checked={storageFormat === "compressed"}
-              onChange={(e) => setStorageFormat(e.target.checked ? "compressed" : "pcm")}
-              disabled={recorderState !== "idle" || isLoading}
-            />
-            Compress saved audio
-          </label>
+              <div className="recorder-actions">
+                <label className="auto-process-toggle">
+                  <input
+                    type="checkbox"
+                    checked={autoProcess}
+                    onChange={(e) => setAutoProcess(e.target.checked)}
+                    disabled={recorderState !== "idle" || isLoading}
+                  />
+                  Detect notes after recording
+                </label>
 
-          <button
-            className="analyze-btn"
-            onClick={() => {
-              void handleAnalyze();
-            }}
-            disabled={
-              autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"
-            }
-          >
-            Analyze Clip
-          </button>
+                <label className="storage-format-toggle">
+                  <input
+                    type="checkbox"
+                    checked={storageFormat === "compressed"}
+                    onChange={(e) => setStorageFormat(e.target.checked ? "compressed" : "pcm")}
+                    disabled={recorderState !== "idle" || isLoading}
+                  />
+                  Compress saved takes
+                </label>
 
-          {error && notes.length === 0 && (
-            <button
-              className="analyze-btn"
-              onClick={handleLoadDemoAnalysis}
-              disabled={isLoading || recorderState !== "idle"}
-            >
-              Load Demo Analysis
-            </button>
-          )}
+                <div className="recorder-button-row">
+                  <button
+                    className="analyze-btn"
+                    onClick={() => {
+                      void handleAnalyze();
+                    }}
+                    disabled={
+                      autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"
+                    }
+                  >
+                    Detect Notes
+                  </button>
 
-          <ProgressBar progress={progress} visible={isLoading} />
-        </div>
+                  {error && !hasResults && (
+                    <button
+                      className="analyze-btn analyze-btn--secondary"
+                      onClick={handleLoadDemoAnalysis}
+                      disabled={isLoading || recorderState !== "idle"}
+                    >
+                      Try Demo Take
+                    </button>
+                  )}
+                </div>
+              </div>
 
-        <Playback
-          label="Original"
-          isPlaying={audioPlayback.isPlaying}
-          duration={audioPlayback.duration}
-          onPlay={audioPlayback.play}
-          onPause={audioPlayback.pause}
-          visible={hasRecording && !isLoading}
-        />
+              <ProgressBar progress={progress} visible={isLoading} />
+            </div>
 
-        <Playback
-          label="MIDI"
-          isPlaying={midiPlayback.isPlaying}
-          duration={midiPlayback.duration}
-          onPlay={midiPlayback.play}
-          onPause={midiPlayback.stop}
-          visible={notes.length > 0 && !isLoading}
-        />
+            {showPlaybackStack && (
+              <div className="playback-stack" aria-label="Playback controls">
+                <Playback
+                  label="Recording"
+                  isPlaying={audioPlayback.isPlaying}
+                  duration={audioPlayback.duration}
+                  onPlay={audioPlayback.play}
+                  onPause={audioPlayback.pause}
+                  visible={hasRecording}
+                />
 
-        {notes.length > 0 && (
-          <div className="results" style={{width: "100%"}}>
-            <ChordDisplay chordName={chord} />
-            <NoteDisplay
-              notes={uniqueNotes}
-              onNoteClick={(note) => {
-                void midiPlayback.previewNote(note.midi, note.amplitude);
-              }}
-            />
-            <PianoRoll notes={notes} />
-          </div>
-        )}
+                <Playback
+                  label="Preview"
+                  isPlaying={midiPlayback.isPlaying}
+                  duration={midiPlayback.duration}
+                  onPlay={midiPlayback.play}
+                  onPause={midiPlayback.stop}
+                  visible={hasResults}
+                />
+              </div>
+            )}
 
-        <SavedRiffs riffs={savedRiffs} onLoad={handleLoadSavedRiff} />
-      </main>
+            <SavedRiffs riffs={savedRiffs} onLoad={handleLoadSavedRiff} />
+          </section>
+
+          <section className="workspace-pane workspace-pane--analysis" aria-labelledby="analysis-workspace-title">
+            <div className="analysis-panel">
+              <div className="pane-header pane-header--analysis">
+                <p className="pane-kicker">Analyze</p>
+                <h2 id="analysis-workspace-title">Notes, chord, and timing</h2>
+                <p className="pane-copy">
+                  Review what the app heard in your latest take.
+                </p>
+              </div>
+
+              {hasResults ? (
+                <div className="results">
+                  <div className="results-summary">
+                    <ChordDisplay chordName={chord} />
+                    <NoteDisplay
+                      notes={uniqueNotes}
+                      onNoteClick={(note) => {
+                        void midiPlayback.previewNote(note.midi, note.amplitude);
+                      }}
+                    />
+                  </div>
+                  <PianoRoll notes={notes} />
+                </div>
+              ) : (
+                <div className="analysis-empty" aria-live="polite">
+                  <span className="analysis-empty-kicker">Ready for a take</span>
+                  <p>Record a take or import audio to see the notes, chord, and timing here.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        </main>
+      </div>
     </div>
   );
 }

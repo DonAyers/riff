@@ -54,9 +54,9 @@ export function Recorder({ state, onStart, onStop, onImport, isImporting, error 
       </button>
 
       <p className="recorder-label">
-        {state === "idle" && !isImporting && "Tap to record"}
-        {state === "recording" && "Listening…"}
-        {(state === "processing" || isImporting) && "Processing…"}
+        {state === "idle" && !isImporting && "Record a take"}
+        {state === "recording" && "Recording…"}
+        {(state === "processing" || isImporting) && "Preparing audio…"}
       </p>
 
       <input
@@ -76,7 +76,7 @@ export function Recorder({ state, onStart, onStop, onImport, isImporting, error 
         disabled={isRecording || isBusy}
         aria-label="Import audio file"
       >
-        Import file
+        Import audio
       </button>
 
       {error && <p className="recorder-error">{error}</p>}
