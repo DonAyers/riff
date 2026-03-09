@@ -62,19 +62,21 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Riff</h1>
-        <p className="tagline">Play something. See every note.</p>
+        <h1><i className="note-icon">♪</i> Riff</h1>
+        <p className="tagline">Capture your musical ideas</p>
       </header>
 
       <main className="app-main">
-        <Recorder
-          state={isLoading ? "processing" : state}
-          onStart={handleStart}
-          onStop={handleStop}
-          error={error}
-        />
+        <div className="recorder-card">
+          <Recorder
+            state={isLoading ? "processing" : state}
+            onStart={handleStart}
+            onStop={handleStop}
+            error={error}
+          />
 
-        <ProgressBar progress={progress} visible={isLoading} />
+          <ProgressBar progress={progress} visible={isLoading} />
+        </div>
 
         <Playback
           label="Original"
@@ -95,7 +97,7 @@ function App() {
         />
 
         {notes.length > 0 && (
-          <div className="results">
+          <div className="results" style={{width: "100%"}}>
             <ChordDisplay chordName={chord} />
             <NoteDisplay notes={uniqueNotes} />
             <PianoRoll notes={notes} />

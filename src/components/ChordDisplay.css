@@ -6,14 +6,14 @@
 }
 
 .chord-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #888;
+  letter-spacing: 0.18em;
+  color: var(--fg-muted);
 }
 
 .chord-name {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--accent);
 }

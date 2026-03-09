@@ -3,8 +3,10 @@
 }
 
 .piano-roll h2 {
-  font-size: 1rem;
-  color: #ccc;
+  font-size: 0.65rem;
+  color: var(--fg-muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   margin-bottom: 0.75rem;
   font-weight: 500;
   text-align: center;
@@ -13,8 +15,8 @@
 .piano-roll-container {
   display: flex;
   gap: 0;
-  border: 1px solid #333;
-  border-radius: 8px;
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
   overflow: hidden;
   height: 200px;
 }
@@ -22,9 +24,9 @@
 .piano-roll-labels {
   display: flex;
   flex-direction: column;
-  background: #111;
+  background: #0e0e1a;
   min-width: 48px;
-  border-right: 1px solid #333;
+  border-right: 1px solid var(--surface-border);
 }
 
 .piano-roll-label {
@@ -33,7 +35,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.6rem;
-  color: #666;
+  color: var(--fg-muted);
   font-family: "SF Mono", "Fira Code", monospace;
 }
 
@@ -44,15 +46,15 @@
     0deg,
     transparent,
     transparent calc(100% / var(--rows) - 1px),
-    #1a1a1a calc(100% / var(--rows))
+    rgba(139, 92, 246, 0.06) calc(100% / var(--rows))
   );
 }
 
 .piano-roll-note {
   position: absolute;
-  background: #3498db;
+  background: var(--accent);
   border-radius: 3px;
-  opacity: 0.85;
+  opacity: 0.8;
   min-width: 4px;
   transition: opacity 0.15s;
 }
