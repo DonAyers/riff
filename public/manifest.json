@@ -2,7 +2,7 @@
   "name": "Riff",
   "short_name": "Riff",
   "description": "Record a riff, chord, or arpeggio — see every note you played.",
-  "start_url": "/",
+  "start_url": "/riff/",
   "display": "standalone",
   "background_color": "#0f0f0f",
   "theme_color": "#0f0f0f",
