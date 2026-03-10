@@ -10,6 +10,16 @@ import { ExportPanel } from "./components/ExportPanel";
 import { buildLabel } from "./lib/buildInfo";
 import "./styles/App.css";
 
+const TAGLINES = [
+  "Every riff, decoded.",
+  "Just record it. Frig.",
+  "May the frig be with you.",
+  "The red light is not judging you.",
+  "One more take. For real this time.",
+];
+
+const tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
+
 function App() {
   const {
     recorderState,
@@ -49,16 +59,16 @@ function App() {
       <div className="app-shell">
         <header className="app-header">
           <h1><i className="note-icon">♪</i> Riff</h1>
-          <p className="tagline">Capture a take. Hear what you played.</p>
+          <p className="tagline">{tagline}</p>
         </header>
 
         <main className="app-main">
           <section className="workspace-pane workspace-pane--capture" aria-labelledby="capture-workspace-title">
             <div className="pane-header">
               <p className="pane-kicker">Capture</p>
-              <h2 id="capture-workspace-title">Record a take or import audio</h2>
+              <h2 id="capture-workspace-title">Record or import a take</h2>
               <p className="pane-copy">
-                Start with a live recording or bring in a file to hear the notes and chord.
+                Lay down a live take or drop in a file — notes, chord, and timing detected automatically.
               </p>
             </div>
 
@@ -152,7 +162,7 @@ function App() {
                 <p className="pane-kicker">Analyze</p>
                 <h2 id="analysis-workspace-title">Notes, chord, and timing</h2>
                 <p className="pane-copy">
-                  Review what the app heard in your latest take.
+                  What the app found in your latest take.
                 </p>
               </div>
 
@@ -179,8 +189,9 @@ function App() {
                 </div>
               ) : (
                 <div className="analysis-empty" aria-live="polite">
-                  <span className="analysis-empty-kicker">Ready for a take</span>
-                  <p>Record a take or import audio to see the notes, chord, and timing here.</p>
+                  <span className="analysis-empty-icon" aria-hidden="true">♩</span>
+                  <span className="analysis-empty-kicker">Nothing here yet</span>
+                  <p>Record or import a take — notes, chord, and timeline will appear here.</p>
                 </div>
               )}
             </div>
