@@ -9,6 +9,14 @@ const defaultProps = {
   onImport: vi.fn(),
   isImporting: false,
   error: null,
+  autoProcess: false,
+  onAutoProcessChange: vi.fn(),
+  storageFormat: "pcm" as const,
+  onStorageFormatChange: vi.fn(),
+  recorderState: "idle" as const,
+  isLoading: false,
+  hasPendingAnalysis: false,
+  onAnalyze: vi.fn(),
 };
 
 describe("Recorder", () => {
@@ -58,6 +66,6 @@ describe("Recorder", () => {
 
   it("shows 'Preparing audio…' when isImporting is true", () => {
     render(<Recorder {...defaultProps} isImporting={true} />);
-    expect(screen.getByText("Preparing audio…")).toBeTruthy();
+    expect(screen.getByText("Preparing…")).toBeTruthy();
   });
 });

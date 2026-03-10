@@ -1,3 +1,4 @@
+import { Play, Pause } from "lucide-react";
 import "./Playback.css";
 
 interface PlaybackProps {
@@ -27,16 +28,9 @@ export function Playback({
         onClick={isPlaying ? onPause : onPlay}
         aria-label={isPlaying ? `Pause ${label}` : `Play ${label}`}
       >
-        {isPlaying ? (
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <rect x="6" y="4" width="4" height="16" rx="1" />
-            <rect x="14" y="4" width="4" height="16" rx="1" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <polygon points="6,4 20,12 6,20" />
-          </svg>
-        )}
+        {isPlaying
+          ? <Pause size={18} strokeWidth={2} fill="currentColor" />
+          : <Play  size={18} strokeWidth={2} fill="currentColor" />}
       </button>
       <span className="playback-duration">{formatTime(duration)}</span>
     </div>

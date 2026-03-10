@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Mic2, Square, Upload, Sparkles } from "lucide-react";
 import type { RecorderState } from "../hooks/useAudioRecorder";
 import "./Recorder.css";
 
@@ -9,11 +10,35 @@ interface RecorderProps {
   onImport: (file: File) => void;
   isImporting: boolean;
   error: string | null;
+  autoProcess: boolean;
+  onAutoProcessChange: (v: boolean) => void;
+  storageFormat: "pcm" | "compressed";
+  onStorageFormatChange: (v: "pcm" | "compressed") => void;
+  recorderState: RecorderState;
+  isLoading: boolean;
+  hasPendingAnalysis: boolean;
+  onAnalyze: () => void;
 }
 
-export function Recorder({ state, onStart, onStop, onImport, isImporting, error }: RecorderProps) {
+export function Recorder({
+  state,
+  onStart,
+  onStop,
+  onImport,
+  isImporting,
+  error,
+  autoProcess,
+  onAutoProcessChange,
+  storageFormat,
+  onStorageFormatChange,
+  recorderState,
+  isLoading,
+  hasPendingAnalysis,
+  onAnalyze,
+}: RecorderProps) {
   const isRecording = state === "recording";
   const isBusy = state === "processing" || isImporting;
+  const settingsDisabled = recorderState !== "idle" || isLoading;
   const [seconds, setSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,42 +69,80 @@ export function Recorder({ state, onStart, onStop, onImport, isImporting, error 
     <div className="recorder">
       <div className="recorder-timer">{formatTime(seconds)}</div>
 
-      <button
-        className={`record-btn ${isRecording ? "recording" : ""}`}
-        onClick={isRecording ? onStop : onStart}
-        disabled={isBusy}
-        aria-label={isRecording ? "Stop recording" : "Start recording"}
-      >
-        <span className="record-icon" />
-      </button>
+      <div className="recorder-main-row">
+        <button
+          className={`record-btn ${isRecording ? "recording" : ""}`}
+          onClick={isRecording ? onStop : onStart}
+          disabled={isBusy}
+          aria-label={isRecording ? "Stop recording" : "Start recording"}
+        >
+          {isRecording
+            ? <Square size={26} strokeWidth={0} fill="currentColor" />
+            : <Mic2 size={26} strokeWidth={1.8} />}
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          className="import-file-input"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onImport(file);
+            e.target.value = "";
+          }}
+        />
+        <button
+          className="import-btn"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isRecording || isBusy}
+          aria-label="Import audio file"
+          title="Import audio file"
+        >
+          <Upload size={16} strokeWidth={2} />
+        </button>
+      </div>
 
       <p className="recorder-label">
-        {state === "idle" && !isImporting && "Record a take"}
+        {state === "idle" && !isImporting && "Tap to record"}
         {state === "recording" && "Recording…"}
-        {(state === "processing" || isImporting) && "Preparing audio…"}
+        {(state === "processing" || isImporting) && "Preparing…"}
       </p>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="audio/*"
-        className="import-file-input"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onImport(file);
-          e.target.value = "";
-        }}
-      />
-      <button
-        className="import-btn"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isRecording || isBusy}
-        aria-label="Import audio file"
-      >
-        Import audio
-      </button>
-
       {error && <p className="recorder-error">{error}</p>}
+
+      <div className="recorder-settings">
+        <label className="setting-toggle" title="Auto-detect notes when recording stops">
+          <input
+            type="checkbox"
+            checked={autoProcess}
+            onChange={(e) => onAutoProcessChange(e.target.checked)}
+            disabled={settingsDisabled}
+          />
+          <span>Auto-detect</span>
+        </label>
+
+        <label className="setting-toggle" title="Compress audio when saving">
+          <input
+            type="checkbox"
+            checked={storageFormat === "compressed"}
+            onChange={(e) => onStorageFormatChange(e.target.checked ? "compressed" : "pcm")}
+            disabled={settingsDisabled}
+          />
+          <span>Compress</span>
+        </label>
+      </div>
+
+      <div className="recorder-action-row">
+        <button
+          className="analyze-btn"
+          onClick={onAnalyze}
+          disabled={autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"}
+        >
+          <Sparkles size={14} strokeWidth={2} />
+          Detect notes
+        </button>
+      </div>
     </div>
   );
 }

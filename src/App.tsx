@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { HelpCircle, FlaskConical } from "lucide-react";
 import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
 import { NoteDisplay } from "./components/NoteDisplay";
@@ -7,6 +9,7 @@ import { ProgressBar } from "./components/ProgressBar";
 import { Playback } from "./components/Playback";
 import { SavedRiffs } from "./components/SavedRiffs";
 import { ExportPanel } from "./components/ExportPanel";
+import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { buildLabel } from "./lib/buildInfo";
 import "./styles/App.css";
 
@@ -21,6 +24,7 @@ const TAGLINES = [
 const tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
 
 function App() {
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
   const {
     recorderState,
     handleStart,
@@ -58,20 +62,21 @@ function App() {
     <div className="app">
       <div className="app-shell">
         <header className="app-header">
-          <h1><i className="note-icon">♪</i> Riff</h1>
+          <div className="app-header-main">
+            <h1><i className="note-icon">♪</i> Riff</h1>
+            <button
+              className="help-btn"
+              onClick={() => setShowOnboarding(true)}
+              aria-label="Help — how Riff works"
+            >
+              <HelpCircle size={18} strokeWidth={1.8} />
+            </button>
+          </div>
           <p className="tagline">{tagline}</p>
         </header>
 
         <main className="app-main">
-          <section className="workspace-pane workspace-pane--capture" aria-labelledby="capture-workspace-title">
-            <div className="pane-header">
-              <p className="pane-kicker">Capture</p>
-              <h2 id="capture-workspace-title">Record or import a take</h2>
-              <p className="pane-copy">
-                Lay down a live take or drop in a file — notes, chord, and timing detected automatically.
-              </p>
-            </div>
-
+          <section className="workspace-pane workspace-pane--capture" aria-label="Capture">
             <div className="recorder-card">
               <Recorder
                 state={isLoading ? "processing" : recorderState}
@@ -80,54 +85,26 @@ function App() {
                 onImport={(file) => void handleImport(file)}
                 isImporting={isImporting}
                 error={error}
+                autoProcess={autoProcess}
+                onAutoProcessChange={setAutoProcess}
+                storageFormat={storageFormat}
+                onStorageFormatChange={(v) => setStorageFormat(v)}
+                recorderState={recorderState}
+                isLoading={isLoading}
+                hasPendingAnalysis={hasPendingAnalysis}
+                onAnalyze={() => void handleAnalyze()}
               />
-
-              <div className="recorder-actions">
-                <label className="auto-process-toggle">
-                  <input
-                    type="checkbox"
-                    checked={autoProcess}
-                    onChange={(e) => setAutoProcess(e.target.checked)}
-                    disabled={recorderState !== "idle" || isLoading}
-                  />
-                  Detect notes after recording
-                </label>
-
-                <label className="storage-format-toggle">
-                  <input
-                    type="checkbox"
-                    checked={storageFormat === "compressed"}
-                    onChange={(e) => setStorageFormat(e.target.checked ? "compressed" : "pcm")}
-                    disabled={recorderState !== "idle" || isLoading}
-                  />
-                  Compress saved takes
-                </label>
-
-                <div className="recorder-button-row">
-                  <button
-                    className="analyze-btn"
-                    onClick={() => {
-                      void handleAnalyze();
-                    }}
-                    disabled={
-                      autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"
-                    }
-                  >
-                    Detect Notes
-                  </button>
-
-                  {error && !hasResults && (
-                    <button
-                      className="analyze-btn analyze-btn--secondary"
-                      onClick={handleLoadDemoAnalysis}
-                      disabled={isLoading || recorderState !== "idle"}
-                    >
-                      Try Demo Take
-                    </button>
-                  )}
-                </div>
-              </div>
-
+              {error && !hasResults && (
+                <button
+                  className="analyze-btn analyze-btn--secondary analyze-btn--demo"
+                  onClick={handleLoadDemoAnalysis}
+                  disabled={isLoading || recorderState !== "idle"}
+                  aria-label="Try demo take"
+                >
+                  <FlaskConical size={14} strokeWidth={2} aria-hidden="true" />
+                  Try demo
+                </button>
+              )}
               <ProgressBar progress={progress} visible={isLoading} />
             </div>
 
@@ -141,9 +118,8 @@ function App() {
                   onPause={audioPlayback.pause}
                   visible={hasRecording}
                 />
-
                 <Playback
-                  label="Preview"
+                  label="MIDI preview"
                   isPlaying={midiPlayback.isPlaying}
                   duration={midiPlayback.duration}
                   onPlay={midiPlayback.play}
@@ -156,16 +132,8 @@ function App() {
             <SavedRiffs riffs={savedRiffs} onLoad={handleLoadSavedRiff} />
           </section>
 
-          <section className="workspace-pane workspace-pane--analysis" aria-labelledby="analysis-workspace-title">
+          <section className="workspace-pane workspace-pane--analysis" aria-label="Analysis">
             <div className="analysis-panel">
-              <div className="pane-header pane-header--analysis">
-                <p className="pane-kicker">Analyze</p>
-                <h2 id="analysis-workspace-title">Notes, chord, and timing</h2>
-                <p className="pane-copy">
-                  What the app found in your latest take.
-                </p>
-              </div>
-
               {hasResults ? (
                 <div className="results">
                   <div className="results-summary">
@@ -202,6 +170,10 @@ function App() {
           {buildLabel}
         </div>
       </div>
+
+      {showOnboarding && (
+        <OnboardingSheet onClose={() => setShowOnboarding(false)} />
+      )}
     </div>
   );
 }

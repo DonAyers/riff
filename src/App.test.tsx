@@ -32,6 +32,10 @@ vi.mock("./components/SavedRiffs", () => ({
 vi.mock("./components/ExportPanel", () => ({
   ExportPanel: () => <div data-testid="export-panel" />,
 }));
+vi.mock("./components/OnboardingSheet", () => ({
+  OnboardingSheet: () => null,
+  hasSeenOnboarding: () => true,
+}));
 
 const useRiffSessionMock = vi.mocked(useRiffSession);
 
@@ -94,17 +98,16 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    expect(screen.getByText(/capture a take\. hear what you played\./i)).toBeInTheDocument();
     expect(screen.getByText(buildLabel)).toBeInTheDocument();
     expect(
-      screen.getByRole("region", { name: /record a take or import audio/i })
+      screen.getByRole("region", { name: /capture/i })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("region", {
-        name: /notes, chord, and timing/i,
+        name: /analysis/i,
       })
     ).toBeInTheDocument();
-    expect(screen.getByText(/ready for a take/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing here yet/i)).toBeInTheDocument();
   });
 
   it("renders analysis widgets when notes are available", () => {
