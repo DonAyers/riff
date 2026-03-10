@@ -41,8 +41,14 @@ export interface DetectedNote {
   amplitude: number;
 }
 
+export interface DetectOptions {
+  confidenceThreshold?: number;
+  onsetThreshold?: number;
+  maxPolyphony?: number;
+}
+
 export interface UsePitchDetectionReturn {
-  detect: (audio: Float32Array) => Promise<DetectedNote[]>;
+  detect: (audio: Float32Array, options?: DetectOptions) => Promise<DetectedNote[]>;
   preload: () => Promise<void>;
   isLoading: boolean;
   progress: number;
@@ -121,7 +127,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
   }, []);
 
   const detect = useCallback(
-    async (audio: Float32Array): Promise<DetectedNote[]> => {
+    async (audio: Float32Array, options?: DetectOptions): Promise<DetectedNote[]> => {
       if (!workerRef.current) {
         setError("Pitch detection worker is unavailable");
         return [];
@@ -138,7 +144,14 @@ export function usePitchDetection(): UsePitchDetectionReturn {
 
         const transferableAudio = audio.slice();
         workerRef.current?.postMessage(
-          { type: "detect", requestId, audio: transferableAudio },
+          {
+            type: "detect",
+            requestId,
+            audio: transferableAudio,
+            confidenceThreshold: options?.confidenceThreshold,
+            onsetThreshold: options?.onsetThreshold,
+            maxPolyphony: options?.maxPolyphony,
+          },
           [transferableAudio.buffer]
         );
       });

@@ -17,6 +17,8 @@ const defaultProps = {
   isLoading: false,
   hasPendingAnalysis: false,
   onAnalyze: vi.fn(),
+  profileId: "default" as const,
+  onProfileChange: vi.fn(),
 };
 
 describe("Recorder", () => {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic2, Square, Upload, Sparkles } from "lucide-react";
+import { PROFILES, PROFILE_IDS, type ProfileId } from "../lib/instrumentProfiles";
 import type { RecorderState } from "../hooks/useAudioRecorder";
 import "./Recorder.css";
 
@@ -18,6 +19,8 @@ interface RecorderProps {
   isLoading: boolean;
   hasPendingAnalysis: boolean;
   onAnalyze: () => void;
+  profileId: ProfileId;
+  onProfileChange: (id: ProfileId) => void;
 }
 
 export function Recorder({
@@ -35,6 +38,8 @@ export function Recorder({
   isLoading,
   hasPendingAnalysis,
   onAnalyze,
+  profileId,
+  onProfileChange,
 }: RecorderProps) {
   const isRecording = state === "recording";
   const isBusy = state === "processing" || isImporting;
@@ -131,6 +136,21 @@ export function Recorder({
           />
           <span>Compress</span>
         </label>
+      </div>
+
+      <div className="profile-picker" role="radiogroup" aria-label="Instrument profile">
+        {PROFILE_IDS.map((id) => (
+          <button
+            key={id}
+            className={`profile-pill ${id === profileId ? "active" : ""}`}
+            onClick={() => onProfileChange(id)}
+            disabled={settingsDisabled}
+            role="radio"
+            aria-checked={id === profileId}
+          >
+            {PROFILES[id].label}
+          </button>
+        ))}
       </div>
 
       <div className="recorder-action-row">

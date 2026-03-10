@@ -6,6 +6,9 @@ interface DetectRequest {
   type: "detect";
   requestId: number;
   audio: Float32Array;
+  confidenceThreshold?: number;
+  onsetThreshold?: number;
+  maxPolyphony?: number;
 }
 
 interface PreloadRequest {
@@ -114,7 +117,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     return;
   }
 
-  const { requestId, audio } = message;
+  const { requestId, audio, confidenceThreshold = 0.5, onsetThreshold = 0.3, maxPolyphony = 5 } = message;
 
   try {
     const module = await loadBasicPitchModule();
@@ -141,7 +144,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       }
     );
 
-    const noteEvents = module.outputToNotesPoly(frames, onsets, 0.5, 0.3, 5);
+    const noteEvents = module.outputToNotesPoly(frames, onsets, confidenceThreshold, onsetThreshold, maxPolyphony);
     const timedNotes = module.noteFramesToTime(noteEvents);
 
     const result: ResultResponse = {

@@ -3,12 +3,13 @@ import { useAudioRecorder } from "./useAudioRecorder";
 import { usePitchDetection } from "./usePitchDetection";
 import { useAudioPlayback } from "./useAudioPlayback";
 import { useMidiPlayback } from "./useMidiPlayback";
-import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes } from "../lib/noteMapper";
-import { detectChord, formatChordName } from "../lib/chordDetector";
+import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes, filterNotes } from "../lib/noteMapper";
+import { detectChord, formatChordName, detectChordsWindowed } from "../lib/chordDetector";
 import { listRiffs, saveRiff, type StoredRiff } from "../lib/db";
 import { readPcmFromOpfs, savePcmToOpfs, saveBlobToOpfs, readBlobFromOpfs } from "../lib/audioStorage";
 import { decodeAudioFile } from "../lib/audioImport";
 import { encodeCompressed, mimeToExtension, type AudioFormat } from "../lib/audioEncoder";
+import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
 import type { MappedNote } from "../lib/noteMapper";
 
 const DEMO_NOTES: MappedNote[] = [
@@ -85,6 +86,10 @@ export function useRiffSession() {
   const [activeRiffName, setActiveRiffName] = useState<string>("riff");
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
   const [compressedMime, setCompressedMime] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<ProfileId>(() => {
+    const stored = localStorage.getItem("riff:instrument-profile");
+    return (stored === "guitar" || stored === "piano") ? stored : "default";
+  });
 
   // Preload the ML model when the session hooks mount
   useEffect(() => {
@@ -100,6 +105,10 @@ export function useRiffSession() {
   useEffect(() => {
     localStorage.setItem("riff:storage-format", storageFormat);
   }, [storageFormat]);
+
+  useEffect(() => {
+    localStorage.setItem("riff:instrument-profile", profileId);
+  }, [profileId]);
 
   useEffect(() => {
     listRiffs()
@@ -125,18 +134,31 @@ export function useRiffSession() {
     const audio = providedAudio ?? pendingAudioRef.current;
     if (!audio) return;
 
-    const events = await detect(audio);
-    const mapped = mapNoteEvents(events);
-    setNotes(mapped);
-    midiPlayback.load(mapped);
+    const profile = PROFILES[profileId];
 
-    const pitchClasses = getUniquePitchClasses(mapped);
-    const detected = detectChord(pitchClasses);
-    const chordName = detected ? formatChordName(detected) : null;
+    const events = await detect(audio, {
+      confidenceThreshold: profile.confidenceThreshold,
+      onsetThreshold: profile.onsetThreshold,
+      maxPolyphony: profile.maxPolyphony,
+    });
+    const mapped = mapNoteEvents(events);
+    const filtered = filterNotes(mapped, profile);
+    setNotes(filtered);
+    midiPlayback.load(filtered);
+
+    const chordName = (() => {
+      if (profile.chordWindowS > 0) {
+        const detected = detectChordsWindowed(filtered, profile.chordWindowS);
+        return detected ? formatChordName(detected) : null;
+      }
+      const pitchClasses = getUniquePitchClasses(filtered);
+      const detected = detectChord(pitchClasses);
+      return detected ? formatChordName(detected) : null;
+    })();
     setChord(chordName);
     setHasPendingAnalysis(false);
 
-    if (mapped.length > 0) {
+    if (filtered.length > 0) {
       let audioFileName: string | null = null;
       let audioFormat: AudioFormat = "pcm";
       let audioMime: string | undefined;
@@ -175,7 +197,7 @@ export function useRiffSession() {
         name: riffName,
         timestamp: Date.now(),
         durationS: audio.length / 22050,
-        notes: mapped,
+        notes: filtered,
         chord: chordName,
         audioFileName,
         audioFormat,
@@ -189,7 +211,7 @@ export function useRiffSession() {
         // Ignore save errors
       }
     }
-  }, [detect, midiPlayback, storageFormat]);
+  }, [detect, midiPlayback, storageFormat, profileId]);
 
   const handleStop = useCallback(async () => {
     const audio = await stopRecording();
@@ -338,5 +360,8 @@ export function useRiffSession() {
     activeRiffName,
     compressedBlob,
     compressedMime,
+    // Instrument profile
+    profileId,
+    setProfileId,
   };
 }

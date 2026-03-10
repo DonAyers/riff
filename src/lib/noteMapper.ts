@@ -1,5 +1,6 @@
 import { Midi } from "tonal";
 import type { DetectedNote } from "../hooks/usePitchDetection";
+import type { InstrumentProfile } from "./instrumentProfiles";
 
 export interface MappedNote {
   midi: number;
@@ -46,4 +47,14 @@ export function getUniqueNotes(notes: MappedNote[]): MappedNote[] {
     }
   }
   return unique.sort((a, b) => a.midi - b.midi);
+}
+
+/** Filter notes based on an instrument profile's constraints */
+export function filterNotes(notes: MappedNote[], profile: InstrumentProfile): MappedNote[] {
+  return notes.filter((n) =>
+    n.midi >= profile.midiRange[0] &&
+    n.midi <= profile.midiRange[1] &&
+    n.amplitude >= profile.minAmplitude &&
+    n.durationS >= profile.minDurationS
+  );
 }

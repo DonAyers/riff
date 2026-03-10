@@ -53,6 +53,8 @@ function App() {
     activeRiffName,
     compressedBlob,
     compressedMime,
+    profileId,
+    setProfileId,
   } = useRiffSession();
 
   const hasResults = notes.length > 0;
@@ -93,6 +95,8 @@ function App() {
                 isLoading={isLoading}
                 hasPendingAnalysis={hasPendingAnalysis}
                 onAnalyze={() => void handleAnalyze()}
+                profileId={profileId}
+                onProfileChange={setProfileId}
               />
               {error && !hasResults && (
                 <button

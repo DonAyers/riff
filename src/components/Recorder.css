@@ -229,3 +229,45 @@
     animation: none;
   }
 }
+
+/* Profile picker pills */
+.profile-picker {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.profile-pill {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--surface-soft);
+  color: var(--fg-muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.profile-pill.active {
+  border-color: rgba(130, 98, 255, 0.45);
+  color: var(--fg);
+  background: var(--accent-dim);
+}
+
+.profile-pill:hover:not(:disabled):not(.active) {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--fg);
+}
+
+.profile-pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.profile-pill:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
