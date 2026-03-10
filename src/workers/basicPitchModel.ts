@@ -1,51 +1,46 @@
+import * as tf from "@tensorflow/tfjs";
+
 interface WeightsManifestGroup {
   paths: string[];
-  weights: unknown[];
+  weights: tf.io.WeightsManifestEntry[];
 }
 
 interface GraphModelManifest {
-  modelTopology: unknown;
+  modelTopology: object;
   weightsManifest: WeightsManifestGroup[];
-  [key: string]: unknown;
 }
 
-export const rewriteWeightsManifestPaths = (
-  manifest: GraphModelManifest,
-  weightUrls: string[]
-): GraphModelManifest => {
-  let weightIndex = 0;
+const concatArrayBuffers = (buffers: ArrayBuffer[]): ArrayBuffer => {
+  const totalLength = buffers.reduce((sum, buffer) => sum + buffer.byteLength, 0);
+  const merged = new Uint8Array(totalLength);
 
-  return {
-    ...manifest,
-    weightsManifest: manifest.weightsManifest.map((group) => ({
-      ...group,
-      paths: group.paths.map(() => {
-        const weightUrl = weightUrls[weightIndex];
-        weightIndex += 1;
+  let offset = 0;
+  for (const buffer of buffers) {
+    merged.set(new Uint8Array(buffer), offset);
+    offset += buffer.byteLength;
+  }
 
-        if (!weightUrl) {
-          throw new Error("Missing bundled model weight URL");
-        }
-
-        return weightUrl;
-      }),
-    })),
-  };
+  return merged.buffer;
 };
 
-interface CreateBundledModelUrlOptions {
+const getWeightSpecs = (manifest: GraphModelManifest): tf.io.WeightsManifestEntry[] =>
+  manifest.weightsManifest.flatMap((group) => group.weights);
+
+interface LoadBundledGraphModelOptions {
   manifestUrl: string;
   weightUrls: string[];
   fetchImpl?: typeof fetch;
-  createObjectUrl?: (object: Blob) => string;
+  fromMemoryImpl?: typeof tf.io.fromMemory;
+  loadGraphModelImpl?: typeof tf.loadGraphModel;
 }
 
-export const createBundledModelUrl = async ({
+export const loadBundledGraphModel = async ({
   manifestUrl,
   weightUrls,
   fetchImpl = fetch,
-  createObjectUrl = (object) => URL.createObjectURL(object),
-}: CreateBundledModelUrlOptions): Promise<string> => {
+  fromMemoryImpl = tf.io.fromMemory,
+  loadGraphModelImpl = tf.loadGraphModel,
+}: LoadBundledGraphModelOptions): Promise<tf.GraphModel> => {
   const response = await fetchImpl(manifestUrl);
 
   if (!response.ok) {
@@ -53,8 +48,21 @@ export const createBundledModelUrl = async ({
   }
 
   const manifest = (await response.json()) as GraphModelManifest;
-  const rewrittenManifest = rewriteWeightsManifestPaths(manifest, weightUrls);
-  const blob = new Blob([JSON.stringify(rewrittenManifest)], { type: "application/json" });
+  const weightResponses = await Promise.all(
+    weightUrls.map(async (weightUrl) => {
+      const weightResponse = await fetchImpl(weightUrl);
 
-  return createObjectUrl(blob);
+      if (!weightResponse.ok) {
+        throw new Error(`Failed to load model weights: ${weightResponse.status}`);
+      }
+
+      return weightResponse.arrayBuffer();
+    })
+  );
+
+  const weightSpecs = getWeightSpecs(manifest);
+  const weightData = concatArrayBuffers(await Promise.all(weightResponses));
+  const ioHandler = fromMemoryImpl(manifest.modelTopology, weightSpecs, weightData);
+
+  return loadGraphModelImpl(ioHandler);
 };

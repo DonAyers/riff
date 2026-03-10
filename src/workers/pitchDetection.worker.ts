@@ -1,7 +1,6 @@
 import type { NoteEventTime } from "@spotify/basic-pitch";
-import * as tf from "@tensorflow/tfjs";
 
-import { createBundledModelUrl } from "./basicPitchModel";
+import { loadBundledGraphModel } from "./basicPitchModel";
 
 interface DetectRequest {
   type: "detect";
@@ -48,7 +47,6 @@ type BasicPitchModelPromise = Exclude<ConstructorParameters<BasicPitchModule["Ba
 
 let basicPitchModule: BasicPitchModule | null = null;
 let modelInstance: InstanceType<BasicPitchModule["BasicPitch"]> | null = null;
-let bundledModelUrlPromise: Promise<string> | null = null;
 let graphModelPromise: BasicPitchModelPromise | null = null;
 
 const loadBasicPitchModule = async (): Promise<BasicPitchModule> => {
@@ -70,20 +68,12 @@ const loadBasicPitchModule = async (): Promise<BasicPitchModule> => {
   return basicPitchModule;
 };
 
-const getBundledModelUrl = async (): Promise<string> => {
-  if (!bundledModelUrlPromise) {
-    bundledModelUrlPromise = createBundledModelUrl({
-      manifestUrl: MODEL_MANIFEST_URL,
-      weightUrls: MODEL_WEIGHT_URLS,
-    });
-  }
-
-  return bundledModelUrlPromise;
-};
-
 const getGraphModel = (): BasicPitchModelPromise => {
   if (!graphModelPromise) {
-    graphModelPromise = getBundledModelUrl().then((modelUrl) => tf.loadGraphModel(modelUrl)) as BasicPitchModelPromise;
+    graphModelPromise = loadBundledGraphModel({
+      manifestUrl: MODEL_MANIFEST_URL,
+      weightUrls: MODEL_WEIGHT_URLS,
+    }) as unknown as BasicPitchModelPromise;
   }
 
   return graphModelPromise;

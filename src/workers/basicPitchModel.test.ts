@@ -1,82 +1,74 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createBundledModelUrl, rewriteWeightsManifestPaths } from "./basicPitchModel";
+import { loadBundledGraphModel } from "./basicPitchModel";
 
-describe("rewriteWeightsManifestPaths", () => {
-  it("replaces relative shard paths with emitted asset urls", () => {
-    const manifest = {
-      modelTopology: { version: 1 },
-      weightsManifest: [
-        {
-          paths: ["group1-shard1of1.bin"],
-          weights: [{ name: "weight-a" }],
-        },
-      ],
-    };
-
-    expect(rewriteWeightsManifestPaths(manifest, ["/assets/group1-shard1of1.bin"]))
-      .toMatchObject({
-        weightsManifest: [
+describe("loadBundledGraphModel", () => {
+  it("loads the graph model from fetched manifest and weight bytes", async () => {
+    const weightBytes = new Uint8Array([1, 2, 3, 4]);
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url.endsWith("model.json")) {
+        return new Response(
+          JSON.stringify({
+            modelTopology: { version: 1 },
+            weightsManifest: [
+              {
+                paths: ["group1-shard1of1.bin"],
+                weights: [{ name: "weight-a", shape: [1], dtype: "float32" }],
+              },
+            ],
+          }),
           {
-            paths: ["/assets/group1-shard1of1.bin"],
-          },
-        ],
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      return new Response(weightBytes, {
+        status: 200,
+        headers: { "Content-Type": "application/octet-stream" },
       });
-  });
-
-  it("throws when the manifest expects more shard paths than were bundled", () => {
-    const manifest = {
-      modelTopology: { version: 1 },
-      weightsManifest: [
-        {
-          paths: ["group1-shard1of1.bin", "group1-shard1of2.bin"],
-          weights: [],
-        },
-      ],
-    };
-
-    expect(() => rewriteWeightsManifestPaths(manifest, ["/assets/one.bin"]))
-      .toThrow("Missing bundled model weight URL");
-  });
-});
-
-describe("createBundledModelUrl", () => {
-  it("rewrites the fetched manifest before creating a blob url", async () => {
-    let capturedBlob = new Blob();
-    const fetchImpl = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          modelTopology: { version: 1 },
-          weightsManifest: [
-            {
-              paths: ["group1-shard1of1.bin"],
-              weights: [{ name: "weight-a" }],
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
-      )
-    );
-    const createObjectUrl = vi.fn((blob: Blob) => {
-      capturedBlob = blob;
-      return "blob:model";
     });
+    const ioHandler = { load: vi.fn() };
+    const fromMemoryImpl = vi.fn(() => ioHandler as never);
+    const model = { execute: vi.fn() };
+    const loadGraphModelImpl = vi.fn(async () => model as never);
 
-    const url = await createBundledModelUrl({
+    const result = await loadBundledGraphModel({
       manifestUrl: "/assets/model.json",
       weightUrls: ["/assets/group1-shard1of1.bin"],
-      fetchImpl,
-      createObjectUrl,
+      fetchImpl: fetchImpl as typeof fetch,
+      fromMemoryImpl,
+      loadGraphModelImpl,
     });
 
-    expect(url).toBe("blob:model");
-    expect(fetchImpl).toHaveBeenCalledWith("/assets/model.json");
-    expect(createObjectUrl).toHaveBeenCalledOnce();
+    expect(result).toBe(model);
+    expect(fetchImpl).toHaveBeenNthCalledWith(1, "/assets/model.json");
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, "/assets/group1-shard1of1.bin");
+    expect(fromMemoryImpl).toHaveBeenCalledOnce();
 
-    const manifestText = await capturedBlob.text();
-    expect(manifestText).toContain("/assets/group1-shard1of1.bin");
+    const firstCall = fromMemoryImpl.mock.calls[0] as unknown[] | undefined;
+    if (!firstCall) {
+      throw new Error("Expected fromMemory to be called");
+    }
+
+    expect(firstCall[0]).toEqual({ version: 1 });
+    expect(firstCall[1]).toEqual([
+      { name: "weight-a", shape: [1], dtype: "float32" },
+    ]);
+    expect(new Uint8Array(firstCall[2] as ArrayBuffer)).toEqual(weightBytes);
+    expect(loadGraphModelImpl).toHaveBeenCalledWith(ioHandler);
+  });
+
+  it("surfaces manifest fetch failures clearly", async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 503 }));
+
+    await expect(
+      loadBundledGraphModel({
+        manifestUrl: "/assets/model.json",
+        weightUrls: ["/assets/group1-shard1of1.bin"],
+        fetchImpl: fetchImpl as typeof fetch,
+      })
+    ).rejects.toThrow("Failed to load model manifest: 503");
   });
 });
