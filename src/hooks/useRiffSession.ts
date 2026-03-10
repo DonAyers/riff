@@ -82,6 +82,9 @@ export function useRiffSession() {
     return stored === "compressed" ? "compressed" : "pcm";
   });
   const pendingAudioRef = useRef<Float32Array | null>(null);
+  const [activeRiffName, setActiveRiffName] = useState<string>("riff");
+  const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
+  const [compressedMime, setCompressedMime] = useState<string | null>(null);
 
   // Preload the ML model when the session hooks mount
   useEffect(() => {
@@ -112,6 +115,8 @@ export function useRiffSession() {
     setHasRecording(false);
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
+    setCompressedBlob(null);
+    setCompressedMime(null);
     midiPlayback.stop();
     startRecording();
   }, [midiPlayback, startRecording]);
@@ -145,6 +150,8 @@ export function useRiffSession() {
           if (saved) {
             audioFormat = "compressed";
             audioMime = result.mime;
+            setCompressedBlob(result.blob);
+            setCompressedMime(result.mime);
           } else {
             audioFileName = null;
           }
@@ -160,9 +167,12 @@ export function useRiffSession() {
         audioMime = undefined;
       }
 
+      const riffName = `Take ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      setActiveRiffName(riffName);
+
       const newRiff: StoredRiff = {
         id: crypto.randomUUID(),
-        name: `Take ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        name: riffName,
         timestamp: Date.now(),
         durationS: audio.length / 22050,
         notes: mapped,
@@ -208,6 +218,8 @@ export function useRiffSession() {
     setHasRecording(false);
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
+    setCompressedBlob(null);
+    setCompressedMime(null);
     midiPlayback.stop();
 
     try {
@@ -234,6 +246,8 @@ export function useRiffSession() {
     midiPlayback.stop();
     pendingAudioRef.current = null;
     setHasPendingAnalysis(false);
+    setCompressedBlob(null);
+    setCompressedMime(null);
 
     if (riff.audioFileName) {
       const format = riff.audioFormat ?? "pcm";
@@ -243,12 +257,15 @@ export function useRiffSession() {
         if (blob) {
           audioPlayback.loadBlob(blob);
           setHasRecording(true);
+          setCompressedBlob(blob);
+          setCompressedMime(riff.audioMime);
         } else {
           setHasRecording(false);
         }
       } else {
         const restoredAudio = await readPcmFromOpfs(riff.audioFileName);
         if (restoredAudio) {
+          pendingAudioRef.current = restoredAudio;
           audioPlayback.load(restoredAudio);
           setHasRecording(true);
         } else {
@@ -261,6 +278,7 @@ export function useRiffSession() {
 
     setNotes(riff.notes);
     setChord(riff.chord);
+    setActiveRiffName(riff.name);
     midiPlayback.load(riff.notes);
   }, [audioPlayback, midiPlayback]);
 
@@ -269,6 +287,8 @@ export function useRiffSession() {
     pendingAudioRef.current = null;
     setHasRecording(false);
     setHasPendingAnalysis(false);
+    setCompressedBlob(null);
+    setCompressedMime(null);
 
     setNotes(DEMO_NOTES);
     midiPlayback.load(DEMO_NOTES);
@@ -313,5 +333,10 @@ export function useRiffSession() {
     // Playback refs
     audioPlayback,
     midiPlayback,
+    // Export data
+    pendingAudio: pendingAudioRef.current,
+    activeRiffName,
+    compressedBlob,
+    compressedMime,
   };
 }

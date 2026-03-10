@@ -6,6 +6,7 @@ import { PianoRoll } from "./components/PianoRoll";
 import { ProgressBar } from "./components/ProgressBar";
 import { Playback } from "./components/Playback";
 import { SavedRiffs } from "./components/SavedRiffs";
+import { ExportPanel } from "./components/ExportPanel";
 import { buildLabel } from "./lib/buildInfo";
 import "./styles/App.css";
 
@@ -34,6 +35,10 @@ function App() {
     handleLoadSavedRiff,
     audioPlayback,
     midiPlayback,
+    pendingAudio,
+    activeRiffName,
+    compressedBlob,
+    compressedMime,
   } = useRiffSession();
 
   const hasResults = notes.length > 0;
@@ -163,6 +168,14 @@ function App() {
                     />
                   </div>
                   <PianoRoll notes={notes} />
+                  <ExportPanel
+                    notes={notes}
+                    pcmAudio={pendingAudio}
+                    compressedBlob={compressedBlob}
+                    compressedMime={compressedMime}
+                    riffName={activeRiffName}
+                    visible={hasResults}
+                  />
                 </div>
               ) : (
                 <div className="analysis-empty" aria-live="polite">

@@ -2,11 +2,21 @@
 
 ## Engineering Guardrails
 
-- Every feature change must ship with tests.
-- Add or update unit/integration tests (Vitest) for logic and component behavior changes.
-- Add or update end-to-end tests (Playwright) for user-visible flow changes.
-- Treat missing tests as a blocker for merge unless explicitly waived.
-- When fixing a bug, first add a test that reproduces it, then implement the fix.
+### Testing — Non-Negotiable
+
+Every feature, fix, or refactor **must** ship with robust tests at both layers:
+
+1. **Unit / integration tests (Vitest)** — for every new or changed module, hook, utility, and component.
+   - Pure logic (lib/) gets isolated unit tests covering happy path, edge cases, and error paths.
+   - React components get React Testing Library tests for rendering, user interaction, and accessibility.
+   - Hooks get `renderHook` tests for state transitions and side effects.
+2. **End-to-end tests (Playwright)** — for every user-visible flow change.
+   - New UI features get at least one happy-path e2e scenario.
+   - Flows that touch recording, import, playback, or export must be covered.
+
+A PR with missing tests is a **merge blocker** unless explicitly waived with a reason.
+
+When fixing a bug, first add a test that reproduces it, then implement the fix.
 
 ## Test Commands
 

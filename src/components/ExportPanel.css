@@ -1,0 +1,72 @@
+.export-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  animation: fadeIn 0.3s ease;
+}
+
+.export-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.export-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--fg);
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  touch-action: manipulation;
+}
+
+.export-btn:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.export-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.export-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.export-btn svg {
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .export-panel {
+    animation: none;
+  }
+
+  .export-btn {
+    transition: none;
+  }
+}

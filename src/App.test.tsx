@@ -29,6 +29,9 @@ vi.mock("./components/Playback", () => ({
 vi.mock("./components/SavedRiffs", () => ({
   SavedRiffs: () => <div data-testid="saved-riffs" />,
 }));
+vi.mock("./components/ExportPanel", () => ({
+  ExportPanel: () => <div data-testid="export-panel" />,
+}));
 
 const useRiffSessionMock = vi.mocked(useRiffSession);
 
@@ -55,6 +58,10 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     setStorageFormat: vi.fn(),
     savedRiffs: [],
     handleLoadSavedRiff: vi.fn(),
+    pendingAudio: null,
+    activeRiffName: "",
+    compressedBlob: null,
+    compressedMime: null,
     audioPlayback: {
       isPlaying: false,
       duration: 0,
