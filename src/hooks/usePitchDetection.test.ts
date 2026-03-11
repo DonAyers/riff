@@ -44,14 +44,16 @@ describe("usePitchDetection", () => {
       worker.emit({
         type: "result",
         requestId: 1,
+        audioBuffer: new Float32Array([0.1, 0.2]).buffer,
         notes: [{ pitchMidi: 64, startTimeSeconds: 0.5, durationSeconds: 0.75, amplitude: 0.7 }],
       });
       detectedNotes = await pending;
     });
 
-    expect(detectedNotes).toEqual([
-      { pitchMidi: 64, startTimeS: 0.5, durationS: 0.75, amplitude: 0.7 },
-    ]);
+    expect(detectedNotes).toEqual({
+      notes: [{ pitchMidi: 64, startTimeS: 0.5, durationS: 0.75, amplitude: 0.7 }],
+      audio: new Float32Array([0.1, 0.2]),
+    });
     expect(result.current.error).toBeNull();
   });
 
@@ -62,7 +64,12 @@ describe("usePitchDetection", () => {
     let thrown: unknown;
     await act(async () => {
       const pending = result.current.detect(new Float32Array([0.1, 0.2]));
-      worker.emit({ type: "error", requestId: 1, error: "Pitch model failed" });
+      worker.emit({
+        type: "error",
+        requestId: 1,
+        error: "Pitch model failed",
+        audioBuffer: new Float32Array([0.1, 0.2]).buffer,
+      });
 
       try {
         await pending;
@@ -77,5 +84,6 @@ describe("usePitchDetection", () => {
     expect(thrown).toBeInstanceOf(Error);
     expect((thrown as Error).message).toBe("Pitch model failed");
     expect(result.current.error).toBe("Pitch model failed");
+    expect((thrown as { audio: Float32Array }).audio).toEqual(new Float32Array([0.1, 0.2]));
   });
 });

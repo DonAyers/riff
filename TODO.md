@@ -33,6 +33,39 @@
 
 ---
 
+## Current Focus — Guitar Lanes
+
+> Product direction is now split into Song Lane and Chord Lane. This section tracks the active lane work separately from the older cross-app backlog below.
+
+### Song Lane
+
+- [x] Add explicit Song / Chord lane toggle
+- [x] Default analysis to guitar profile
+- [x] Detect probable key with relative-key fallback
+- [x] Show chord timeline for multi-chord takes
+
+### Chord Lane
+
+- [x] Replace placeholder with seeded guitar fretboard rendering
+- [x] Add phrase cycling across alternate seeded voicings
+- [ ] Expand voicing coverage beyond the current common open/barre shapes
+- [ ] Add variate suggestions backed by chord substitution rules
+
+### Analysis Pipeline
+
+- [x] Stop masking worker failures as empty-note results
+- [x] Avoid full PCM copy before worker transfer
+- [x] Restore audio buffer after worker success/error round-trip
+- [ ] Verify there are no remaining avoidable PCM copies in persistence/export paths
+
+### Validation
+
+- [x] Add Vitest coverage for pitch-detection round-trip changes
+- [x] Add Vitest coverage for fretboard rendering and voicing lookup
+- [x] Add Playwright coverage for import → Chord lane → phrase cycling
+
+---
+
 ## Phase 4 — Export
 
 > **Goal:** Let users get their data out — into DAWs, onto other devices, shareable.

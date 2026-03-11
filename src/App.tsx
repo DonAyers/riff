@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HelpCircle, FlaskConical } from "lucide-react";
 import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
 import { LaneToggle, type Lane } from "./components/LaneToggle";
 import { KeyDisplay } from "./components/KeyDisplay";
 import { ChordTimeline } from "./components/ChordTimeline";
+import { ChordFretboard } from "./components/ChordFretboard";
 import { NoteDisplay } from "./components/NoteDisplay";
 import { ChordDisplay } from "./components/ChordDisplay";
 import { PianoRoll } from "./components/PianoRoll";
@@ -14,6 +15,7 @@ import { SavedRiffs } from "./components/SavedRiffs";
 import { ExportPanel } from "./components/ExportPanel";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { buildLabel } from "./lib/buildInfo";
+import { lookupVoicings } from "./lib/chordVoicings";
 import "./styles/App.css";
 
 const TAGLINES = [
@@ -29,6 +31,7 @@ const tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
 function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
   const [activeLane, setActiveLane] = useState<Lane>("song");
+  const [activeVoicingIndex, setActiveVoicingIndex] = useState(0);
   const {
     recorderState,
     handleStart,
@@ -66,6 +69,17 @@ function App() {
   const hasResults = notes.length > 0;
   const showPlaybackStack = !isLoading && (hasRecording || hasResults);
   const isSongLane = activeLane === "song";
+  const chordVoicings = lookupVoicings(chord);
+  const activeVoicing = chordVoicings[activeVoicingIndex] ?? null;
+
+  useEffect(() => {
+    setActiveVoicingIndex(0);
+  }, [chord]);
+
+  const handleNextVoicing = () => {
+    if (chordVoicings.length <= 1) return;
+    setActiveVoicingIndex((current) => (current + 1) % chordVoicings.length);
+  };
 
   return (
     <div className="app">
@@ -184,10 +198,35 @@ function App() {
                     <>
                       <div className="results-summary results-summary--chord-lane">
                         <ChordDisplay chordName={chord} />
-                        <div className="lane-placeholder" aria-live="polite">
-                          <span className="lane-placeholder__kicker">Coming next</span>
-                          <h3>Fretboard diagram</h3>
-                          <p>Chord lane is now scaffolded. Phrase and Variate will land here with guitar-specific voicings.</p>
+                        <div className="chord-lane-panel" aria-live="polite">
+                          {activeVoicing ? (
+                            <>
+                              <div className="chord-lane-panel__header">
+                                <div>
+                                  <span className="chord-lane-panel__kicker">Phrase</span>
+                                  <h3>{chord ?? "Detected chord"}</h3>
+                                  <p>
+                                    Voicing {activeVoicingIndex + 1} of {chordVoicings.length}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="analyze-btn analyze-btn--secondary"
+                                  onClick={handleNextVoicing}
+                                  disabled={chordVoicings.length <= 1}
+                                >
+                                  Next phrase
+                                </button>
+                              </div>
+                              <ChordFretboard chordName={chord} voicing={activeVoicing} />
+                            </>
+                          ) : (
+                            <div className="lane-placeholder">
+                              <span className="lane-placeholder__kicker">Chord lane</span>
+                              <h3>No saved voicing yet</h3>
+                              <p>This detected chord does not have a seeded guitar shape yet. Add more voicings in the next pass.</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <NoteDisplay

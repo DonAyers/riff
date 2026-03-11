@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAudioRecorder } from "./useAudioRecorder";
-import { usePitchDetection } from "./usePitchDetection";
+import { PitchDetectionError, usePitchDetection } from "./usePitchDetection";
 import { useAudioPlayback } from "./useAudioPlayback";
 import { useMidiPlayback } from "./useMidiPlayback";
-import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes, filterNotes } from "../lib/noteMapper";
+import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes, filterNotes, type MappedNote } from "../lib/noteMapper";
 import { detectChord, detectChordTimeline, formatChordName, detectChordsWindowed, type ChordEvent } from "../lib/chordDetector";
 import { listRiffs, saveRiff, type StoredRiff } from "../lib/db";
 import { readPcmFromOpfs, savePcmToOpfs, saveBlobToOpfs, readBlobFromOpfs } from "../lib/audioStorage";
@@ -11,60 +11,18 @@ import { decodeAudioFile } from "../lib/audioImport";
 import { encodeCompressed, mimeToExtension, type AudioFormat } from "../lib/audioEncoder";
 import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
 import { detectKey, type KeyDetection } from "../lib/keyDetector";
-import type { MappedNote } from "../lib/noteMapper";
 
 const DEMO_NOTES: MappedNote[] = [
-  {
-    midi: 60,
-    name: "C4",
-    pitchClass: "C",
-    octave: 4,
-    startTimeS: 0,
-    durationS: 0.45,
-    amplitude: 0.8,
-  },
-  {
-    midi: 64,
-    name: "E4",
-    pitchClass: "E",
-    octave: 4,
-    startTimeS: 0.5,
-    durationS: 0.45,
-    amplitude: 0.78,
-  },
-  {
-    midi: 67,
-    name: "G4",
-    pitchClass: "G",
-    octave: 4,
-    startTimeS: 1,
-    durationS: 0.45,
-    amplitude: 0.75,
-  },
-  {
-    midi: 71,
-    name: "B4",
-    pitchClass: "B",
-    octave: 4,
-    startTimeS: 1.5,
-    durationS: 0.45,
-    amplitude: 0.73,
-  },
-  {
-    midi: 72,
-    name: "C5",
-    pitchClass: "C",
-    octave: 5,
-    startTimeS: 2,
-    durationS: 0.5,
-    amplitude: 0.81,
-  },
+  { midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 0.45, amplitude: 0.8 },
+  { midi: 64, name: "E4", pitchClass: "E", octave: 4, startTimeS: 0.5, durationS: 0.45, amplitude: 0.78 },
+  { midi: 67, name: "G4", pitchClass: "G", octave: 4, startTimeS: 1, durationS: 0.45, amplitude: 0.75 },
+  { midi: 71, name: "B4", pitchClass: "B", octave: 4, startTimeS: 1.5, durationS: 0.45, amplitude: 0.73 },
+  { midi: 72, name: "C5", pitchClass: "C", octave: 5, startTimeS: 2, durationS: 0.5, amplitude: 0.81 },
 ];
 
 export function useRiffSession() {
   const { state, startRecording, stopRecording, error: recorderError } = useAudioRecorder();
   const { detect, preload: preloadModel, isLoading, progress, error: detectionError } = usePitchDetection();
-  
   const audioPlayback = useAudioPlayback();
   const midiPlayback = useMidiPlayback();
 
@@ -74,10 +32,7 @@ export function useRiffSession() {
   const [keyDetection, setKeyDetection] = useState<KeyDetection | null>(null);
   const [hasRecording, setHasRecording] = useState(false);
   const [hasPendingAnalysis, setHasPendingAnalysis] = useState(false);
-  const [autoProcess, setAutoProcess] = useState(() => {
-    const stored = localStorage.getItem("riff:auto-process");
-    return stored === "true";
-  });
+  const [autoProcess, setAutoProcess] = useState(() => localStorage.getItem("riff:auto-process") === "true");
   const [savedRiffs, setSavedRiffs] = useState<StoredRiff[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -85,19 +40,19 @@ export function useRiffSession() {
     const stored = localStorage.getItem("riff:storage-format");
     return stored === "compressed" ? "compressed" : "pcm";
   });
-  const pendingAudioRef = useRef<Float32Array | null>(null);
-  const [activeRiffName, setActiveRiffName] = useState<string>("riff");
+  const [activeRiffName, setActiveRiffName] = useState("riff");
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
   const [compressedMime, setCompressedMime] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<ProfileId>(() => {
     const stored = localStorage.getItem("riff:instrument-profile");
-    return (stored === "default" || stored === "guitar" || stored === "piano") ? stored : "guitar";
+    return stored === "default" || stored === "guitar" || stored === "piano" ? stored : "guitar";
   });
 
-  // Preload the ML model when the session hooks mount
+  const pendingAudioRef = useRef<Float32Array | null>(null);
+
   useEffect(() => {
     preloadModel().catch(() => {
-      // Model preload fail is fine, it will retry on detect
+      // Model preload can retry during analysis.
     });
   }, [preloadModel]);
 
@@ -117,72 +72,78 @@ export function useRiffSession() {
     listRiffs()
       .then((riffs) => setSavedRiffs(riffs))
       .catch(() => {
-        // Ignore load errors
+        // Ignore riff loading failures.
       });
   }, []);
 
-  const handleStart = useCallback(() => {
+  const resetAnalysisState = useCallback(() => {
     setNotes([]);
     setChord(null);
     setChordTimeline([]);
     setKeyDetection(null);
+    setCompressedBlob(null);
+    setCompressedMime(null);
+  }, []);
+
+  const handleStart = useCallback(() => {
+    resetAnalysisState();
     setHasRecording(false);
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
-    setCompressedBlob(null);
-    setCompressedMime(null);
     midiPlayback.stop();
     startRecording();
-  }, [midiPlayback, startRecording]);
+  }, [midiPlayback, resetAnalysisState, startRecording]);
 
   const handleAnalyze = useCallback(async (providedAudio?: Float32Array) => {
-    const audio = providedAudio ?? pendingAudioRef.current;
-    if (!audio) return;
+    const sourceAudio = providedAudio ?? pendingAudioRef.current;
+    if (!sourceAudio) return;
 
     const profile = PROFILES[profileId];
+    let analysisAudio = sourceAudio;
 
-    let events;
     try {
-      events = await detect(audio, {
+      const detectionResult = await detect(sourceAudio, {
         confidenceThreshold: profile.confidenceThreshold,
         onsetThreshold: profile.onsetThreshold,
         maxPolyphony: profile.maxPolyphony,
       });
-    } catch {
-      setHasPendingAnalysis(true);
-      return;
-    }
 
-    const mapped = mapNoteEvents(events);
-    const filtered = filterNotes(mapped, profile);
-    setNotes(filtered);
-    setKeyDetection(detectKey(filtered));
-    midiPlayback.load(filtered);
+      analysisAudio = detectionResult.audio;
+      pendingAudioRef.current = analysisAudio;
 
-    const timeline = profile.chordWindowS > 0
-      ? detectChordTimeline(filtered, profile.chordWindowS)
-      : detectChordTimeline(filtered, 0);
-    setChordTimeline(timeline);
+      const mapped = mapNoteEvents(detectionResult.notes);
+      const filtered = filterNotes(mapped, profile);
+      setNotes(filtered);
+      setKeyDetection(detectKey(filtered));
+      midiPlayback.load(filtered);
 
-    const chordName = (() => {
-      if (profile.chordWindowS > 0) {
-        const detected = detectChordsWindowed(filtered, profile.chordWindowS);
+      const timeline = detectChordTimeline(filtered, profile.chordWindowS > 0 ? profile.chordWindowS : 0);
+      setChordTimeline(timeline);
+
+      const chordName = (() => {
+        if (profile.chordWindowS > 0) {
+          const detected = detectChordsWindowed(filtered, profile.chordWindowS);
+          return detected ? formatChordName(detected) : null;
+        }
+
+        const pitchClasses = getUniquePitchClasses(filtered);
+        const detected = detectChord(pitchClasses);
         return detected ? formatChordName(detected) : null;
-      }
-      const pitchClasses = getUniquePitchClasses(filtered);
-      const detected = detectChord(pitchClasses);
-      return detected ? formatChordName(detected) : null;
-    })();
-    setChord(chordName);
-    setHasPendingAnalysis(false);
+      })();
 
-    if (filtered.length > 0) {
+      setChord(chordName);
+      setHasPendingAnalysis(false);
+
+      if (filtered.length === 0) {
+        return;
+      }
+
       let audioFileName: string | null = null;
       let audioFormat: AudioFormat = "pcm";
       let audioMime: string | undefined;
 
       if (storageFormat === "compressed") {
-        const result = await encodeCompressed(audio, 22050);
+        const result = await encodeCompressed(analysisAudio, 22050);
         if (result) {
           const ext = mimeToExtension(result.mime);
           audioFileName = `riff-${crypto.randomUUID()}.${ext}`;
@@ -198,11 +159,12 @@ export function useRiffSession() {
         }
       }
 
-      // Fall back to PCM if compressed wasn't selected or failed
       if (!audioFileName) {
         audioFileName = `riff-${crypto.randomUUID()}.f32`;
-        const didPersist = await savePcmToOpfs(audioFileName, audio);
-        if (!didPersist) audioFileName = null;
+        const didPersist = await savePcmToOpfs(audioFileName, analysisAudio);
+        if (!didPersist) {
+          audioFileName = null;
+        }
         audioFormat = "pcm";
         audioMime = undefined;
       }
@@ -214,7 +176,7 @@ export function useRiffSession() {
         id: crypto.randomUUID(),
         name: riffName,
         timestamp: Date.now(),
-        durationS: audio.length / 22050,
+        durationS: analysisAudio.length / 22050,
         notes: filtered,
         chord: chordName,
         audioFileName,
@@ -226,10 +188,17 @@ export function useRiffSession() {
         await saveRiff(newRiff);
         setSavedRiffs((prev) => [newRiff, ...prev]);
       } catch {
-        // Ignore save errors
+        // Ignore save failures.
       }
+    } catch (error) {
+      if (error instanceof PitchDetectionError && error.audio) {
+        pendingAudioRef.current = error.audio;
+      } else {
+        pendingAudioRef.current = analysisAudio;
+      }
+      setHasPendingAnalysis(true);
     }
-  }, [detect, midiPlayback, storageFormat, profileId]);
+  }, [detect, midiPlayback, profileId, storageFormat]);
 
   const handleStop = useCallback(async () => {
     const audio = await stopRecording();
@@ -238,37 +207,29 @@ export function useRiffSession() {
     audioPlayback.load(audio);
     setHasRecording(true);
     pendingAudioRef.current = audio;
-    setNotes([]);
-    setChord(null);
-    setChordTimeline([]);
-    setKeyDetection(null);
+    resetAnalysisState();
     midiPlayback.stop();
 
     if (autoProcess) {
       setHasPendingAnalysis(false);
       await handleAnalyze(audio);
-    } else {
-      setHasPendingAnalysis(true);
+      return;
     }
-  }, [stopRecording, audioPlayback, midiPlayback, autoProcess, handleAnalyze]);
+
+    setHasPendingAnalysis(true);
+  }, [audioPlayback, autoProcess, handleAnalyze, midiPlayback, resetAnalysisState, stopRecording]);
 
   const handleImport = useCallback(async (file: File) => {
     setIsImporting(true);
     setImportError(null);
-    setNotes([]);
-    setChord(null);
-    setChordTimeline([]);
-    setKeyDetection(null);
+    resetAnalysisState();
     setHasRecording(false);
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
-    setCompressedBlob(null);
-    setCompressedMime(null);
     midiPlayback.stop();
 
     try {
       const audio = await decodeAudioFile(file);
-
       audioPlayback.load(audio);
       setHasRecording(true);
       pendingAudioRef.current = audio;
@@ -279,15 +240,18 @@ export function useRiffSession() {
       } else {
         setHasPendingAnalysis(true);
       }
-    } catch {
-      setImportError("Could not decode this audio file. Try WAV, MP3, or FLAC.");
+    } catch (error) {
+      if (error instanceof Error && error.message) {
+        setImportError(error.message);
+      } else {
+        setImportError("Could not decode this audio file. Try WAV, MP3, or FLAC.");
+      }
     } finally {
       setIsImporting(false);
     }
-  }, [audioPlayback, midiPlayback, autoProcess, handleAnalyze]);
+  }, [audioPlayback, autoProcess, handleAnalyze, midiPlayback, resetAnalysisState]);
 
   const handleLoadSavedRiff = useCallback(async (riff: StoredRiff) => {
-    midiPlayback.stop();
     pendingAudioRef.current = null;
     setHasPendingAnalysis(false);
     setCompressedBlob(null);
@@ -350,45 +314,35 @@ export function useRiffSession() {
   const error = recorderError || detectionError || importError;
 
   return {
-    // Recorder state
     recorderState: state,
     handleStart,
     handleStop,
-    // ML state
     isLoading,
     progress,
     handleAnalyze,
-    // Content
     notes,
     uniqueNotes,
     chord,
     chordTimeline,
     keyDetection,
     error,
-    // Toggle state
     autoProcess,
     setAutoProcess,
     hasRecording,
     hasPendingAnalysis,
     handleLoadDemoAnalysis,
-    // Import
     handleImport,
     isImporting,
-    // Storage format
     storageFormat,
     setStorageFormat,
-    // Riffs DB
     savedRiffs,
     handleLoadSavedRiff,
-    // Playback refs
     audioPlayback,
     midiPlayback,
-    // Export data
     pendingAudio: pendingAudioRef.current,
     activeRiffName,
     compressedBlob,
     compressedMime,
-    // Instrument profile
     profileId,
     setProfileId,
   };

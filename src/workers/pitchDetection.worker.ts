@@ -25,6 +25,7 @@ interface ProgressResponse {
 interface ResultResponse {
   type: "result";
   requestId: number;
+  audioBuffer: ArrayBuffer;
   notes: NoteEventTime[];
 }
 
@@ -32,6 +33,7 @@ interface ErrorResponse {
   type: "error";
   requestId: number;
   error: string;
+  audioBuffer?: ArrayBuffer;
 }
 
 interface PreloadCompleteResponse {
@@ -150,16 +152,18 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const result: ResultResponse = {
       type: "result",
       requestId,
+      audioBuffer: audio.buffer,
       notes: timedNotes,
     };
-    self.postMessage(result);
+    self.postMessage(result, [audio.buffer]);
   } catch (error) {
     const failure: ErrorResponse = {
       type: "error",
       requestId,
       error: error instanceof Error ? error.message : "Pitch detection failed",
+      audioBuffer: audio.buffer,
     };
-    self.postMessage(failure);
+    self.postMessage(failure, [audio.buffer]);
   }
 };
 

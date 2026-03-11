@@ -31,6 +31,9 @@ vi.mock("./components/ChordDisplay", () => ({
 vi.mock("./components/ChordTimeline", () => ({
   ChordTimeline: () => <div data-testid="chord-timeline" />,
 }));
+vi.mock("./components/ChordFretboard", () => ({
+  ChordFretboard: () => <div data-testid="chord-fretboard" />,
+}));
 vi.mock("./components/PianoRoll", () => ({
   PianoRoll: () => <div data-testid="piano-roll" />,
 }));
@@ -149,12 +152,12 @@ describe("App mic permission fallback", () => {
     expect(screen.getByTestId("piano-roll")).toBeInTheDocument();
   });
 
-  it("switches to chord lane and shows the placeholder state", () => {
+  it("switches to chord lane and shows the fretboard state", () => {
     useRiffSessionMock.mockReturnValue(
       createSessionState({
         notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
         uniqueNotes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
-        chord: "C",
+        chord: "C Major",
       }) as ReturnType<typeof useRiffSession>
     );
 
@@ -162,7 +165,9 @@ describe("App mic permission fallback", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /chord/i }));
 
-    expect(screen.getByText(/fretboard diagram/i)).toBeInTheDocument();
+    expect(screen.getByText(/voicing 1 of 2/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /next phrase/i })).toBeInTheDocument();
+    expect(screen.getByTestId("chord-fretboard")).toBeInTheDocument();
     expect(screen.queryByTestId("piano-roll")).not.toBeInTheDocument();
   });
 

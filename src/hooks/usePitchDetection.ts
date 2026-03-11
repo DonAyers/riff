@@ -9,6 +9,7 @@ interface WorkerProgressMessage {
 interface WorkerResultMessage {
   type: "result";
   requestId: number;
+  audioBuffer: ArrayBuffer;
   notes: {
     pitchMidi: number;
     startTimeSeconds: number;
@@ -21,6 +22,7 @@ interface WorkerErrorMessage {
   type: "error";
   requestId: number;
   error: string;
+  audioBuffer?: ArrayBuffer;
 }
 
 interface WorkerPreloadCompleteMessage {
@@ -47,8 +49,23 @@ export interface DetectOptions {
   maxPolyphony?: number;
 }
 
+export interface DetectResult {
+  notes: DetectedNote[];
+  audio: Float32Array;
+}
+
+export class PitchDetectionError extends Error {
+  audio: Float32Array | null;
+
+  constructor(message: string, audio: Float32Array | null = null) {
+    super(message);
+    this.name = "PitchDetectionError";
+    this.audio = audio;
+  }
+}
+
 export interface UsePitchDetectionReturn {
-  detect: (audio: Float32Array, options?: DetectOptions) => Promise<DetectedNote[]>;
+  detect: (audio: Float32Array, options?: DetectOptions) => Promise<DetectResult>;
   preload: () => Promise<void>;
   isLoading: boolean;
   progress: number;
@@ -67,7 +84,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
       number,
       | {
           type: "detect";
-          resolve: (notes: DetectedNote[]) => void;
+          resolve: (result: DetectResult) => void;
           reject: (reason?: unknown) => void;
         }
       | {
@@ -113,7 +130,8 @@ export function usePitchDetection(): UsePitchDetectionReturn {
         if (pending.type === "detect") {
           setIsLoading(false);
         }
-        pending.reject(new Error(message.error));
+        const restoredAudio = message.audioBuffer ? new Float32Array(message.audioBuffer) : null;
+        pending.reject(new PitchDetectionError(message.error, restoredAudio));
         return;
       }
 
@@ -129,7 +147,10 @@ export function usePitchDetection(): UsePitchDetectionReturn {
         durationS: n.durationSeconds,
         amplitude: n.amplitude,
       }));
-      pending.resolve(mapped);
+      pending.resolve({
+        notes: mapped,
+        audio: new Float32Array(message.audioBuffer),
+      });
     };
 
     workerRef.current = worker;
@@ -145,7 +166,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
   }, []);
 
   const detect = useCallback(
-    async (audio: Float32Array, options?: DetectOptions): Promise<DetectedNote[]> => {
+    async (audio: Float32Array, options?: DetectOptions): Promise<DetectResult> => {
       if (!workerRef.current) {
         const unavailableError = new Error("Pitch detection worker is unavailable");
         setError(unavailableError.message);
@@ -158,20 +179,19 @@ export function usePitchDetection(): UsePitchDetectionReturn {
 
       const requestId = ++requestIdRef.current;
 
-      return new Promise<DetectedNote[]>((resolve, reject) => {
+      return new Promise<DetectResult>((resolve, reject) => {
         pendingRef.current.set(requestId, { type: "detect", resolve, reject });
 
-        const transferableAudio = audio.slice();
         workerRef.current?.postMessage(
           {
             type: "detect",
             requestId,
-            audio: transferableAudio,
+            audio,
             confidenceThreshold: options?.confidenceThreshold,
             onsetThreshold: options?.onsetThreshold,
             maxPolyphony: options?.maxPolyphony,
           },
-          [transferableAudio.buffer]
+          [audio.buffer]
         );
       });
     },
@@ -180,13 +200,13 @@ export function usePitchDetection(): UsePitchDetectionReturn {
 
   const preload = useCallback(async (): Promise<void> => {
     if (!workerRef.current) return;
-    
+
     const requestId = ++requestIdRef.current;
     return new Promise<void>((resolve, reject) => {
       pendingRef.current.set(requestId, {
         type: "preload",
         resolve,
-        reject
+        reject,
       });
       workerRef.current?.postMessage({ type: "preload", requestId });
     });
