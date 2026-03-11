@@ -1,6 +1,6 @@
 {
   "name": "riff",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Record a riff, chord, or arpeggio — see every note you played.",
   "type": "module",
   "scripts": {
