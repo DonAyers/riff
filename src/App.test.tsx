@@ -11,11 +11,25 @@ vi.mock("./hooks/useRiffSession", () => ({
 vi.mock("./components/Recorder", () => ({
   Recorder: () => <div data-testid="recorder" />,
 }));
+vi.mock("./components/LaneToggle", () => ({
+  LaneToggle: ({ activeLane, onChange }: { activeLane: "song" | "chord"; onChange: (lane: "song" | "chord") => void }) => (
+    <div>
+      <button onClick={() => onChange("song")} aria-pressed={activeLane === "song"}>Song</button>
+      <button onClick={() => onChange("chord")} aria-pressed={activeLane === "chord"}>Chord</button>
+    </div>
+  ),
+}));
 vi.mock("./components/NoteDisplay", () => ({
   NoteDisplay: () => <div data-testid="note-display" />,
 }));
+vi.mock("./components/KeyDisplay", () => ({
+  KeyDisplay: () => <div data-testid="key-display" />,
+}));
 vi.mock("./components/ChordDisplay", () => ({
   ChordDisplay: () => <div data-testid="chord-display" />,
+}));
+vi.mock("./components/ChordTimeline", () => ({
+  ChordTimeline: () => <div data-testid="chord-timeline" />,
 }));
 vi.mock("./components/PianoRoll", () => ({
   PianoRoll: () => <div data-testid="piano-roll" />,
@@ -50,6 +64,8 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     notes: [],
     uniqueNotes: [],
     chord: null,
+    chordTimeline: [],
+    keyDetection: null,
     error: null,
     autoProcess: false,
     setAutoProcess: vi.fn(),
@@ -66,6 +82,8 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     activeRiffName: "",
     compressedBlob: null,
     compressedMime: null,
+    profileId: "guitar",
+    setProfileId: vi.fn(),
     audioPlayback: {
       isPlaying: false,
       duration: 0,
@@ -107,7 +125,9 @@ describe("App mic permission fallback", () => {
         name: /analysis/i,
       })
     ).toBeInTheDocument();
-    expect(screen.getByText(/nothing here yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/song lane ready/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /song/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /chord/i })).toBeInTheDocument();
   });
 
   it("renders analysis widgets when notes are available", () => {
@@ -123,8 +143,27 @@ describe("App mic permission fallback", () => {
 
     expect(screen.queryByText(/ready for a take/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("chord-display")).toBeInTheDocument();
+    expect(screen.getByTestId("chord-timeline")).toBeInTheDocument();
+    expect(screen.getByTestId("key-display")).toBeInTheDocument();
     expect(screen.getByTestId("note-display")).toBeInTheDocument();
     expect(screen.getByTestId("piano-roll")).toBeInTheDocument();
+  });
+
+  it("switches to chord lane and shows the placeholder state", () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        uniqueNotes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        chord: "C",
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /chord/i }));
+
+    expect(screen.getByText(/fretboard diagram/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("piano-roll")).not.toBeInTheDocument();
   });
 
   it("shows and triggers demo analysis button when recording fails", () => {

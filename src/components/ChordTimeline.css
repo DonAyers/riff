@@ -1,0 +1,49 @@
+.chord-timeline {
+  width: 100%;
+}
+
+.chord-timeline h2 {
+  font-size: 0.65rem;
+  color: var(--fg-muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.9rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.chord-timeline__track {
+  position: relative;
+  min-height: 72px;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.014));
+  overflow: hidden;
+}
+
+.chord-timeline__track::before {
+  content: "";
+  position: absolute;
+  inset: 0.75rem;
+  border-radius: 14px;
+  background: linear-gradient(90deg, rgba(130, 98, 255, 0.05), rgba(130, 98, 255, 0));
+  pointer-events: none;
+}
+
+.chord-timeline__event {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 74px;
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(130, 98, 255, 0.3), rgba(130, 98, 255, 0.14));
+  border: 1px solid rgba(130, 98, 255, 0.35);
+  color: var(--fg);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

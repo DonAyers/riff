@@ -160,6 +160,28 @@
   backdrop-filter: blur(16px);
 }
 
+.analysis-panel__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.analysis-panel__eyebrow {
+  display: block;
+  font-size: 0.64rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.35rem;
+}
+
+.analysis-panel__title {
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
 .results {
   display: flex;
   flex-direction: column;
@@ -169,11 +191,47 @@
   animation: fadeIn 0.3s ease;
 }
 
+.results-song-stack {
+  display: grid;
+  gap: 1rem;
+}
 .results-summary {
   display: grid;
   gap: 1rem;
 }
 
+.results-summary--chord-lane {
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+}
+
+.lane-placeholder {
+  min-height: 100%;
+  padding: 1.2rem;
+  border-radius: 22px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
+}
+
+.lane-placeholder__kicker {
+  display: block;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.55rem;
+}
+
+.lane-placeholder h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1.15rem;
+}
+
+.lane-placeholder p {
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.6;
+  max-width: 34ch;
+}
 /* ── Analysis empty state ── */
 .analysis-empty {
   display: none;
@@ -222,6 +280,16 @@
   }
 }
 
+@media (max-width: 767px) {
+  .analysis-panel__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .results-summary--chord-lane {
+    grid-template-columns: 1fr;
+  }
+}
 @media (min-width: 960px) {
   .app-shell {
     gap: 1.25rem;

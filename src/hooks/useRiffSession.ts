@@ -4,12 +4,13 @@ import { usePitchDetection } from "./usePitchDetection";
 import { useAudioPlayback } from "./useAudioPlayback";
 import { useMidiPlayback } from "./useMidiPlayback";
 import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes, filterNotes } from "../lib/noteMapper";
-import { detectChord, formatChordName, detectChordsWindowed } from "../lib/chordDetector";
+import { detectChord, detectChordTimeline, formatChordName, detectChordsWindowed, type ChordEvent } from "../lib/chordDetector";
 import { listRiffs, saveRiff, type StoredRiff } from "../lib/db";
 import { readPcmFromOpfs, savePcmToOpfs, saveBlobToOpfs, readBlobFromOpfs } from "../lib/audioStorage";
 import { decodeAudioFile } from "../lib/audioImport";
 import { encodeCompressed, mimeToExtension, type AudioFormat } from "../lib/audioEncoder";
 import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
+import { detectKey, type KeyDetection } from "../lib/keyDetector";
 import type { MappedNote } from "../lib/noteMapper";
 
 const DEMO_NOTES: MappedNote[] = [
@@ -69,6 +70,8 @@ export function useRiffSession() {
 
   const [notes, setNotes] = useState<MappedNote[]>([]);
   const [chord, setChord] = useState<string | null>(null);
+  const [chordTimeline, setChordTimeline] = useState<ChordEvent[]>([]);
+  const [keyDetection, setKeyDetection] = useState<KeyDetection | null>(null);
   const [hasRecording, setHasRecording] = useState(false);
   const [hasPendingAnalysis, setHasPendingAnalysis] = useState(false);
   const [autoProcess, setAutoProcess] = useState(() => {
@@ -88,7 +91,7 @@ export function useRiffSession() {
   const [compressedMime, setCompressedMime] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<ProfileId>(() => {
     const stored = localStorage.getItem("riff:instrument-profile");
-    return (stored === "guitar" || stored === "piano") ? stored : "default";
+    return (stored === "default" || stored === "guitar" || stored === "piano") ? stored : "guitar";
   });
 
   // Preload the ML model when the session hooks mount
@@ -121,6 +124,8 @@ export function useRiffSession() {
   const handleStart = useCallback(() => {
     setNotes([]);
     setChord(null);
+    setChordTimeline([]);
+    setKeyDetection(null);
     setHasRecording(false);
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
@@ -144,7 +149,13 @@ export function useRiffSession() {
     const mapped = mapNoteEvents(events);
     const filtered = filterNotes(mapped, profile);
     setNotes(filtered);
+    setKeyDetection(detectKey(filtered));
     midiPlayback.load(filtered);
+
+    const timeline = profile.chordWindowS > 0
+      ? detectChordTimeline(filtered, profile.chordWindowS)
+      : detectChordTimeline(filtered, 0);
+    setChordTimeline(timeline);
 
     const chordName = (() => {
       if (profile.chordWindowS > 0) {
@@ -222,6 +233,8 @@ export function useRiffSession() {
     pendingAudioRef.current = audio;
     setNotes([]);
     setChord(null);
+    setChordTimeline([]);
+    setKeyDetection(null);
     midiPlayback.stop();
 
     if (autoProcess) {
@@ -237,6 +250,8 @@ export function useRiffSession() {
     setImportError(null);
     setNotes([]);
     setChord(null);
+    setChordTimeline([]);
+    setKeyDetection(null);
     setHasRecording(false);
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
@@ -300,6 +315,8 @@ export function useRiffSession() {
 
     setNotes(riff.notes);
     setChord(riff.chord);
+    setChordTimeline(detectChordTimeline(riff.notes, PROFILES[profileId].chordWindowS));
+    setKeyDetection(detectKey(riff.notes));
     setActiveRiffName(riff.name);
     midiPlayback.load(riff.notes);
   }, [audioPlayback, midiPlayback]);
@@ -314,6 +331,8 @@ export function useRiffSession() {
 
     setNotes(DEMO_NOTES);
     midiPlayback.load(DEMO_NOTES);
+    setChordTimeline(detectChordTimeline(DEMO_NOTES, PROFILES[profileId].chordWindowS));
+    setKeyDetection(detectKey(DEMO_NOTES));
 
     const pitchClasses = getUniquePitchClasses(DEMO_NOTES);
     const detected = detectChord(pitchClasses);
@@ -336,6 +355,8 @@ export function useRiffSession() {
     notes,
     uniqueNotes,
     chord,
+    chordTimeline,
+    keyDetection,
     error,
     // Toggle state
     autoProcess,

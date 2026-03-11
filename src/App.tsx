@@ -2,6 +2,9 @@ import { useState } from "react";
 import { HelpCircle, FlaskConical } from "lucide-react";
 import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
+import { LaneToggle, type Lane } from "./components/LaneToggle";
+import { KeyDisplay } from "./components/KeyDisplay";
+import { ChordTimeline } from "./components/ChordTimeline";
 import { NoteDisplay } from "./components/NoteDisplay";
 import { ChordDisplay } from "./components/ChordDisplay";
 import { PianoRoll } from "./components/PianoRoll";
@@ -25,6 +28,7 @@ const tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
 
 function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
+  const [activeLane, setActiveLane] = useState<Lane>("song");
   const {
     recorderState,
     handleStart,
@@ -35,6 +39,8 @@ function App() {
     notes,
     uniqueNotes,
     chord,
+    chordTimeline,
+    keyDetection,
     error,
     autoProcess,
     setAutoProcess,
@@ -59,6 +65,7 @@ function App() {
 
   const hasResults = notes.length > 0;
   const showPlaybackStack = !isLoading && (hasRecording || hasResults);
+  const isSongLane = activeLane === "song";
 
   return (
     <div className="app">
@@ -138,32 +145,77 @@ function App() {
 
           <section className="workspace-pane workspace-pane--analysis" aria-label="Analysis">
             <div className="analysis-panel">
+              <div className="analysis-panel__header">
+                <div>
+                  <span className="analysis-panel__eyebrow">Guitar focus</span>
+                  <h2 className="analysis-panel__title">{isSongLane ? "Song Lane" : "Chord Lane"}</h2>
+                </div>
+                <LaneToggle activeLane={activeLane} onChange={setActiveLane} />
+              </div>
+
               {hasResults ? (
                 <div className="results">
-                  <div className="results-summary">
-                    <ChordDisplay chordName={chord} />
-                    <NoteDisplay
-                      notes={uniqueNotes}
-                      onNoteClick={(note) => {
-                        void midiPlayback.previewNote(note.midi, note.amplitude);
-                      }}
-                    />
-                  </div>
-                  <PianoRoll notes={notes} />
-                  <ExportPanel
-                    notes={notes}
-                    pcmAudio={pendingAudio}
-                    compressedBlob={compressedBlob}
-                    compressedMime={compressedMime}
-                    riffName={activeRiffName}
-                    visible={hasResults}
-                  />
+                  {isSongLane ? (
+                    <>
+                      <div className="results-song-stack">
+                        <KeyDisplay result={keyDetection} />
+                      </div>
+                      <div className="results-summary">
+                        <ChordDisplay chordName={chord} />
+                        <NoteDisplay
+                          notes={uniqueNotes}
+                          onNoteClick={(note) => {
+                            void midiPlayback.previewNote(note.midi, note.amplitude);
+                          }}
+                        />
+                      </div>
+                      <ChordTimeline events={chordTimeline} />
+                      <PianoRoll notes={notes} />
+                      <ExportPanel
+                        notes={notes}
+                        pcmAudio={pendingAudio}
+                        compressedBlob={compressedBlob}
+                        compressedMime={compressedMime}
+                        riffName={activeRiffName}
+                        visible={hasResults}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <div className="results-summary results-summary--chord-lane">
+                        <ChordDisplay chordName={chord} />
+                        <div className="lane-placeholder" aria-live="polite">
+                          <span className="lane-placeholder__kicker">Coming next</span>
+                          <h3>Fretboard diagram</h3>
+                          <p>Chord lane is now scaffolded. Phrase and Variate will land here with guitar-specific voicings.</p>
+                        </div>
+                      </div>
+                      <NoteDisplay
+                        notes={uniqueNotes}
+                        onNoteClick={(note) => {
+                          void midiPlayback.previewNote(note.midi, note.amplitude);
+                        }}
+                      />
+                      <ExportPanel
+                        notes={notes}
+                        pcmAudio={pendingAudio}
+                        compressedBlob={compressedBlob}
+                        compressedMime={compressedMime}
+                        riffName={activeRiffName}
+                        visible={hasResults}
+                      />
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="analysis-empty" aria-live="polite">
                   <span className="analysis-empty-icon" aria-hidden="true">♩</span>
-                  <span className="analysis-empty-kicker">Nothing here yet</span>
-                  <p>Record or import a take — notes, chord, and timeline will appear here.</p>
+                  <span className="analysis-empty-kicker">{isSongLane ? "Song lane ready" : "Chord lane ready"}</span>
+                  <p>
+                    {isSongLane
+                      ? "Record or import a take to surface notes, chord, and timeline analysis."
+                      : "Strum or import a chord and this panel will focus on chord identity and guitar-friendly voicings."}
+                  </p>
                 </div>
               )}
             </div>

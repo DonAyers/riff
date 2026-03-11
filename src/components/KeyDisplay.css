@@ -1,0 +1,36 @@
+.key-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 1.15rem;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+}
+
+.key-display__label,
+.key-display__confidence {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--fg-muted);
+}
+
+.key-display__value {
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.key-display__meta {
+  color: var(--fg);
+  font-size: 0.95rem;
+}
+
+.key-display__warning {
+  margin: 0.2rem 0 0;
+  color: #fbbf24;
+  line-height: 1.5;
+}

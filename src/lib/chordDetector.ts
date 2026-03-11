@@ -1,6 +1,13 @@
 import { Chord } from "tonal";
 import type { MappedNote } from "./noteMapper";
 
+export interface ChordEvent {
+  chord: string;
+  label: string;
+  startTimeS: number;
+  endTimeS: number;
+}
+
 /**
  * Given an array of pitch class strings (e.g. ["C", "E", "G"]),
  * detect the most likely chord name.
@@ -20,16 +27,17 @@ export function detectChord(pitchClasses: string[]): string | null {
  * Returns the chord from the cluster with the most notes (dominant chord).
  * When windowS is 0, falls back to the original whole-recording behaviour.
  */
-export function detectChordsWindowed(
-  notes: MappedNote[],
-  windowS: number,
-): string | null {
-  if (notes.length === 0) return null;
+export function detectChordTimeline(notes: MappedNote[], windowS: number): ChordEvent[] {
+  if (notes.length === 0) return [];
 
   // No windowing — fall back to pooling all pitch classes
   if (windowS <= 0) {
     const pitchClasses = [...new Set(notes.map((n) => n.pitchClass))];
-    return detectChord(pitchClasses);
+    const detected = detectChord(pitchClasses);
+    if (!detected) return [];
+    const startTimeS = Math.min(...notes.map((note) => note.startTimeS));
+    const endTimeS = Math.max(...notes.map((note) => note.startTimeS + note.durationS));
+    return [{ chord: detected, label: formatChordName(detected), startTimeS, endTimeS }];
   }
 
   // Sort notes by start time
@@ -53,20 +61,40 @@ export function detectChordsWindowed(
   }
   clusters.push(current);
 
-  // Detect chord per cluster and return the one from the largest cluster
-  let bestChord: string | null = null;
-  let bestSize = 0;
-
-  for (const cluster of clusters) {
+  return clusters.flatMap((cluster) => {
     const pitchClasses = [...new Set(cluster.map((n) => n.pitchClass))];
     const chord = detectChord(pitchClasses);
-    if (chord && cluster.length > bestSize) {
-      bestChord = chord;
-      bestSize = cluster.length;
-    }
-  }
+    if (!chord) return [];
 
-  return bestChord;
+    const startTimeS = Math.min(...cluster.map((note) => note.startTimeS));
+    const endTimeS = Math.max(...cluster.map((note) => note.startTimeS + note.durationS));
+
+    return [{
+      chord,
+      label: formatChordName(chord),
+      startTimeS,
+      endTimeS,
+    }];
+  });
+}
+
+/**
+ * Backward-compatible summary API: returns the chord from the largest cluster.
+ */
+export function detectChordsWindowed(
+  notes: MappedNote[],
+  windowS: number,
+): string | null {
+  const events = detectChordTimeline(notes, windowS);
+  if (events.length === 0) return null;
+
+  const largest = events.reduce((best, current) => {
+    const currentSpan = current.endTimeS - current.startTimeS;
+    const bestSpan = best.endTimeS - best.startTimeS;
+    return currentSpan > bestSpan ? current : best;
+  });
+
+  return largest.chord;
 }
 
 /**
