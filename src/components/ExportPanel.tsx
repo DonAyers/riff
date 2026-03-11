@@ -1,6 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { MappedNote } from "../lib/noteMapper";
-import { encodeWav, exportToMidi, downloadBlob } from "../lib/audioExport";
+import { encodeWav, exportToMidi, exportToMp3, downloadBlob } from "../lib/audioExport";
 import "./ExportPanel.css";
 
 interface ExportPanelProps {
@@ -55,6 +55,21 @@ export function ExportPanel({
     downloadBlob(compressedBlob, `${baseName}.${ext}`);
   }, [compressedBlob, compressedMime, baseName]);
 
+  const [isExportingMp3, setIsExportingMp3] = useState(false);
+
+  const handleExportMp3 = useCallback(async () => {
+    if (!pcmAudio) return;
+    try {
+      setIsExportingMp3(true);
+      const blob = await exportToMp3(pcmAudio);
+      downloadBlob(blob, `${baseName}.mp3`);
+    } catch (err) {
+      console.error("Failed to export MP3:", err);
+    } finally {
+      setIsExportingMp3(false);
+    }
+  }, [pcmAudio, baseName]);
+
   if (!visible) return null;
 
   const hasMidi = notes.length > 0;
@@ -87,6 +102,18 @@ export function ExportPanel({
             <path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.84v6h5.66V9h3.84L12 2z" />
           </svg>
           WAV
+        </button>
+
+        <button
+          className="export-btn"
+          onClick={handleExportMp3}
+          disabled={!hasWav || isExportingMp3}
+          aria-label="Export as MP3"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.84v6h5.66V9h3.84L12 2z" />
+          </svg>
+          {isExportingMp3 ? "..." : "MP3"}
         </button>
 
         {hasNative && (

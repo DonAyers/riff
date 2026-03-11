@@ -48,7 +48,7 @@
 
 - [x] Replace placeholder with seeded guitar fretboard rendering
 - [x] Add phrase cycling across alternate seeded voicings
-- [ ] Expand voicing coverage beyond the current common open/barre shapes
+- [x] Expand voicing coverage beyond the current common open/barre shapes
 - [ ] Add variate suggestions backed by chord substitution rules
 
 ### Analysis Pipeline
@@ -70,15 +70,15 @@
 
 > **Goal:** Let users get their data out — into DAWs, onto other devices, shareable.
 
-- [ ] Extract `encodeWav()` into shared `src/lib/audioExport.ts`
-- [ ] "Download WAV" button (lossless, 16-bit, 22 kHz mono)
-- [ ] MIDI file export — hand-roll SMF Type 0 encoder (~120 LOC, zero deps)
+- [x] Extract `encodeWav()` into shared `src/lib/audioExport.ts`
+- [x] "Download WAV" button (lossless, 16-bit, 22 kHz mono)
+- [x] MIDI file export — hand-roll SMF Type 0 encoder (~120 LOC, zero deps)
   - Converts `MappedNote[]` → `.mid` file with delta-time note on/off events
   - Default 120 BPM; optionally let user set BPM
-- [ ] "Download native format" — offer the stored WebM/MP4 blob directly
-- [ ] MP3 export via `@breezystack/lamejs` (+90 KB, 192 kbps default)
+- [x] "Download native format" — offer the stored WebM/MP4 blob directly
+- [x] MP3 export via `@breezystack/lamejs` (+90 KB, 192 kbps default)
   - Run encoding in a Web Worker to avoid UI blocking
-- [ ] Export UI — dropdown or panel with MIDI / WAV / MP3 options
+- [x] Export UI — dropdown or panel with MIDI / WAV / MP3 options
   - Visible in analysis panel after detection completes
 
 ## Phase 5 — Cross-Browser Hardening

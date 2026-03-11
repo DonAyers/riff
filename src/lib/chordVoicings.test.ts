@@ -18,10 +18,11 @@ describe("lookupVoicings", () => {
   it("returns alternate voicings when available", () => {
     const voicings = lookupVoicings("G7");
 
-    expect(voicings).toHaveLength(2);
+    expect(voicings.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("returns an empty array for unsupported chords", () => {
-    expect(lookupVoicings("Bb sus4")).toEqual([]);
+  it("returns voicings for dynamically supported chords like sus4", () => {
+    const voicings = lookupVoicings("Bb sus4");
+    expect(voicings.length).toBeGreaterThan(0);
   });
 });

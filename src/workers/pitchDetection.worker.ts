@@ -152,18 +152,18 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const result: ResultResponse = {
       type: "result",
       requestId,
-      audioBuffer: audio.buffer,
+      audioBuffer: audio.buffer as ArrayBuffer,
       notes: timedNotes,
     };
-    self.postMessage(result, [audio.buffer]);
+    (self as any).postMessage(result, { transfer: [audio.buffer] });
   } catch (error) {
     const failure: ErrorResponse = {
       type: "error",
       requestId,
       error: error instanceof Error ? error.message : "Pitch detection failed",
-      audioBuffer: audio.buffer,
+      audioBuffer: audio.buffer as ArrayBuffer,
     };
-    self.postMessage(failure, [audio.buffer]);
+    (self as any).postMessage(failure, { transfer: [audio.buffer] });
   }
 };
 

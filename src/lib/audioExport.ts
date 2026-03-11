@@ -178,3 +178,38 @@ export function downloadBlob(blob: Blob, filename: string): void {
     URL.revokeObjectURL(url);
   }, 100);
 }
+
+// ---------------------------------------------------------------------------
+// MP3 Export via LameJS Web Worker
+// ---------------------------------------------------------------------------
+
+/**
+ * Export Float32Array to MP3 using a Web Worker so we don't block the UI.
+ */
+export function exportToMp3(
+  pcmAudio: Float32Array,
+  sampleRate: number = DEFAULT_SAMPLE_RATE
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL("../workers/mp3Encoder.worker", import.meta.url), {
+      type: "module",
+    });
+
+    worker.onmessage = (e) => {
+      worker.terminate();
+      if (e.data.error) {
+        reject(new Error(e.data.error));
+      } else {
+        resolve(e.data.blob as Blob);
+      }
+    };
+
+    worker.onerror = (e) => {
+      worker.terminate();
+      reject(e);
+    };
+
+    worker.postMessage({ pcmAudio, sampleRate });
+  });
+}
+

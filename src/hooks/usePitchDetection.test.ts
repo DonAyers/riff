@@ -38,7 +38,7 @@ describe("usePitchDetection", () => {
     const { result } = renderHook(() => usePitchDetection());
     const worker = MockWorker.instances[0];
 
-    let detectedNotes = [] as Awaited<ReturnType<typeof result.current.detect>>;
+    let detectedNotes = undefined as unknown as Awaited<ReturnType<typeof result.current.detect>>;
     await act(async () => {
       const pending = result.current.detect(new Float32Array([0.1, 0.2]));
       worker.emit({

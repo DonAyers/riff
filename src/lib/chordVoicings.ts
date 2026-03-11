@@ -1,4 +1,5 @@
 import { Chord } from "tonal";
+import { generateDynamicVoicings } from "./chordVoicingsGenerator";
 
 export interface GuitarVoicing {
   frets: [number, number, number, number, number, number];
@@ -93,5 +94,24 @@ export function lookupVoicings(chordName: string | null): GuitarVoicing[] {
   const key = toDictionaryKey(chordName);
   if (!key) return [];
 
-  return VOICINGS[key] ?? [];
+  const staticVoicings = VOICINGS[key] ?? [];
+  const [tonic, quality] = key.split(":");
+  const dynamicVoicings = generateDynamicVoicings(tonic, quality);
+
+  // Merge them, prioritizing static voicings and deduplicating by fret string
+  const seenFrets = new Set<string>();
+  const combined: GuitarVoicing[] = [];
+
+  for (const v of [...staticVoicings, ...dynamicVoicings]) {
+    const fretsKey = v.frets.join(",");
+    if (!seenFrets.has(fretsKey)) {
+      seenFrets.add(fretsKey);
+      combined.push(v);
+    }
+  }
+
+  // Sort by baseFret so lower positions come first
+  combined.sort((a, b) => a.baseFret - b.baseFret);
+
+  return combined;
 }

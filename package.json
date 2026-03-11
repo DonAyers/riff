@@ -17,8 +17,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
     "@spotify/basic-pitch": "^1.0.1",
     "@tensorflow/tfjs": "^4.22.0",
+    "@tonaljs/chord": "^6.1.2",
     "idb": "^8.0.3",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",

@@ -165,7 +165,7 @@ describe("App mic permission fallback", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /chord/i }));
 
-    expect(screen.getByText(/voicing 1 of 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/voicing 1 of \d+/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /next phrase/i })).toBeInTheDocument();
     expect(screen.getByTestId("chord-fretboard")).toBeInTheDocument();
     expect(screen.queryByTestId("piano-roll")).not.toBeInTheDocument();
