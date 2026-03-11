@@ -16,6 +16,7 @@ import { ExportPanel } from "./components/ExportPanel";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
+import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import "./styles/App.css";
 
 const TAGLINES = [
@@ -32,6 +33,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
   const [activeLane, setActiveLane] = useState<Lane>("song");
   const [activeVoicingIndex, setActiveVoicingIndex] = useState(0);
+  const [variateOverride, setVariateOverride] = useState<string | null>(null);
   const {
     recorderState,
     handleStart,
@@ -69,12 +71,19 @@ function App() {
   const hasResults = notes.length > 0;
   const showPlaybackStack = !isLoading && (hasRecording || hasResults);
   const isSongLane = activeLane === "song";
-  const chordVoicings = lookupVoicings(chord);
+  const displayedChord = variateOverride ?? chord;
+  const chordVoicings = lookupVoicings(displayedChord);
+  const variateSuggestions = getVariateSuggestions(displayedChord);
   const activeVoicing = chordVoicings[activeVoicingIndex] ?? null;
 
   useEffect(() => {
     setActiveVoicingIndex(0);
+    setVariateOverride(null);
   }, [chord]);
+
+  useEffect(() => {
+    setActiveVoicingIndex(0);
+  }, [variateOverride]);
 
   const handleNextVoicing = () => {
     if (chordVoicings.length <= 1) return;
@@ -197,7 +206,37 @@ function App() {
                   ) : (
                     <>
                       <div className="results-summary results-summary--chord-lane">
-                        <ChordDisplay chordName={chord} />
+                        <div className="chord-lane-visualization">
+                          <ChordDisplay chordName={chord} />
+                          {variateSuggestions.length > 0 && (
+                            <div className="variate-suggestions">
+                              <span className="variate-suggestions__label">Try substituting:</span>
+                              <div className="variate-suggestions__list">
+                                {variateSuggestions.map((suggestion) => (
+                                  <button
+                                    key={suggestion.name}
+                                    type="button"
+                                    className={`variate-btn ${variateOverride === suggestion.name ? "active" : ""}`}
+                                    onClick={() => setVariateOverride(suggestion.name)}
+                                    title={`${suggestion.type}: ${suggestion.description}`}
+                                  >
+                                    {suggestion.name}
+                                  </button>
+                                ))}
+                                {variateOverride && (
+                                  <button
+                                    type="button"
+                                    className="variate-btn variate-btn--clear"
+                                    onClick={() => setVariateOverride(null)}
+                                    title="Clear substitution"
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                         <div className="chord-lane-panel" aria-live="polite">
                           {activeVoicing ? (
                             <>

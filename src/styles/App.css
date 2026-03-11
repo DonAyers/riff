@@ -382,3 +382,55 @@
   }
 }
 
+
+.chord-lane-visualization {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.variate-suggestions {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}
+
+.variate-suggestions__label {
+  display: block;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.variate-suggestions__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.variate-btn {
+  background: var(--color-bg-offset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.6rem;
+  color: var(--color-text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.variate-btn:hover {
+  background: var(--color-border);
+}
+
+.variate-btn.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.variate-btn--clear {
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  font-weight: normal;
+}
+

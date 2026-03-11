@@ -49,14 +49,14 @@
 - [x] Replace placeholder with seeded guitar fretboard rendering
 - [x] Add phrase cycling across alternate seeded voicings
 - [x] Expand voicing coverage beyond the current common open/barre shapes
-- [ ] Add variate suggestions backed by chord substitution rules
+- [x] Add variate suggestions backed by chord substitution rules
 
 ### Analysis Pipeline
 
 - [x] Stop masking worker failures as empty-note results
 - [x] Avoid full PCM copy before worker transfer
 - [x] Restore audio buffer after worker success/error round-trip
-- [ ] Verify there are no remaining avoidable PCM copies in persistence/export paths
+- [x] Verify there are no remaining avoidable PCM copies in persistence/export paths
 
 ### Validation
 

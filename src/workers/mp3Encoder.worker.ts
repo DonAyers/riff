@@ -27,8 +27,8 @@ self.onmessage = (e: MessageEvent<Mp3EncodeRequest>) => {
     const mp3BufFinal = mp3encoder.flush();
 
     const blobs: BlobPart[] = [];
-    if (mp3Buf.length > 0) blobs.push(new Uint8Array(mp3Buf.buffer, mp3Buf.byteOffset, mp3Buf.byteLength));
-    if (mp3BufFinal.length > 0) blobs.push(new Uint8Array(mp3BufFinal.buffer, mp3BufFinal.byteOffset, mp3BufFinal.byteLength));
+    if (mp3Buf.length > 0) blobs.push(new Uint8Array(mp3Buf.buffer as ArrayBuffer, mp3Buf.byteOffset, mp3Buf.byteLength));
+    if (mp3BufFinal.length > 0) blobs.push(new Uint8Array(mp3BufFinal.buffer as ArrayBuffer, mp3BufFinal.byteOffset, mp3BufFinal.byteLength));
 
     const blob = new Blob(blobs, { type: "audio/mp3" });
     self.postMessage({ blob });
