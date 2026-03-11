@@ -58,6 +58,13 @@ beforeEach(() => {
 });
 
 describe("decodeAudioFile", () => {
+  it("rejects oversized files before decoding", async () => {
+    const file = new File([new Uint8Array(25 * 1024 * 1024 + 1)], "huge.wav", { type: "audio/wav" });
+
+    await expect(decodeAudioFile(file)).rejects.toThrow(/under 25 mb/i);
+    expect(mockClose).not.toHaveBeenCalled();
+  });
+
   it("returns a Float32Array from a mono file at target sample rate", async () => {
     const pcm = new Float32Array([0.1, 0.2, 0.3, 0.4, 0.5]);
     mockDecodeResult = makeMockAudioBuffer({

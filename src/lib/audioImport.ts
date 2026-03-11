@@ -1,11 +1,16 @@
 const TARGET_SAMPLE_RATE = 22050;
 const MAX_DURATION_S = 120; // 2 minutes
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
 /**
  * Decode an audio file (MP3, WAV, FLAC, etc.) to a mono Float32Array at 22,050 Hz.
  * Uses the browser's built-in decodeAudioData — no extra dependencies.
  */
 export async function decodeAudioFile(file: File): Promise<Float32Array> {
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new Error("Audio file is too large. Please choose a file under 25 MB.");
+  }
+
   const arrayBuffer = await file.arrayBuffer();
 
   const audioContext = new AudioContext();

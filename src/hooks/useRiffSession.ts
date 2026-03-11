@@ -141,11 +141,18 @@ export function useRiffSession() {
 
     const profile = PROFILES[profileId];
 
-    const events = await detect(audio, {
-      confidenceThreshold: profile.confidenceThreshold,
-      onsetThreshold: profile.onsetThreshold,
-      maxPolyphony: profile.maxPolyphony,
-    });
+    let events;
+    try {
+      events = await detect(audio, {
+        confidenceThreshold: profile.confidenceThreshold,
+        onsetThreshold: profile.onsetThreshold,
+        maxPolyphony: profile.maxPolyphony,
+      });
+    } catch {
+      setHasPendingAnalysis(true);
+      return;
+    }
+
     const mapped = mapNoteEvents(events);
     const filtered = filterNotes(mapped, profile);
     setNotes(filtered);
@@ -319,7 +326,7 @@ export function useRiffSession() {
     setKeyDetection(detectKey(riff.notes));
     setActiveRiffName(riff.name);
     midiPlayback.load(riff.notes);
-  }, [audioPlayback, midiPlayback]);
+  }, [audioPlayback, midiPlayback, profileId]);
 
   const handleLoadDemoAnalysis = useCallback(() => {
     midiPlayback.stop();
@@ -337,7 +344,7 @@ export function useRiffSession() {
     const pitchClasses = getUniquePitchClasses(DEMO_NOTES);
     const detected = detectChord(pitchClasses);
     setChord(detected ? formatChordName(detected) : null);
-  }, [midiPlayback]);
+  }, [midiPlayback, profileId]);
 
   const uniqueNotes = getUniqueNotes(notes);
   const error = recorderError || detectionError || importError;

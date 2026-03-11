@@ -65,10 +65,16 @@ export function usePitchDetection(): UsePitchDetectionReturn {
   const pendingRef = useRef<
     Map<
       number,
-      {
-        resolve: (notes: DetectedNote[]) => void;
-        reject: (reason?: unknown) => void;
-      }
+      | {
+          type: "detect";
+          resolve: (notes: DetectedNote[]) => void;
+          reject: (reason?: unknown) => void;
+        }
+      | {
+          type: "preload";
+          resolve: () => void;
+          reject: (reason?: unknown) => void;
+        }
     >
   >(new Map());
 
@@ -86,32 +92,44 @@ export function usePitchDetection(): UsePitchDetectionReturn {
       }
 
       if (message.type === "progress") {
-        setProgress(message.progress);
+        if (pending.type === "detect") {
+          setProgress(message.progress);
+        }
         return;
       }
 
       if (message.type === "preloadComplete") {
         pendingRef.current.delete(message.requestId);
-        (pending.resolve as unknown as () => void)();
+        if (pending.type === "preload") {
+          pending.resolve();
+        }
         return;
       }
 
       pendingRef.current.delete(message.requestId);
-      setIsLoading(false);
 
       if (message.type === "error") {
         setError(message.error);
-        (pending.resolve as unknown as (r: DetectedNote[]) => void)([]);
+        if (pending.type === "detect") {
+          setIsLoading(false);
+        }
+        pending.reject(new Error(message.error));
         return;
       }
 
+      if (pending.type !== "detect") {
+        pending.reject(new Error("Received detect result for non-detect request"));
+        return;
+      }
+
+      setIsLoading(false);
       const mapped: DetectedNote[] = message.notes.map((n) => ({
         pitchMidi: n.pitchMidi,
         startTimeS: n.startTimeSeconds,
         durationS: n.durationSeconds,
         amplitude: n.amplitude,
       }));
-      (pending.resolve as unknown as (r: DetectedNote[]) => void)(mapped);
+      pending.resolve(mapped);
     };
 
     workerRef.current = worker;
@@ -129,8 +147,9 @@ export function usePitchDetection(): UsePitchDetectionReturn {
   const detect = useCallback(
     async (audio: Float32Array, options?: DetectOptions): Promise<DetectedNote[]> => {
       if (!workerRef.current) {
-        setError("Pitch detection worker is unavailable");
-        return [];
+        const unavailableError = new Error("Pitch detection worker is unavailable");
+        setError(unavailableError.message);
+        return Promise.reject(unavailableError);
       }
 
       setIsLoading(true);
@@ -140,7 +159,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
       const requestId = ++requestIdRef.current;
 
       return new Promise<DetectedNote[]>((resolve, reject) => {
-        pendingRef.current.set(requestId, { resolve, reject });
+        pendingRef.current.set(requestId, { type: "detect", resolve, reject });
 
         const transferableAudio = audio.slice();
         workerRef.current?.postMessage(
@@ -165,7 +184,8 @@ export function usePitchDetection(): UsePitchDetectionReturn {
     const requestId = ++requestIdRef.current;
     return new Promise<void>((resolve, reject) => {
       pendingRef.current.set(requestId, {
-        resolve: resolve as unknown as (notes: DetectedNote[]) => void,
+        type: "preload",
+        resolve,
         reject
       });
       workerRef.current?.postMessage({ type: "preload", requestId });
