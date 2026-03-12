@@ -82,7 +82,7 @@ describe("Recorder", () => {
     expect(
       screen.getByText("Start with Guitar. Switch to Full range if a clip needs broader note coverage.")
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("radio").map((option) => option.textContent)).toEqual(["Guitar", "Full range"]);
+    expect(screen.getAllByRole("radio").map((option) => option.getAttribute("value"))).toEqual(["guitar", "default"]);
     expect(screen.getByRole("radio", { name: "Guitar" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Full range" })).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "Piano" })).not.toBeInTheDocument();

@@ -27,12 +27,12 @@ test.describe("instrument profile e2e", () => {
     const profileOptions = page.locator(".profile-picker").getByRole("radio");
 
     await expect(page.getByRole("radiogroup", { name: "Detection focus" })).toBeVisible();
-    await expect(profileOptions.nth(0)).toHaveText("Guitar");
-    await expect(profileOptions.nth(1)).toHaveText("Full range");
+    await expect(profileOptions.nth(0)).toHaveValue("guitar");
+    await expect(profileOptions.nth(1)).toHaveValue("default");
     await expect(page.getByRole("radio", { name: "Guitar" })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Full range" })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Piano" })).toHaveCount(0);
-    await expect(page.getByRole("radio", { name: "Guitar" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("radio", { name: "Guitar" })).toBeChecked();
   });
 
   test("guitar profile imports clean guitar C major and detects notes", async ({ page }) => {
@@ -73,6 +73,6 @@ test.describe("instrument profile e2e", () => {
 
     await page.reload();
 
-    await expect(page.getByRole("radio", { name: "Full range" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("radio", { name: "Full range" })).toBeChecked();
   });
 });

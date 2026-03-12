@@ -11,13 +11,15 @@ test("landing page shows guitar-first capture and lane controls", async ({ page 
   await expect(page.getByRole("button", { name: /import audio file/i })).toBeVisible();
   await expect(page.getByText(/auto-detect/i)).toBeVisible();
   await expect(page.getByText(/compress/i)).toBeVisible();
-  await expect(page.getByRole("radiogroup", { name: /instrument profile/i })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /default/i })).toBeVisible();
+  await expect(page.getByRole("radiogroup", { name: /detection focus/i })).toBeVisible();
   await expect(page.getByRole("radio", { name: /guitar/i })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /full range/i })).toBeVisible();
   await expect(page.getByRole("radio", { name: /piano/i })).toHaveCount(0);
-  await expect(page.getByRole("radio", { name: /guitar/i })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("radio", { name: /guitar/i })).toBeChecked();
 
-  await expect(page.getByText("Guitar focus")).toBeVisible();
+  await expect(
+    page.getByText(/start with guitar\. switch to full range if a clip needs broader note coverage\./i)
+  ).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Song Lane" })).toBeVisible();
   await expect(
     page.getByText(/record or import a take to surface notes, chord, and timeline analysis\./i)

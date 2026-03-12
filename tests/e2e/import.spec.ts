@@ -98,7 +98,7 @@ test("import button is disabled while recording", async ({ page }) => {
   await gotoApp(page);
 
   await page.getByRole("button", { name: /start recording/i }).click();
-  await expect(page.getByText("Recording…")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText("Recording take…")).toBeVisible({ timeout: 15000 });
 
   await expect(page.getByRole("button", { name: /import audio file/i })).toBeDisabled();
 

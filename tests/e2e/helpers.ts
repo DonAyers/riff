@@ -91,8 +91,8 @@ export async function selectDetectionFocus(
   profileLabel: "Full range" | "Guitar"
 ): Promise<void> {
   const profile = page.getByRole("radio", { name: profileLabel });
-  await profile.click();
-  await expect(profile).toHaveAttribute("aria-checked", "true");
+  await profile.check();
+  await expect(profile).toBeChecked();
 }
 
 export async function switchLane(page: Page, lane: "Song" | "Chord"): Promise<void> {
