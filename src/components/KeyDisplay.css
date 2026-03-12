@@ -4,8 +4,8 @@
   gap: 0.35rem;
   width: 100%;
   padding: 1.15rem;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-soft);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
 }
 

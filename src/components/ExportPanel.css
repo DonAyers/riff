@@ -18,7 +18,7 @@
 .export-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }
 
 .export-btn {
@@ -26,7 +26,7 @@
   align-items: center;
   gap: 0.4rem;
   border: 1px solid var(--surface-border);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   padding: 0.55rem 1rem;
   font-size: 0.68rem;
   font-weight: 700;

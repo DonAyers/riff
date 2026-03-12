@@ -3,8 +3,8 @@
   width: 100%;
     min-width: 0;
     padding: 1.1rem;
-    border-radius: 22px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--surface-soft);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
 }
 
@@ -13,7 +13,7 @@
   color: var(--fg-muted);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-md);
   font-weight: 500;
 }
 
@@ -30,7 +30,7 @@
   justify-content: center;
   min-width: 48px;
   padding: 0.5rem 0.75rem;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--accent-dim);
   border: 1px solid rgba(130, 98, 255, 0.3);
   color: var(--fg);

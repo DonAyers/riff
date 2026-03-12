@@ -7,8 +7,8 @@
   width: 100%;
   min-height: 100%;
   padding: 1.15rem;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-soft);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
 }
 
@@ -23,7 +23,7 @@
 
 .chord-display--interactive:hover {
   border-color: rgba(130, 98, 255, 0.48);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(130, 98, 255, 0.05));
+  background: linear-gradient(180deg, var(--surface-soft), rgba(130, 98, 255, 0.05));
   transform: translateY(-1px);
 }
 
