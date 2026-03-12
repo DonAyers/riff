@@ -76,7 +76,7 @@ For a small app like this, the practical standard is:
 3. Commit the release change.
 4. Create a Git tag like `v1.0.1`.
 5. Push `main` and the tag.
-6. Let Vercel deploy `main`, and let GitHub create release notes from the tag.
+6. GitHub Actions deploys `main` to Vercel, and creates a GitHub Release from the tag.
 
 ### Commands
 
@@ -98,6 +98,22 @@ When a tag like `v1.0.1` is pushed, GitHub Actions creates a GitHub Release with
 ## Deploy to Vercel
 
 Riff is a static Vite app, so deployment to Vercel is straightforward.
+
+### Auto-deploy on push to `main` (GitHub Actions)
+
+Every push to `main` automatically deploys to Vercel production via `.github/workflows/deploy.yml`.
+
+#### One-time setup: add three GitHub repository secrets
+
+| Secret | Where to find it |
+|---|---|
+| `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) — create a new token |
+| `VERCEL_ORG_ID` | Run `vercel link` locally, then check `.vercel/project.json` → `"orgId"` |
+| `VERCEL_PROJECT_ID` | Same file → `"projectId"` |
+
+Add them at **GitHub → Settings → Secrets and variables → Actions → New repository secret**.
+
+Once the secrets are set, every push to `main` triggers a production deployment.
 
 ### Option 1: Vercel Dashboard (recommended first deploy)
 
