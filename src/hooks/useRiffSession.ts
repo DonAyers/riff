@@ -9,7 +9,7 @@ import { listRiffs, saveRiff, type StoredRiff } from "../lib/db";
 import { readPcmFromOpfs, savePcmToOpfs, saveBlobToOpfs, readBlobFromOpfs } from "../lib/audioStorage";
 import { decodeAudioFile } from "../lib/audioImport";
 import { encodeCompressed, mimeToExtension, type AudioFormat } from "../lib/audioEncoder";
-import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
+import { PROFILES, normalizeStoredProfileId, type ProfileId } from "../lib/instrumentProfiles";
 import { detectKey, type KeyDetection } from "../lib/keyDetector";
 
 const DEMO_NOTES: MappedNote[] = [
@@ -20,11 +20,20 @@ const DEMO_NOTES: MappedNote[] = [
   { midi: 72, name: "C5", pitchClass: "C", octave: 5, startTimeS: 2, durationS: 0.5, amplitude: 0.81 },
 ];
 
+const PROFILE_STORAGE_KEY = "riff:instrument-profile";
+
 export function useRiffSession() {
   const { state, startRecording, stopRecording, error: recorderError } = useAudioRecorder();
   const { detect, preload: preloadModel, isLoading, progress, error: detectionError } = usePitchDetection();
   const audioPlayback = useAudioPlayback();
-  const midiPlayback = useMidiPlayback();
+  const hasPersistedInitialProfileRef = useRef(false);
+  const needsStoredProfileCleanupRef = useRef(false);
+  const [profileId, setProfileId] = useState<ProfileId>(() => {
+    const normalizedStoredProfile = normalizeStoredProfileId(localStorage.getItem(PROFILE_STORAGE_KEY));
+    needsStoredProfileCleanupRef.current = normalizedStoredProfile.didMigrate;
+    return normalizedStoredProfile.profileId;
+  });
+  const midiPlayback = useMidiPlayback(profileId);
 
   const [notes, setNotes] = useState<MappedNote[]>([]);
   const [chord, setChord] = useState<string | null>(null);
@@ -43,10 +52,6 @@ export function useRiffSession() {
   const [activeRiffName, setActiveRiffName] = useState("riff");
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
   const [compressedMime, setCompressedMime] = useState<string | null>(null);
-  const [profileId, setProfileId] = useState<ProfileId>(() => {
-    const stored = localStorage.getItem("riff:instrument-profile");
-    return stored === "default" || stored === "guitar" || stored === "piano" ? stored : "guitar";
-  });
 
   const pendingAudioRef = useRef<Float32Array | null>(null);
 
@@ -65,7 +70,17 @@ export function useRiffSession() {
   }, [storageFormat]);
 
   useEffect(() => {
-    localStorage.setItem("riff:instrument-profile", profileId);
+    if (!hasPersistedInitialProfileRef.current) {
+      hasPersistedInitialProfileRef.current = true;
+
+      if (!needsStoredProfileCleanupRef.current) {
+        return;
+      }
+
+      needsStoredProfileCleanupRef.current = false;
+    }
+
+    localStorage.setItem(PROFILE_STORAGE_KEY, profileId);
   }, [profileId]);
 
   useEffect(() => {

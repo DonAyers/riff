@@ -14,9 +14,11 @@ import { Playback } from "./components/Playback";
 import { SavedRiffs } from "./components/SavedRiffs";
 import { ExportPanel } from "./components/ExportPanel";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
+import { SelectedChordDialog } from "./components/SelectedChordDialog";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
+import type { ChordEvent } from "./lib/chordDetector";
 import "./styles/App.css";
 
 const TAGLINES = [
@@ -33,6 +35,9 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
   const [activeLane, setActiveLane] = useState<Lane>("song");
   const [activeVoicingIndex, setActiveVoicingIndex] = useState(0);
+  const [selectedChordName, setSelectedChordName] = useState<string | null>(null);
+  const [selectedChordContext, setSelectedChordContext] = useState<ChordEvent | null>(null);
+  const [selectedChordVoicingIndex, setSelectedChordVoicingIndex] = useState(0);
   const [variateOverride, setVariateOverride] = useState<string | null>(null);
   const {
     recorderState,
@@ -79,6 +84,9 @@ function App() {
   useEffect(() => {
     setActiveVoicingIndex(0);
     setVariateOverride(null);
+    setSelectedChordName(null);
+    setSelectedChordContext(null);
+    setSelectedChordVoicingIndex(0);
   }, [chord]);
 
   useEffect(() => {
@@ -88,6 +96,18 @@ function App() {
   const handleNextVoicing = () => {
     if (chordVoicings.length <= 1) return;
     setActiveVoicingIndex((current) => (current + 1) % chordVoicings.length);
+  };
+
+  const handleChordSelect = (chordName: string, context?: ChordEvent) => {
+    setSelectedChordName(chordName);
+    setSelectedChordContext(context ?? null);
+    setSelectedChordVoicingIndex(0);
+  };
+
+  const handleCloseSelectedChord = () => {
+    setSelectedChordName(null);
+    setSelectedChordContext(null);
+    setSelectedChordVoicingIndex(0);
   };
 
   return (
@@ -184,7 +204,7 @@ function App() {
                         <KeyDisplay result={keyDetection} />
                       </div>
                       <div className="results-summary">
-                        <ChordDisplay chordName={chord} />
+                        <ChordDisplay chordName={chord} onChordSelect={handleChordSelect} />
                         <NoteDisplay
                           notes={uniqueNotes}
                           onNoteClick={(note) => {
@@ -192,7 +212,7 @@ function App() {
                           }}
                         />
                       </div>
-                      <ChordTimeline events={chordTimeline} />
+                      <ChordTimeline events={chordTimeline} onChordSelect={handleChordSelect} />
                       <PianoRoll notes={notes} />
                       <ExportPanel
                         notes={notes}
@@ -207,7 +227,7 @@ function App() {
                     <>
                       <div className="results-summary results-summary--chord-lane">
                         <div className="chord-lane-visualization">
-                          <ChordDisplay chordName={chord} />
+                          <ChordDisplay chordName={displayedChord} onChordSelect={handleChordSelect} />
                           {variateSuggestions.length > 0 && (
                             <div className="variate-suggestions">
                               <span className="variate-suggestions__label">Try substituting:</span>
@@ -243,7 +263,7 @@ function App() {
                               <div className="chord-lane-panel__header">
                                 <div>
                                   <span className="chord-lane-panel__kicker">Phrase</span>
-                                  <h3>{chord ?? "Detected chord"}</h3>
+                                  <h3>{displayedChord ?? "Detected chord"}</h3>
                                   <p>
                                     Voicing {activeVoicingIndex + 1} of {chordVoicings.length}
                                   </p>
@@ -257,7 +277,7 @@ function App() {
                                   Next phrase
                                 </button>
                               </div>
-                              <ChordFretboard chordName={chord} voicing={activeVoicing} />
+                              <ChordFretboard chordName={displayedChord} voicing={activeVoicing} />
                             </>
                           ) : (
                             <div className="lane-placeholder">
@@ -307,6 +327,16 @@ function App() {
 
       {showOnboarding && (
         <OnboardingSheet onClose={() => setShowOnboarding(false)} />
+      )}
+
+      {selectedChordName && (
+        <SelectedChordDialog
+          chord={selectedChordName}
+          context={selectedChordContext ?? undefined}
+          voicingIndex={selectedChordVoicingIndex}
+          onVoicingChange={setSelectedChordVoicingIndex}
+          onClose={handleCloseSelectedChord}
+        />
       )}
     </div>
   );

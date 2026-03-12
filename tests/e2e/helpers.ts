@@ -3,7 +3,7 @@ import path from "node:path";
 
 const FIXTURES_DIR = path.resolve(process.cwd(), "tests", "fixtures");
 
-type InstrumentProfileStorage = "default" | "guitar" | "piano";
+type InstrumentProfileStorage = "default" | "guitar";
 
 interface GotoAppOptions {
   onboardingSeen?: boolean;
@@ -86,9 +86,9 @@ export async function importAndAnalyzeFixture(
   await waitForAnalysisResults(page);
 }
 
-export async function selectInstrumentProfile(
+export async function selectDetectionFocus(
   page: Page,
-  profileLabel: "Default" | "Guitar" | "Piano"
+  profileLabel: "Full range" | "Guitar"
 ): Promise<void> {
   const profile = page.getByRole("radio", { name: profileLabel });
   await profile.click();

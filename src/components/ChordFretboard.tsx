@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+import { OPEN, SILENT, SVGuitarChord, type Barre, type Chord, type ChordSettings, type Finger } from "svguitar";
 import type { GuitarVoicing } from "../lib/chordVoicings";
 import "./ChordFretboard.css";
 
@@ -6,55 +8,134 @@ interface ChordFretboardProps {
   chordName?: string | null;
 }
 
-const STRING_COUNT = 6;
 const FRET_COUNT = 5;
-const SVG_WIDTH = 260;
-const SVG_HEIGHT = 300;
-const TOP_PADDING = 42;
-const BOTTOM_PADDING = 26;
-const LEFT_PADDING = 28;
-const RIGHT_PADDING = 28;
+const STRING_NUMBERS = [6, 5, 4, 3, 2, 1] as const;
+const BASE_DIAGRAM_SETTINGS: ChordSettings = {
+  frets: FRET_COUNT,
+  backgroundColor: "none",
+  fixedDiagramPosition: true,
+  color: "rgba(255, 255, 255, 0.9)",
+  stringColor: "rgba(255, 255, 255, 0.45)",
+  fretColor: "rgba(255, 255, 255, 0.45)",
+  fingerColor: "rgba(130, 98, 255, 0.92)",
+  fingerTextColor: "#f5f7ff",
+  fingerSize: 0.72,
+  fingerTextSize: 24,
+  strokeWidth: 2,
+  sidePadding: 0.14,
+  barreChordRadius: 0.9,
+  fingerStrokeColor: "rgba(255, 255, 255, 0.2)",
+  fingerStrokeWidth: 1.2,
+};
 
-export function ChordFretboard({ voicing, chordName }: ChordFretboardProps) {
-  const stringSpacing = (SVG_WIDTH - LEFT_PADDING - RIGHT_PADDING) / (STRING_COUNT - 1);
-  const fretSpacing = (SVG_HEIGHT - TOP_PADDING - BOTTOM_PADDING) / FRET_COUNT;
-  const baseFret = voicing.baseFret;
+function toDiagramFret(fret: number, baseFret: number) {
+  return fret - baseFret + 1;
+}
 
-  const dots = voicing.frets.flatMap((fret, stringIndex) => {
-    if (fret <= 0) return [];
-
-    const relativeFret = fret - baseFret;
-    if (relativeFret < 0 || relativeFret >= FRET_COUNT) return [];
-
-    return [{
-      stringIndex,
-      fret,
-      finger: voicing.fingers[stringIndex],
-      cx: LEFT_PADDING + stringIndex * stringSpacing,
-      cy: TOP_PADDING + (relativeFret + 0.5) * fretSpacing,
-    }];
-  });
-
-  const barreOverlays = voicing.barres.flatMap((barreFret) => {
-    const relativeFret = barreFret - baseFret;
-    if (relativeFret < 0 || relativeFret >= FRET_COUNT) return [];
-
-    const stringsWithBarre = voicing.frets
+function buildBarres(voicing: GuitarVoicing): { barres: Barre[]; barredStringIndexes: Set<number> } {
+  const barredStringIndexes = new Set<number>();
+  const barres = voicing.barres.flatMap((barreFret) => {
+    const stringIndexes = voicing.frets
       .map((fret, index) => (fret === barreFret ? index : -1))
       .filter((index) => index >= 0);
 
-    if (stringsWithBarre.length < 2) return [];
+    if (stringIndexes.length < 2) {
+      return [];
+    }
 
-    const firstString = Math.min(...stringsWithBarre);
-    const lastString = Math.max(...stringsWithBarre);
+    stringIndexes.forEach((index) => barredStringIndexes.add(index));
+
+    const firstIndex = Math.min(...stringIndexes);
+    const lastIndex = Math.max(...stringIndexes);
+    const finger = stringIndexes.map((index) => voicing.fingers[index]).find((value) => value > 0);
 
     return [{
-      fret: barreFret,
-      x: LEFT_PADDING + firstString * stringSpacing - 10,
-      y: TOP_PADDING + (relativeFret + 0.5) * fretSpacing - 10,
-      width: (lastString - firstString) * stringSpacing + 20,
+      fret: toDiagramFret(barreFret, voicing.baseFret),
+      fromString: STRING_NUMBERS[firstIndex],
+      toString: STRING_NUMBERS[lastIndex],
+      text: finger ? String(finger) : undefined,
     }];
   });
+
+  return { barres, barredStringIndexes };
+}
+
+function buildFingers(voicing: GuitarVoicing, barredStringIndexes: Set<number>): Finger[] {
+  const fingers: Finger[] = [];
+
+  STRING_NUMBERS.forEach((stringNumber, index) => {
+    const fret = voicing.frets[index];
+    const finger = voicing.fingers[index];
+
+    if (fret < 0) {
+      fingers.push([stringNumber, SILENT]);
+      return;
+    }
+
+    if (fret === 0) {
+      fingers.push([stringNumber, OPEN]);
+      return;
+    }
+
+    if (barredStringIndexes.has(index)) {
+      return;
+    }
+
+    const diagramFret = toDiagramFret(fret, voicing.baseFret);
+    if (diagramFret < 1) {
+      return;
+    }
+
+    if (finger > 0) {
+      fingers.push([stringNumber, diagramFret, String(finger)]);
+      return;
+    }
+
+    fingers.push([stringNumber, diagramFret]);
+  });
+
+  return fingers;
+}
+
+function buildChordDiagram(voicing: GuitarVoicing): Chord {
+  const { barres, barredStringIndexes } = buildBarres(voicing);
+
+  return {
+    fingers: buildFingers(voicing, barredStringIndexes),
+    barres,
+    position: voicing.baseFret,
+  };
+}
+
+export function ChordFretboard({ voicing, chordName }: ChordFretboardProps) {
+  const diagramRef = useRef<HTMLDivElement>(null);
+  const baseFret = voicing.baseFret;
+  const ariaLabel = chordName ? `Fretboard for ${chordName}` : "Chord fretboard";
+
+  useEffect(() => {
+    const container = diagramRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.replaceChildren();
+
+    const chart = new SVGuitarChord(container);
+
+    chart
+      .configure({
+        ...BASE_DIAGRAM_SETTINGS,
+        position: baseFret,
+        noPosition: baseFret > 1,
+        svgTitle: ariaLabel,
+      })
+      .chord(buildChordDiagram(voicing))
+      .draw();
+
+    return () => {
+      container.replaceChildren();
+    };
+  }, [ariaLabel, baseFret, voicing]);
 
   return (
     <div className="chord-fretboard">
@@ -62,67 +143,12 @@ export function ChordFretboard({ voicing, chordName }: ChordFretboardProps) {
         <span className="chord-fretboard__label">Fretboard</span>
         {baseFret > 1 && <span className="chord-fretboard__meta">Base fret {baseFret}</span>}
       </div>
-      <svg
-        className="chord-fretboard__svg"
-        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+      <div
+        ref={diagramRef}
+        className="chord-fretboard__diagram"
         role="img"
-        aria-label={chordName ? `Fretboard for ${chordName}` : "Chord fretboard"}
-      >
-        {voicing.frets.map((fret, stringIndex) => {
-          const x = LEFT_PADDING + stringIndex * stringSpacing;
-          const marker = fret < 0 ? "X" : fret === 0 ? "O" : null;
-
-          return (
-            <g key={`string-${stringIndex}`}>
-              <line x1={x} y1={TOP_PADDING} x2={x} y2={SVG_HEIGHT - BOTTOM_PADDING} className="chord-fretboard__string" />
-              {marker && (
-                <text x={x} y={24} textAnchor="middle" className="chord-fretboard__marker">
-                  {marker}
-                </text>
-              )}
-            </g>
-          );
-        })}
-
-        {Array.from({ length: FRET_COUNT + 1 }, (_, index) => {
-          const y = TOP_PADDING + index * fretSpacing;
-          const isNut = baseFret === 1 && index === 0;
-
-          return (
-            <line
-              key={`fret-${index}`}
-              x1={LEFT_PADDING}
-              y1={y}
-              x2={SVG_WIDTH - RIGHT_PADDING}
-              y2={y}
-              className={isNut ? "chord-fretboard__nut" : "chord-fretboard__fret"}
-            />
-          );
-        })}
-
-        {barreOverlays.map((barre) => (
-          <rect
-            key={`barre-${barre.fret}`}
-            x={barre.x}
-            y={barre.y}
-            width={barre.width}
-            height={20}
-            rx={10}
-            className="chord-fretboard__barre"
-          />
-        ))}
-
-        {dots.map((dot) => (
-          <g key={`dot-${dot.stringIndex}-${dot.fret}`}>
-            <circle cx={dot.cx} cy={dot.cy} r={13} className="chord-fretboard__dot" />
-            {dot.finger > 0 && (
-              <text x={dot.cx} y={dot.cy + 4} textAnchor="middle" className="chord-fretboard__finger">
-                {dot.finger}
-              </text>
-            )}
-          </g>
-        ))}
-      </svg>
+        aria-label={ariaLabel}
+      />
     </div>
   );
 }

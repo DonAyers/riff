@@ -1,18 +1,18 @@
 # Riff
 
-Record a riff, chord, or arpeggio — see every note you played.
+Record a guitar riff, chord, or arpeggio — see every note you played.
 
-Riff is a browser-based music tool that uses [Spotify's Basic Pitch](https://github.com/spotify/basic-pitch) to perform polyphonic pitch detection entirely client-side. No backend, no account, no data leaves your device.
+Riff is a browser-based guitar transcription tool that uses [Spotify's Basic Pitch](https://github.com/spotify/basic-pitch) to perform polyphonic pitch detection entirely client-side. No backend, no account, no data leaves your device.
 
 ## How It Works
 
 1. **Tap Record** — the app captures audio from your microphone
-2. **Play something** — a chord, a riff, an arpeggio, on any instrument
+2. **Play something** — a chord, a riff, or an arpeggio on guitar
 3. **Tap Stop** — Basic Pitch (a lightweight neural network running via TensorFlow.js) analyzes the audio
-4. **See results** — individual notes, chord name, and a piano-roll timeline
+4. **See results** — individual notes, chord name, and a guitar-friendly note timeline
 
 ```
-Mic → Web Audio API → Basic Pitch (TF.js, in-browser) → Notes + Chord Name
+Mic → Web Audio API → Basic Pitch (TF.js, in-browser) → Guitar Notes + Chord Name
 ```
 
 ## Tech Stack
@@ -144,7 +144,7 @@ src/
 │   ├── Recorder.tsx             # Record / stop button
 │   ├── NoteDisplay.tsx          # Note chips for each detected note
 │   ├── ChordDisplay.tsx         # Chord name display
-│   ├── PianoRoll.tsx            # Visual note timeline
+│   ├── PianoRoll.tsx            # Visual note timeline for detected riffs
 │   └── ProgressBar.tsx          # Model inference progress bar
 ├── styles/
 │   ├── index.css                # Global reset + dark theme

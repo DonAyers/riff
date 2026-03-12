@@ -120,15 +120,23 @@ vi.mock("../lib/chordDetector", () => ({
   detectChordsWindowed: mockDetectChordsWindowed,
 }));
 
+function stubLocalStorage(profileValue: string | null = null) {
+  const storage = {
+    getItem: vi.fn((key: string) => (key === "riff:instrument-profile" ? profileValue : null)),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+  };
+
+  vi.stubGlobal("localStorage", storage);
+
+  return storage;
+}
+
 describe("useRiffSession", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.stubGlobal("localStorage", {
-      getItem: vi.fn((key: string) => (key === "riff:instrument-profile" ? null : null)),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn(),
-    });
+    stubLocalStorage();
 
     mockStopRecording.mockReset();
     mockDetect.mockReset();
@@ -172,14 +180,14 @@ describe("useRiffSession", () => {
     });
 
     act(() => {
-      result.current.setProfileId("piano");
+      result.current.setProfileId("default");
     });
 
     await act(async () => {
       await result.current.handleLoadSavedRiff(riff);
     });
 
-    expect(mockDetectChordTimeline).toHaveBeenCalledWith(riff.notes, PROFILES.piano.chordWindowS);
+    expect(mockDetectChordTimeline).toHaveBeenCalledWith(riff.notes, PROFILES.default.chordWindowS);
   });
 
   it("uses the current profile chord window for demo analysis", async () => {
@@ -190,17 +198,18 @@ describe("useRiffSession", () => {
     });
 
     act(() => {
-      result.current.setProfileId("piano");
+      result.current.setProfileId("default");
     });
 
     act(() => {
       result.current.handleLoadDemoAnalysis();
     });
 
-    expect(mockDetectChordTimeline).toHaveBeenCalledWith(expect.any(Array), PROFILES.piano.chordWindowS);
+    expect(mockDetectChordTimeline).toHaveBeenCalledWith(expect.any(Array), PROFILES.default.chordWindowS);
   });
 
   it("defaults to guitar when no stored profile exists", async () => {
+    const storage = stubLocalStorage();
     const { result } = renderHook(() => useRiffSession());
 
     await waitFor(() => {
@@ -208,24 +217,25 @@ describe("useRiffSession", () => {
     });
 
     expect(result.current.profileId).toBe("guitar");
+    const profileWrites = storage.setItem.mock.calls.filter(([key]) => key === "riff:instrument-profile");
+    expect(profileWrites).toHaveLength(0);
   });
 
-  it("restores a stored piano profile", async () => {
-    vi.stubGlobal("localStorage", {
-      getItem: vi.fn((key: string) => (key === "riff:instrument-profile" ? "piano" : null)),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn(),
-    });
+  it.each(["piano", "banjo"])(
+    "rewrites a stale stored profile id (%s) back to guitar",
+    async (storedProfileId) => {
+      const storage = stubLocalStorage(storedProfileId);
 
-    const { result } = renderHook(() => useRiffSession());
+      const { result } = renderHook(() => useRiffSession());
 
-    await waitFor(() => {
-      expect(mockPreload).toHaveBeenCalled();
-    });
+      await waitFor(() => {
+        expect(mockPreload).toHaveBeenCalled();
+      });
 
-    expect(result.current.profileId).toBe("piano");
-  });
+      expect(result.current.profileId).toBe("guitar");
+      expect(storage.setItem).toHaveBeenCalledWith("riff:instrument-profile", "guitar");
+    }
+  );
 
   it("analyzes takes with the guitar-first detection profile by default", async () => {
     const sourceAudio = new Float32Array([0.1, -0.1, 0.2]);

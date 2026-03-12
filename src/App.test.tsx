@@ -16,8 +16,8 @@ vi.mock("./components/Recorder", () => ({
 vi.mock("./components/LaneToggle", () => ({
   LaneToggle: ({ activeLane, onChange }: { activeLane: "song" | "chord"; onChange: (lane: "song" | "chord") => void }) => (
     <div>
-      <button onClick={() => onChange("song")} aria-pressed={activeLane === "song"}>Song</button>
-      <button onClick={() => onChange("chord")} aria-pressed={activeLane === "chord"}>Chord</button>
+      <button onClick={() => onChange("song")}>Song</button>
+      <button onClick={() => onChange("chord")}>Chord</button>
     </div>
   ),
 }));
@@ -36,6 +36,8 @@ vi.mock("./components/ChordTimeline", () => ({
 vi.mock("./components/ChordFretboard", () => ({
   ChordFretboard: () => <div data-testid="chord-fretboard" />,
 }));
+// PianoRoll remains the timeline visualization component; this is unrelated
+// to the removed piano instrument profile.
 vi.mock("./components/PianoRoll", () => ({
   PianoRoll: () => <div data-testid="piano-roll" />,
 }));

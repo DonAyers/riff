@@ -1,4 +1,5 @@
 import { Chord } from "tonal";
+import { buildStrumClusters } from "./guitarStrumPlayback";
 import type { MappedNote } from "./noteMapper";
 
 export interface ChordEvent {
@@ -23,7 +24,7 @@ export function detectChord(pitchClasses: string[]): string | null {
 }
 
 /**
- * Group overlapping / nearby notes into time clusters and detect a chord per cluster.
+ * Group nearby note onsets into time clusters and detect a chord per cluster.
  * Returns the chord from the cluster with the most notes (dominant chord).
  * When windowS is 0, falls back to the original whole-recording behaviour.
  */
@@ -40,26 +41,9 @@ export function detectChordTimeline(notes: MappedNote[], windowS: number): Chord
     return [{ chord: detected, label: formatChordName(detected), startTimeS, endTimeS }];
   }
 
-  // Sort notes by start time
-  const sorted = [...notes].sort((a, b) => a.startTimeS - b.startTimeS);
-
-  // Cluster notes that overlap within the window
-  const clusters: MappedNote[][] = [];
-  let current: MappedNote[] = [sorted[0]];
-  let clusterEnd = sorted[0].startTimeS + sorted[0].durationS;
-
-  for (let i = 1; i < sorted.length; i++) {
-    const note = sorted[i];
-    if (note.startTimeS <= clusterEnd + windowS) {
-      current.push(note);
-      clusterEnd = Math.max(clusterEnd, note.startTimeS + note.durationS);
-    } else {
-      clusters.push(current);
-      current = [note];
-      clusterEnd = note.startTimeS + note.durationS;
-    }
-  }
-  clusters.push(current);
+  const clusters = buildStrumClusters(notes, windowS).map((cluster) =>
+    cluster.noteIndices.map((index) => notes[index]),
+  );
 
   return clusters.flatMap((cluster) => {
     const pitchClasses = [...new Set(cluster.map((n) => n.pitchClass))];

@@ -29,45 +29,12 @@
   color: var(--accent);
 }
 
-.chord-fretboard__svg {
+.chord-fretboard__diagram {
+  width: 100%;
+}
+
+.chord-fretboard__diagram svg {
   width: 100%;
   height: auto;
   display: block;
-}
-
-.chord-fretboard__string,
-.chord-fretboard__fret,
-.chord-fretboard__nut {
-  stroke: rgba(255, 255, 255, 0.45);
-}
-
-.chord-fretboard__string {
-  stroke-width: 1.5;
-}
-
-.chord-fretboard__fret {
-  stroke-width: 2;
-}
-
-.chord-fretboard__nut {
-  stroke-width: 5;
-}
-
-.chord-fretboard__dot,
-.chord-fretboard__barre {
-  fill: rgba(130, 98, 255, 0.92);
-  stroke: rgba(255, 255, 255, 0.2);
-  stroke-width: 1.2;
-}
-
-.chord-fretboard__finger,
-.chord-fretboard__marker {
-  fill: var(--fg);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.chord-fretboard__marker {
-  font-size: 16px;
-  letter-spacing: 0.1em;
 }

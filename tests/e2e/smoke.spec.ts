@@ -14,7 +14,7 @@ test("landing page shows guitar-first capture and lane controls", async ({ page 
   await expect(page.getByRole("radiogroup", { name: /instrument profile/i })).toBeVisible();
   await expect(page.getByRole("radio", { name: /default/i })).toBeVisible();
   await expect(page.getByRole("radio", { name: /guitar/i })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /piano/i })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /piano/i })).toHaveCount(0);
   await expect(page.getByRole("radio", { name: /guitar/i })).toHaveAttribute("aria-checked", "true");
 
   await expect(page.getByText("Guitar focus")).toBeVisible();

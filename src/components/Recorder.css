@@ -137,6 +137,7 @@
   text-transform: uppercase;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -231,14 +232,23 @@
 }
 
 /* Profile picker pills */
-.profile-picker-wrap {
+.profile-panel {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
   align-items: center;
+  width: min(100%, 24rem);
 }
 
-.profile-picker-label {
+.profile-panel__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  align-items: center;
+  text-align: center;
+}
+
+.profile-panel__eyebrow {
   margin: 0;
   font-size: 0.62rem;
   letter-spacing: 0.12em;
@@ -246,13 +256,26 @@
   color: var(--fg-muted);
 }
 
+.profile-panel__description {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+  max-width: 28ch;
+}
+
 .profile-picker {
   display: flex;
   gap: 0.35rem;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .profile-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -266,23 +289,30 @@
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
+.profile-pill__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .profile-pill.active {
   border-color: rgba(130, 98, 255, 0.45);
   color: var(--fg);
   background: var(--accent-dim);
 }
 
-.profile-pill:hover:not(:disabled):not(.active) {
+.profile-pill:hover:not(.disabled):not(.active) {
   border-color: rgba(255, 255, 255, 0.15);
   color: var(--fg);
 }
 
-.profile-pill:disabled {
+.profile-pill.disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.profile-pill:focus-visible {
+.profile-pill:focus-within {
   outline: 2px solid rgba(255, 255, 255, 0.75);
   outline-offset: 2px;
 }

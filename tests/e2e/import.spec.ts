@@ -18,29 +18,75 @@ test("importing an audio file runs analysis and shows detected notes", async ({ 
   await expect(page.getByRole("group", { name: /export options/i })).toBeVisible();
 });
 
-test("imported analysis can switch to chord lane and show guitar voicings", async ({ page }) => {
+test("imported analysis can switch to chord lane and keep playback controls available", async ({ page }) => {
   test.setTimeout(120000);
 
   await gotoApp(page);
-  await importAndAnalyzeFixture(page);
-  await expect(page.locator(".note-chip", { hasText: "C4" })).toBeVisible({ timeout: 60000 });
+  await importAndAnalyzeFixture(page, "guitar-c-major-clean.wav");
+  await expect(page.locator(".note-chip").first()).toBeVisible({ timeout: 60000 });
 
   await switchLane(page, "Chord");
   await expect(page.getByRole("heading", { level: 2, name: "Chord Lane" })).toBeVisible();
 
-  // Check for any voicing (flexible - C Major might have different counts)
   const voicingLabel = page.getByText(/voicing \d+ of \d+/i);
   await expect(voicingLabel).toBeVisible({ timeout: 10000 });
-  await expect(page.getByRole("img", { name: /^fretboard for /i })).toBeVisible();
+  await expect(page.locator(".chord-lane-panel .chord-fretboard__diagram")).toBeVisible();
+  await expect(page.getByRole("button", { name: /play midi preview/i })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Notes in this take" })).toBeVisible();
 
-  // Test next phrase cycling
   const nextBtn = page.getByRole("button", { name: /next phrase/i });
   if (await nextBtn.isEnabled()) {
     const before = await voicingLabel.textContent();
     await nextBtn.click();
     await expect(voicingLabel).not.toHaveText(before ?? "");
   }
+});
+
+test("clicking a detected chord opens the selected chord sheet", async ({ page }) => {
+  test.setTimeout(120000);
+
+  await gotoApp(page);
+  await importAndAnalyzeFixture(page, "guitar-c-major-clean.wav");
+
+  const detectedChordButton = page.getByRole("button", {
+    name: /^select chord c major$/i,
+  });
+  await expect(detectedChordButton).toBeVisible({ timeout: 10000 });
+  await detectedChordButton.click();
+
+  const dialog = page.getByRole("dialog", { name: "Selected guitar chord" });
+  await expect(dialog).toBeVisible();
+  const voicingLabel = dialog.getByText(/guitar voicing \d+ of \d+/i);
+  await expect(voicingLabel).toBeVisible();
+  await expect(dialog.locator(".chord-fretboard__diagram")).toBeVisible();
+
+  const nextPhrase = dialog.getByRole("button", { name: /next phrase/i });
+  if (await nextPhrase.isEnabled()) {
+    const before = await voicingLabel.textContent();
+    await nextPhrase.click();
+    await expect(voicingLabel).not.toHaveText(before ?? "");
+  }
+
+  await page.getByRole("button", { name: /close selected chord/i }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
+test("clicking a timeline chord opens the matching selected chord sheet", async ({ page }) => {
+  test.setTimeout(120000);
+
+  await gotoApp(page);
+  await importAndAnalyzeFixture(page, "guitar-c-major-clean.wav");
+
+  const timelineEventButton = page
+    .getByRole("button", { name: /select chord c major at /i })
+    .first();
+  await expect(timelineEventButton).toBeVisible({ timeout: 10000 });
+  await timelineEventButton.click();
+
+  const dialog = page.getByRole("dialog", { name: "Selected guitar chord" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/timeline chord/i)).toBeVisible();
+  await expect(dialog.getByRole("heading", { level: 2, name: "C Major" })).toBeVisible();
 });
 
 test("import button is visible on landing page", async ({ page }) => {

@@ -70,21 +70,23 @@ describe("Recorder", () => {
     expect(onImport).toHaveBeenCalledWith(file);
   });
 
-  it("shows 'Preparing audio…' when isImporting is true", () => {
+  it("shows 'Preparing take…' when isImporting is true", () => {
     render(<Recorder {...defaultProps} isImporting={true} />);
-    expect(screen.getByText("Preparing…")).toBeTruthy();
+    expect(screen.getByText("Preparing take…")).toBeTruthy();
   });
 
-  it("keeps the primary profile picker guitar-first", () => {
+  it("keeps the detection focus guitar-first", () => {
     render(<Recorder {...defaultProps} />);
 
+    expect(screen.getByRole("radiogroup", { name: /detection focus/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("radiogroup", { name: /instrument profile/i })
+      screen.getByText("Start with Guitar. Switch to Full range if a clip needs broader note coverage.")
     ).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Default" })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio").map((option) => option.textContent)).toEqual(["Guitar", "Full range"]);
     expect(screen.getByRole("radio", { name: "Guitar" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Piano" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Guitar" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Full range" })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Piano" })).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Guitar" })).toBeChecked();
   });
 
   it("updates capture settings and the selected profile when the user changes them", () => {
@@ -103,11 +105,11 @@ describe("Recorder", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: /auto-detect/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /compress/i }));
-    fireEvent.click(screen.getByRole("radio", { name: "Piano" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Full range" }));
 
     expect(onAutoProcessChange).toHaveBeenCalledWith(true);
     expect(onStorageFormatChange).toHaveBeenCalledWith("compressed");
-    expect(onProfileChange).toHaveBeenCalledWith("piano");
+    expect(onProfileChange).toHaveBeenCalledWith("default");
   });
 
   it("disables guitar-first controls while analysis is busy", () => {

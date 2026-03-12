@@ -3,13 +3,33 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-    gap: 0.35rem;
-    width: 100%;
-    min-height: 100%;
-    padding: 1.15rem;
-    border-radius: 22px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 100%;
+  padding: 1.15rem;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+}
+
+.chord-display--interactive {
+  appearance: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.chord-display--interactive:hover {
+  border-color: rgba(130, 98, 255, 0.48);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(130, 98, 255, 0.05));
+  transform: translateY(-1px);
+}
+
+.chord-display--interactive:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.82);
+  outline-offset: 3px;
 }
 
 .chord-label {
@@ -24,5 +44,5 @@
   font-weight: 700;
   color: var(--accent);
   text-align: center;
-    line-height: 1;
+  line-height: 1;
 }

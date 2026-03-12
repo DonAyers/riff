@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoApp, importFixture, selectInstrumentProfile, setSettingToggle, waitForAnalysisResults } from "./helpers";
+import { gotoApp, importFixture, selectDetectionFocus, setSettingToggle, waitForAnalysisResults } from "./helpers";
 
 /**
  * Helper: import a fixture WAV with a specific instrument profile selected,
@@ -8,11 +8,11 @@ import { gotoApp, importFixture, selectInstrumentProfile, setSettingToggle, wait
 async function importWithProfile(
   page: import("@playwright/test").Page,
   fixtureFileName: string,
-  profileLabel: "Default" | "Guitar" | "Piano",
+  profileLabel: "Full range" | "Guitar",
 ) {
   await gotoApp(page);
 
-  await selectInstrumentProfile(page, profileLabel);
+  await selectDetectionFocus(page, profileLabel);
   await setSettingToggle(page, "Auto-detect", true);
   await importFixture(page, fixtureFileName);
   await waitForAnalysisResults(page);
@@ -21,12 +21,17 @@ async function importWithProfile(
 test.describe("instrument profile e2e", () => {
   test.setTimeout(120000);
 
-  test("primary profile picker stays guitar-first", async ({ page }) => {
+  test("detection focus stays guitar-first", async ({ page }) => {
     await gotoApp(page);
 
-    await expect(page.getByRole("radio", { name: "Default" })).toBeVisible();
+    const profileOptions = page.locator(".profile-picker").getByRole("radio");
+
+    await expect(page.getByRole("radiogroup", { name: "Detection focus" })).toBeVisible();
+    await expect(profileOptions.nth(0)).toHaveText("Guitar");
+    await expect(profileOptions.nth(1)).toHaveText("Full range");
     await expect(page.getByRole("radio", { name: "Guitar" })).toBeVisible();
-    await expect(page.getByRole("radio", { name: "Piano" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Full range" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Piano" })).toHaveCount(0);
     await expect(page.getByRole("radio", { name: "Guitar" })).toHaveAttribute("aria-checked", "true");
   });
 
@@ -42,11 +47,11 @@ test.describe("instrument profile e2e", () => {
 
   test("guitar profile filters more notes from noisy recording than default", async ({ page }) => {
     // First run with default profile
-    await importWithProfile(
-      page,
-      "guitar-c-major-noisy.wav",
-      "Default",
-    );
+      await importWithProfile(
+        page,
+        "guitar-c-major-noisy.wav",
+        "Full range",
+      );
     const defaultCount = await page.locator(".note-chip").count();
 
     // Then run with guitar profile on same file
@@ -61,16 +66,13 @@ test.describe("instrument profile e2e", () => {
     expect(guitarCount).toBeLessThanOrEqual(defaultCount);
   });
 
-  test("non-default profile selection persists across page reload", async ({ page }) => {
+  test("profile selection persists across page reload", async ({ page }) => {
     await gotoApp(page);
 
-    // Select a non-default profile so the reload check proves persistence.
-    await selectInstrumentProfile(page, "Piano");
+    await selectDetectionFocus(page, "Full range");
 
-    // Reload
     await page.reload();
 
-    // Piano should still be selected
-    await expect(page.getByRole("radio", { name: "Piano" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("radio", { name: "Full range" })).toHaveAttribute("aria-checked", "true");
   });
 });

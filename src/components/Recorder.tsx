@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic2, Square, Upload, Sparkles } from "lucide-react";
-import { PROFILES, PROFILE_IDS, type ProfileId } from "../lib/instrumentProfiles";
+import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
 import type { RecorderState } from "../hooks/useAudioRecorder";
 import "./Recorder.css";
 
@@ -22,6 +22,8 @@ interface RecorderProps {
   profileId: ProfileId;
   onProfileChange: (id: ProfileId) => void;
 }
+
+const PROFILE_UI_ORDER: readonly ProfileId[] = ["guitar", "default"];
 
 export function Recorder({
   state,
@@ -91,6 +93,7 @@ export function Recorder({
           type="file"
           accept="audio/*"
           className="import-file-input"
+          aria-label="Import audio file"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) onImport(file);
@@ -109,9 +112,9 @@ export function Recorder({
       </div>
 
       <p className="recorder-label">
-        {state === "idle" && !isImporting && "Tap to record"}
-        {state === "recording" && "Recording…"}
-        {(state === "processing" || isImporting) && "Preparing…"}
+        {state === "idle" && !isImporting && "Record a guitar take"}
+        {state === "recording" && "Recording take…"}
+        {(state === "processing" || isImporting) && "Preparing take…"}
       </p>
 
       {error && <p className="recorder-error">{error}</p>}
@@ -138,19 +141,32 @@ export function Recorder({
         </label>
       </div>
 
-      <div className="profile-picker" role="radiogroup" aria-label="Instrument profile">
-        {PROFILE_IDS.map((id) => (
-          <button
-            key={id}
-            className={`profile-pill ${id === profileId ? "active" : ""}`}
-            onClick={() => onProfileChange(id)}
-            disabled={settingsDisabled}
-            role="radio"
-            aria-checked={id === profileId}
-          >
-            {PROFILES[id].label}
-          </button>
-        ))}
+      <div className="profile-panel">
+        <div className="profile-panel__copy">
+          <p className="profile-panel__eyebrow">Detection focus</p>
+          <p className="profile-panel__description">
+            Start with Guitar. Switch to Full range if a clip needs broader note coverage.
+          </p>
+        </div>
+        <div className="profile-picker" role="radiogroup" aria-label="Detection focus">
+          {PROFILE_UI_ORDER.map((id) => (
+            <label
+              key={id}
+              className={`profile-pill ${id === profileId ? "active" : ""} ${settingsDisabled ? "disabled" : ""}`}
+            >
+              <input
+                className="profile-pill__input"
+                type="radio"
+                name="detection-focus"
+                value={id}
+                checked={id === profileId}
+                onChange={() => onProfileChange(id)}
+                disabled={settingsDisabled}
+              />
+              <span>{PROFILES[id].label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       <div className="recorder-action-row">

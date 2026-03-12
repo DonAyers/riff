@@ -10,11 +10,20 @@ export interface InstrumentProfile {
   onsetThreshold: number;
 }
 
-export type ProfileId = "default" | "guitar" | "piano";
+export const PROFILE_IDS = ["default", "guitar"] as const;
+
+export type ProfileId = (typeof PROFILE_IDS)[number];
+
+const FALLBACK_PROFILE_ID: ProfileId = "guitar";
+
+export interface NormalizedStoredProfileId {
+  profileId: ProfileId;
+  didMigrate: boolean;
+}
 
 export const PROFILES: Record<ProfileId, InstrumentProfile> = {
   default: {
-    label: "Default",
+    label: "Full range",
     midiRange: [21, 108],
     maxPolyphony: 5,
     minAmplitude: 0,
@@ -33,16 +42,22 @@ export const PROFILES: Record<ProfileId, InstrumentProfile> = {
     confidenceThreshold: 0.5,
     onsetThreshold: 0.3,
   },
-  piano: {
-    label: "Piano",
-    midiRange: [21, 108],
-    maxPolyphony: 10,
-    minAmplitude: 0.1,
-    minDurationS: 0.03,
-    chordWindowS: 0.2,
-    confidenceThreshold: 0.5,
-    onsetThreshold: 0.3,
-  },
 };
 
-export const PROFILE_IDS = Object.keys(PROFILES) as ProfileId[];
+export function normalizeProfileId(value: string | null | undefined): ProfileId {
+  return normalizeStoredProfileId(value).profileId;
+}
+
+export function normalizeStoredProfileId(value: string | null | undefined): NormalizedStoredProfileId {
+  if (value === "default" || value === "guitar") {
+    return {
+      profileId: value,
+      didMigrate: false,
+    };
+  }
+
+  return {
+    profileId: FALLBACK_PROFILE_ID,
+    didMigrate: value !== null && value !== undefined,
+  };
+}

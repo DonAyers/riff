@@ -2,12 +2,12 @@
  * Integration tests for the instrument-profile → filter → chord-detect pipeline.
  *
  * These simulate realistic DetectedNote output from the ML model (basic-pitch)
- * for guitar and piano recordings of varying quality, then run the full
+ * for guitar recordings of varying quality, then run the full
  * processing chain and verify the profile constraints produce correct results.
  */
 import { describe, expect, it } from "vitest";
 import { mapNoteEvents, filterNotes, getUniquePitchClasses } from "./noteMapper";
-import { detectChord, detectChordsWindowed } from "./chordDetector";
+import { detectChordsWindowed, detectChordTimeline } from "./chordDetector";
 import { PROFILES } from "./instrumentProfiles";
 import type { DetectedNote } from "../hooks/usePitchDetection";
 
@@ -51,25 +51,6 @@ const GUITAR_C_MAJOR_NOISY: DetectedNote[] = [
   note(96, 0.23, 0.8, 0.12),  // C7, above guitar MIDI 88
 ];
 
-/** Clean piano C major — C4 E4 G4, wider amp, longer sustain */
-const PIANO_C_MAJOR_CLEAN: DetectedNote[] = [
-  note(60, 0.20, 2.5, 0.80), // C4
-  note(64, 0.20, 2.4, 0.76), // E4
-  note(67, 0.20, 2.3, 0.74), // G4
-];
-
-/** Piano two chords: C major at 0.2s, then A minor at 3.0s */
-const PIANO_TWO_CHORDS: DetectedNote[] = [
-  // Chord 1: C major
-  note(60, 0.20, 1.5, 0.80), // C4
-  note(64, 0.20, 1.4, 0.76), // E4
-  note(67, 0.20, 1.3, 0.74), // G4
-  // Chord 2: A minor (well separated in time)
-  note(57, 3.00, 1.5, 0.78), // A3
-  note(60, 3.00, 1.4, 0.75), // C4
-  note(64, 3.00, 1.3, 0.73), // E4
-];
-
 /** Guitar A minor — A2 E3 A3 C4 E4, 5-string voicing */
 const GUITAR_AM: DetectedNote[] = [
   note(45, 0.20, 2.0, 0.65), // A2
@@ -87,6 +68,23 @@ const GUITAR_LOW_QUALITY: DetectedNote[] = [
   // Noise just below threshold
   note(40, 0.50, 0.8, 0.10), // E2 ghost — below 0.15
   note(72, 0.33, 0.03, 0.22), // C5 — short but above amp threshold, below dur threshold on guitar (0.05)
+];
+
+/** Guitar C major with a realistic down-strum spread that still belongs to one hit */
+const GUITAR_C_MAJOR_STAGGERED_STRUM: DetectedNote[] = [
+  note(48, 0.20, 1.8, 0.72), // C3
+  note(52, 0.28, 1.7, 0.68), // E3
+  note(55, 0.34, 1.6, 0.70), // G3
+];
+
+/** Two guitar C major strums with long sustain that should still stay separated */
+const GUITAR_C_MAJOR_SEPARATED_STRUMS: DetectedNote[] = [
+  note(48, 0.20, 1.8, 0.72), // C3
+  note(52, 0.28, 1.7, 0.68), // E3
+  note(55, 0.34, 1.6, 0.70), // G3
+  note(48, 0.58, 1.8, 0.71), // C3
+  note(52, 0.66, 1.7, 0.67), // E3
+  note(55, 0.72, 1.6, 0.69), // G3
 ];
 
 // ---------------------------------------------------------------------------
@@ -148,50 +146,34 @@ describe("instrument profile integration — guitar", () => {
     expect(chord!).toContain("C");
   });
 
+  it("staggered guitar strum → clusters one chord event", () => {
+    const mapped = mapNoteEvents(GUITAR_C_MAJOR_STAGGERED_STRUM);
+    const filtered = filterNotes(mapped, profile);
+    const timeline = detectChordTimeline(filtered, profile.chordWindowS);
+
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]?.startTimeS).toBeCloseTo(0.2, 5);
+    expect(timeline[0]?.label).toContain("C");
+  });
+
+  it("separated guitar strums stay in separate chord clusters even with overlapping sustain", () => {
+    const mapped = mapNoteEvents(GUITAR_C_MAJOR_SEPARATED_STRUMS);
+    const filtered = filterNotes(mapped, profile);
+    const timeline = detectChordTimeline(filtered, profile.chordWindowS);
+
+    expect(timeline).toHaveLength(2);
+    expect(timeline[0]?.startTimeS).toBeCloseTo(0.2, 5);
+    expect(timeline[1]?.startTimeS).toBeCloseTo(0.58, 5);
+    expect(timeline[0]?.label).toContain("C");
+    expect(timeline[1]?.label).toContain("C");
+  });
+
   it("default profile does NOT filter noisy artifacts", () => {
     const mapped = mapNoteEvents(GUITAR_C_MAJOR_NOISY);
     const defaultFiltered = filterNotes(mapped, PROFILES.default);
     // Default has no min amplitude or duration filters — keeps everything in MIDI 21-108
     // Only the sub-bass E1 (MIDI 28) stays since 28 ≥ 21
     expect(defaultFiltered.length).toBeGreaterThan(3);
-  });
-});
-
-describe("instrument profile integration — piano", () => {
-  const profile = PROFILES.piano;
-
-  it("clean C major → detects C major chord", () => {
-    const mapped = mapNoteEvents(PIANO_C_MAJOR_CLEAN);
-    const filtered = filterNotes(mapped, profile);
-    expect(filtered).toHaveLength(3);
-
-    const chord = detectChordsWindowed(filtered, profile.chordWindowS);
-    expect(chord).toBeTruthy();
-    expect(chord!).toContain("C");
-  });
-
-  it("two sequential chords → windowed detection picks the larger cluster", () => {
-    const mapped = mapNoteEvents(PIANO_TWO_CHORDS);
-    const filtered = filterNotes(mapped, profile);
-    expect(filtered).toHaveLength(6);
-
-    // With windowing, notes are grouped by proximity.
-    // Cluster 1 at t≈0.2 has CEG (C major), Cluster 2 at t≈3.0 has ACE (A minor).
-    // Both clusters have 3 notes, so the first one found wins.
-    const chord = detectChordsWindowed(filtered, profile.chordWindowS);
-    expect(chord).toBeTruthy();
-  });
-
-  it("without windowing, all notes get pooled (less accurate)", () => {
-    const mapped = mapNoteEvents(PIANO_TWO_CHORDS);
-    const filtered = filterNotes(mapped, profile);
-    const pitchClasses = getUniquePitchClasses(filtered);
-
-    // Pool: A C E G → could detect Am7 or C6 — NOT a clean C major or A minor
-    const chord = detectChord(pitchClasses);
-    expect(chord).toBeTruthy();
-    // The pooled result is "less clean" — it'll include more pitch classes
-    expect(pitchClasses.length).toBe(4); // A, C, E, G all present
   });
 });
 

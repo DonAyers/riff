@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useMidiPlayback } from "./useMidiPlayback";
+import type { MappedNote } from "../lib/noteMapper";
 
 const smplrMocks = vi.hoisted(() => ({
   start: vi.fn(),
@@ -19,6 +20,19 @@ vi.mock("smplr", () => ({
     }
   },
 }));
+
+function note(overrides: Partial<MappedNote> = {}): MappedNote {
+  return {
+    midi: 52,
+    name: "E3",
+    pitchClass: "E",
+    octave: 3,
+    startTimeS: 0,
+    durationS: 0.05,
+    amplitude: 0.4,
+    ...overrides,
+  };
+}
 
 describe("useMidiPlayback", () => {
   beforeEach(() => {
@@ -75,17 +89,7 @@ describe("useMidiPlayback", () => {
     const { result } = renderHook(() => useMidiPlayback());
 
     act(() => {
-      result.current.load([
-        {
-          midi: 52,
-          name: "E3",
-          pitchClass: "E",
-          octave: 3,
-          startTimeS: 0,
-          durationS: 0.05,
-          amplitude: 0.4,
-        },
-      ]);
+      result.current.load([note()]);
     });
 
     await act(async () => {
@@ -98,6 +102,35 @@ describe("useMidiPlayback", () => {
         duration: 0.3,
       })
     );
+  });
+
+  it("shares sustain shaping across a clustered guitar strum without stretching later strums", async () => {
+    const { result } = renderHook(() => useMidiPlayback());
+
+    act(() => {
+      result.current.load([
+        note({ midi: 52, name: "E3", pitchClass: "E", startTimeS: 0 }),
+        note({ midi: 55, name: "G3", pitchClass: "G", startTimeS: 0.08 }),
+        note({ midi: 59, name: "B3", pitchClass: "B", startTimeS: 0.5 }),
+      ]);
+    });
+
+    expect(result.current.duration).toBeCloseTo(0.8, 5);
+
+    await act(async () => {
+      await result.current.play();
+    });
+
+    const playbackByMidi = new Map(
+      smplrMocks.start.mock.calls.map(([args]) => [
+        (args as { note: number }).note,
+        args as { duration: number },
+      ])
+    );
+
+    expect(playbackByMidi.get(52)?.duration).toBeCloseTo(0.38, 5);
+    expect(playbackByMidi.get(55)?.duration).toBeCloseTo(0.3, 5);
+    expect(playbackByMidi.get(59)?.duration).toBeCloseTo(0.3, 5);
   });
 
   it("uses detected note duration when previewing a note", async () => {
@@ -118,5 +151,40 @@ describe("useMidiPlayback", () => {
         velocity: expect.any(Number),
       })
     );
+  });
+
+  it("extends all notes in a guitar strum cluster to share the latest release", async () => {
+    const { result } = renderHook(() => useMidiPlayback("guitar"));
+
+    act(() => {
+      result.current.load([
+        {
+          midi: 52,
+          name: "E3",
+          pitchClass: "E",
+          octave: 3,
+          startTimeS: 0,
+          durationS: 0.2,
+          amplitude: 0.4,
+        },
+        {
+          midi: 55,
+          name: "G3",
+          pitchClass: "G",
+          octave: 3,
+          startTimeS: 0.08,
+          durationS: 0.3,
+          amplitude: 0.42,
+        },
+      ]);
+    });
+
+    await act(async () => {
+      await result.current.play();
+    });
+
+    expect(smplrMocks.start).toHaveBeenCalledTimes(2);
+    expect(smplrMocks.start.mock.calls[0][0].duration).toBeCloseTo(0.5, 5);
+    expect(smplrMocks.start.mock.calls[1][0].duration).toBeCloseTo(0.42, 5);
   });
 });

@@ -63,6 +63,16 @@ describe("detectChordTimeline", () => {
     expect(result[0]?.label).toContain("C");
   });
 
+  it("keeps a staggered strum in one cluster when onsets stay within the chord window", () => {
+    const notes = [note("C", 60, 0, 1), note("E", 64, 0.07, 1), note("G", 67, 0.14, 1)];
+    const result = detectChordTimeline(notes, 0.15);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.startTimeS).toBeCloseTo(0, 5);
+    expect(result[0]?.endTimeS).toBeCloseTo(1.14, 5);
+    expect(result[0]?.chord).toContain("C");
+  });
+
   it("returns one event per time cluster", () => {
     const notes = [
       note("C", 60, 0),
@@ -77,5 +87,23 @@ describe("detectChordTimeline", () => {
     expect(result).toHaveLength(2);
     expect(result[0]?.label).toContain("C");
     expect(result[1]?.label).toContain("F");
+  });
+
+  it("separates repeated strums when their onset anchors fall outside the chord window", () => {
+    const notes = [
+      note("C", 60, 0, 1),
+      note("E", 64, 0.05, 1),
+      note("G", 67, 0.1, 1),
+      note("C", 72, 0.35, 1),
+      note("E", 76, 0.4, 1),
+      note("G", 79, 0.45, 1),
+    ];
+    const result = detectChordTimeline(notes, 0.15);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]?.startTimeS).toBeCloseTo(0, 5);
+    expect(result[1]?.startTimeS).toBeCloseTo(0.35, 5);
+    expect(result[0]?.label).toContain("C");
+    expect(result[1]?.label).toContain("C");
   });
 });

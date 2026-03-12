@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { PROFILES, PROFILE_IDS, type ProfileId } from "./instrumentProfiles";
+import {
+  normalizeProfileId,
+  normalizeStoredProfileId,
+  PROFILES,
+  PROFILE_IDS,
+  type ProfileId,
+} from "./instrumentProfiles";
 
 describe("instrumentProfiles", () => {
-  it("exposes default, guitar, and piano profile ids", () => {
-    expect(PROFILE_IDS).toContain("default");
-    expect(PROFILE_IDS).toContain("guitar");
-    expect(PROFILE_IDS).toContain("piano");
+  it("exposes only the shared default and guitar profile ids", () => {
+    expect(PROFILE_IDS).toEqual(["default", "guitar"]);
   });
 
   it.each(PROFILE_IDS)("profile '%s' has valid midi range", (id: ProfileId) => {
@@ -22,5 +26,24 @@ describe("instrumentProfiles", () => {
 
   it("guitar profile filters out low sub-bass notes", () => {
     expect(PROFILES.guitar.midiRange[0]).toBeGreaterThanOrEqual(40);
+  });
+
+  it("falls back to the guitar-first profile for stale or unknown ids", () => {
+    expect(normalizeProfileId("default")).toBe("default");
+    expect(normalizeProfileId("guitar")).toBe("guitar");
+    // Preserve a smooth upgrade path for older installs that still have the
+    // removed piano profile persisted locally.
+    expect(normalizeProfileId("piano")).toBe("guitar");
+    expect(normalizeProfileId("banjo")).toBe("guitar");
+    expect(normalizeProfileId(null)).toBe("guitar");
+  });
+
+  it("marks only stale stored profile ids for migration cleanup", () => {
+    expect(normalizeStoredProfileId("default")).toEqual({ profileId: "default", didMigrate: false });
+    expect(normalizeStoredProfileId("guitar")).toEqual({ profileId: "guitar", didMigrate: false });
+    expect(normalizeStoredProfileId("piano")).toEqual({ profileId: "guitar", didMigrate: true });
+    expect(normalizeStoredProfileId("banjo")).toEqual({ profileId: "guitar", didMigrate: true });
+    expect(normalizeStoredProfileId(null)).toEqual({ profileId: "guitar", didMigrate: false });
+    expect(normalizeStoredProfileId(undefined)).toEqual({ profileId: "guitar", didMigrate: false });
   });
 });
