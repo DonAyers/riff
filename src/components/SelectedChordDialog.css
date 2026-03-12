@@ -6,21 +6,22 @@
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 1rem;
+  padding: 0;
 }
 
 .selected-chord-sheet {
-  width: min(100%, 520px);
+  width: 100%;
   max-height: calc(100vh - 2rem);
   background:
     radial-gradient(circle at top right, rgba(130, 98, 255, 0.16), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
     var(--surface-strong);
   border: 1px solid var(--surface-border-strong);
-  border-radius: 28px;
-  padding: 1.5rem;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--space-xl);
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   display: grid;
   gap: 1.25rem;
   position: relative;
@@ -92,41 +93,45 @@
 
 .selected-chord-sheet__empty {
   min-height: 280px;
-  border-radius: 24px;
+  border-radius: var(--radius-lg);
   border: 1px dashed rgba(255, 255, 255, 0.12);
   background: var(--surface-soft);
   color: var(--fg-muted);
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 1.5rem;
+  padding: var(--space-xl);
 }
 
 .selected-chord-sheet__actions {
   display: flex;
-  gap: 0.75rem;
+  flex-direction: column-reverse;
+  gap: var(--space-md);
   justify-content: flex-end;
   flex-wrap: wrap;
 }
 
-@media (max-width: 640px) {
+.selected-chord-sheet__actions > button {
+  width: 100%;
+}
+
+@media (min-width: 600px) {
   .selected-chord-backdrop {
-    align-items: flex-end;
-    padding: 0;
+    align-items: center;
+    padding: var(--space-lg);
   }
 
   .selected-chord-sheet {
-    width: 100%;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    width: min(100%, 520px);
+    border-radius: var(--radius-xl);
+    padding-bottom: var(--space-xl);
   }
 
   .selected-chord-sheet__actions {
-    flex-direction: column-reverse;
+    flex-direction: row;
   }
 
   .selected-chord-sheet__actions > button {
-    width: 100%;
+    width: auto;
   }
 }

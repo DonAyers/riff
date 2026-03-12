@@ -1,0 +1,63 @@
+/* ── Design tokens ──
+   Single source of truth for spacing, radii, typography, shadows, and transitions.
+   Breakpoint constants (can't use vars in @media):
+     tablet  →  600px   (min-width)
+     laptop  →  960px   (min-width)
+*/
+
+:root {
+  /* ── Colors (moved from index.css) ── */
+  --bg: #050611;
+  --surface: rgba(14, 16, 33, 0.9);
+  --surface-strong: rgba(20, 23, 44, 0.96);
+  --surface-soft: rgba(255, 255, 255, 0.035);
+  --surface-border: rgba(130, 98, 255, 0.18);
+  --surface-border-strong: rgba(130, 98, 255, 0.28);
+  --fg: #f4f5fb;
+  --fg-muted: #8d90b4;
+  --accent: #8262ff;
+  --accent-dim: rgba(130, 98, 255, 0.14);
+  --accent-glow: rgba(130, 98, 255, 0.35);
+  --danger: #f87171;
+
+  /* ── Spacing (4px base) ── */
+  --space-2xs: 0.125rem;
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  --space-3xl: 3rem;
+
+  /* ── Border radius ── */
+  --radius-xs: 3px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-full: 999px;
+
+  /* ── Typography ── */
+  --font-sans: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: clamp(1.8rem, 2.6vw, 2.35rem);
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.24);
+  --shadow-lg: 0 28px 80px rgba(0, 0, 0, 0.34);
+
+  /* ── Transitions ── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.22s;
+  --duration-slow: 0.32s;
+}

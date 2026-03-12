@@ -1,12 +1,12 @@
 .playback {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-md);
   width: 100%;
     min-width: 0;
     padding: 0.95rem 1rem;
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--surface-soft);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
 }
 
