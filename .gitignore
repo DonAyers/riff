@@ -16,3 +16,4 @@ tsconfig.tsbuildinfo
 .claude/skills/
 .claude/settings.local.json
 skills/
+skills-lock.json
