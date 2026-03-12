@@ -20,6 +20,7 @@ const {
   mockSavePcmToOpfs,
   mockSaveBlobToOpfs,
   mockDetectChordTimeline,
+  mockDetectChordsWindowed,
   mockDetectKey,
   mockDetectChord,
   mockFormatChordName,
@@ -40,6 +41,7 @@ const {
   mockSavePcmToOpfs: vi.fn(),
   mockSaveBlobToOpfs: vi.fn(),
   mockDetectChordTimeline: vi.fn(),
+  mockDetectChordsWindowed: vi.fn(),
   mockDetectKey: vi.fn(),
   mockDetectChord: vi.fn(),
   mockFormatChordName: vi.fn(),
@@ -115,7 +117,7 @@ vi.mock("../lib/chordDetector", () => ({
   detectChord: mockDetectChord,
   detectChordTimeline: mockDetectChordTimeline,
   formatChordName: mockFormatChordName,
-  detectChordsWindowed: vi.fn(() => null),
+  detectChordsWindowed: mockDetectChordsWindowed,
 }));
 
 describe("useRiffSession", () => {
@@ -144,6 +146,7 @@ describe("useRiffSession", () => {
     mockSavePcmToOpfs.mockReset();
     mockSaveBlobToOpfs.mockReset();
     mockDetectChordTimeline.mockReset().mockReturnValue([]);
+    mockDetectChordsWindowed.mockReset().mockReturnValue(null);
     mockDetectKey.mockReset().mockReturnValue({ primary: null, alternatives: [], ranked: [], lowConfidence: true });
     mockDetectChord.mockReset().mockReturnValue(null);
     mockFormatChordName.mockReset().mockImplementation((value: string) => value);
@@ -195,5 +198,97 @@ describe("useRiffSession", () => {
     });
 
     expect(mockDetectChordTimeline).toHaveBeenCalledWith(expect.any(Array), PROFILES.piano.chordWindowS);
+  });
+
+  it("defaults to guitar when no stored profile exists", async () => {
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    expect(result.current.profileId).toBe("guitar");
+  });
+
+  it("restores a stored piano profile", async () => {
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn((key: string) => (key === "riff:instrument-profile" ? "piano" : null)),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    expect(result.current.profileId).toBe("piano");
+  });
+
+  it("analyzes takes with the guitar-first detection profile by default", async () => {
+    const sourceAudio = new Float32Array([0.1, -0.1, 0.2]);
+    mockDetect.mockResolvedValue({
+      audio: sourceAudio,
+      notes: [
+        {
+          pitchMidi: 60,
+          startTimeS: 0,
+          durationS: 0.25,
+          amplitude: 0.8,
+        },
+        {
+          pitchMidi: 28,
+          startTimeS: 0.1,
+          durationS: 0.25,
+          amplitude: 0.8,
+        },
+      ],
+    });
+    mockDetectChordsWindowed.mockReturnValue("CM");
+    mockFormatChordName.mockReturnValue("C Major");
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.handleAnalyze(sourceAudio);
+    });
+
+    expect(mockDetect).toHaveBeenCalledWith(sourceAudio, {
+      confidenceThreshold: PROFILES.guitar.confidenceThreshold,
+      onsetThreshold: PROFILES.guitar.onsetThreshold,
+      maxPolyphony: PROFILES.guitar.maxPolyphony,
+    });
+    expect(mockDetectChordTimeline).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          midi: 60,
+          pitchClass: "C",
+        }),
+      ],
+      PROFILES.guitar.chordWindowS,
+    );
+    expect(mockDetectChordsWindowed).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          midi: 60,
+        }),
+      ],
+      PROFILES.guitar.chordWindowS,
+    );
+    expect(mockDetectChord).not.toHaveBeenCalled();
+    expect(mockMidiLoad).toHaveBeenCalledWith([
+      expect.objectContaining({
+        midi: 60,
+      }),
+    ]);
+    expect(result.current.notes).toHaveLength(1);
+    expect(result.current.notes[0]?.midi).toBe(60);
+    expect(result.current.chord).toBe("C Major");
   });
 });

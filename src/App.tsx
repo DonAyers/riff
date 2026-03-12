@@ -188,7 +188,7 @@ function App() {
                         <NoteDisplay
                           notes={uniqueNotes}
                           onNoteClick={(note) => {
-                            void midiPlayback.previewNote(note.midi, note.amplitude);
+                            void midiPlayback.previewNote(note);
                           }}
                         />
                       </div>
@@ -271,7 +271,7 @@ function App() {
                       <NoteDisplay
                         notes={uniqueNotes}
                         onNoteClick={(note) => {
-                          void midiPlayback.previewNote(note.midi, note.amplitude);
+                          void midiPlayback.previewNote(note);
                         }}
                       />
                       <ExportPanel

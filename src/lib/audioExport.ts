@@ -59,6 +59,9 @@ interface MidiEvent {
   bytes: number[];
 }
 
+const DEFAULT_MIDI_CHANNEL = 0;
+const ACOUSTIC_GUITAR_STEEL_PROGRAM = 25;
+
 /** Write a MIDI variable-length quantity. */
 function writeVLQ(value: number): number[] {
   if (value < 0) value = 0;
@@ -80,7 +83,7 @@ function writeVLQ(value: number): number[] {
 export function exportToMidi(notes: MappedNote[], bpm: number = 120): Blob {
   const ticksPerBeat = 480;
   const ticksPerSec = (ticksPerBeat * bpm) / 60;
-  const channel = 0;
+  const channel = DEFAULT_MIDI_CHANNEL;
 
   // Build absolute-tick events
   const events: MidiEvent[] = [];
@@ -121,6 +124,10 @@ export function exportToMidi(notes: MappedNote[], bpm: number = 120): Blob {
   trackBytes.push((microsPerBeat >> 16) & 0xff);
   trackBytes.push((microsPerBeat >> 8) & 0xff);
   trackBytes.push(microsPerBeat & 0xff);
+
+  // Default exported instrument to acoustic steel guitar.
+  trackBytes.push(0x00); // delta-time = 0
+  trackBytes.push(0xc0 | channel, ACOUSTIC_GUITAR_STEEL_PROGRAM);
 
   // Note events with delta-time encoding
   let prevTick = 0;

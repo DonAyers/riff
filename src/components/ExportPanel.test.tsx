@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ExportPanel } from "./ExportPanel";
 import type { MappedNote } from "../lib/noteMapper";
 import * as audioExport from "../lib/audioExport";
@@ -7,6 +7,7 @@ import * as audioExport from "../lib/audioExport";
 vi.mock("../lib/audioExport", () => ({
   encodeWav: vi.fn(() => new Blob(["wav"], { type: "audio/wav" })),
   exportToMidi: vi.fn(() => new Blob(["midi"], { type: "audio/midi" })),
+  exportToMp3: vi.fn(() => Promise.resolve(new Blob(["mp3"], { type: "audio/mp3" }))),
   downloadBlob: vi.fn(),
 }));
 
@@ -30,6 +31,10 @@ const defaultProps = {
 };
 
 describe("ExportPanel", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("renders nothing when visible is false", () => {
     const { container } = render(
       <ExportPanel {...defaultProps} visible={false} />,
@@ -42,6 +47,7 @@ describe("ExportPanel", () => {
     expect(screen.getByText("Export")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export as midi/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export as wav/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /export as mp3/i })).toBeInTheDocument();
   });
 
   it("has an accessible group role", () => {
@@ -57,6 +63,11 @@ describe("ExportPanel", () => {
   it("disables WAV button when pcmAudio is null", () => {
     render(<ExportPanel {...defaultProps} pcmAudio={null} />);
     expect(screen.getByRole("button", { name: /export as wav/i })).toBeDisabled();
+  });
+
+  it("disables MP3 button when pcmAudio is null", () => {
+    render(<ExportPanel {...defaultProps} pcmAudio={null} />);
+    expect(screen.getByRole("button", { name: /export as mp3/i })).toBeDisabled();
   });
 
   it("does not render native export button when compressedBlob is null", () => {
@@ -106,6 +117,19 @@ describe("ExportPanel", () => {
     expect(audioExport.downloadBlob).toHaveBeenCalledWith(
       expect.any(Blob),
       "Test-Riff.wav",
+    );
+  });
+
+  it("calls exportToMp3 and downloadBlob when MP3 button is clicked", async () => {
+    render(<ExportPanel {...defaultProps} />);
+    fireEvent.click(screen.getByRole("button", { name: /export as mp3/i }));
+
+    await waitFor(() => {
+      expect(audioExport.exportToMp3).toHaveBeenCalledWith(defaultProps.pcmAudio);
+    });
+    expect(audioExport.downloadBlob).toHaveBeenCalledWith(
+      expect.any(Blob),
+      "Test-Riff.mp3",
     );
   });
 

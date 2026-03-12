@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { encodeWav, exportToMidi, downloadBlob } from "./audioExport";
+import { encodeWav, exportToMidi, downloadBlob, exportToMp3 } from "./audioExport";
 import type { MappedNote } from "./noteMapper";
 
 // ---------------------------------------------------------------------------
@@ -156,6 +156,14 @@ describe("exportToMidi", () => {
     expect((b1 << 16) | (b2 << 8) | b3).toBe(microsPerBeat);
   });
 
+  it("emits an acoustic guitar program change before note events", async () => {
+    const view = await blobToDataView(exportToMidi([makeNote()]));
+
+    expect(view.getUint8(29)).toBe(0x00);
+    expect(view.getUint8(30)).toBe(0xc0);
+    expect(view.getUint8(31)).toBe(25);
+  });
+
   it("ends with an End of Track meta event (FF 2F 00)", async () => {
     const buf = await exportToMidi([makeNote()]).arrayBuffer();
     const bytes = new Uint8Array(buf);
@@ -302,5 +310,69 @@ describe("downloadBlob", () => {
     vi.advanceTimersByTime(200);
     expect(removed).toHaveLength(1);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// exportToMp3
+// ---------------------------------------------------------------------------
+
+describe("exportToMp3", () => {
+  const workers: {
+    onmessage: ((event: MessageEvent) => void) | null;
+    onerror: ((event: ErrorEvent) => void) | null;
+    postMessage: ReturnType<typeof vi.fn>;
+    terminate: ReturnType<typeof vi.fn>;
+  }[] = [];
+
+  beforeEach(() => {
+    workers.length = 0;
+
+    class MockWorker {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      onerror: ((event: ErrorEvent) => void) | null = null;
+      postMessage = vi.fn();
+      terminate = vi.fn();
+
+      constructor() {
+        workers.push(this);
+      }
+    }
+
+    vi.stubGlobal("Worker", MockWorker as unknown as typeof Worker);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("posts PCM audio to the encoder worker and resolves with the encoded blob", async () => {
+    const pcmAudio = new Float32Array([0.1, -0.2]);
+    const promise = exportToMp3(pcmAudio, 44100);
+    const worker = workers[0];
+    const encodedBlob = new Blob(["mp3"], { type: "audio/mp3" });
+
+    expect(worker?.postMessage).toHaveBeenCalledWith({
+      pcmAudio,
+      sampleRate: 44100,
+    });
+
+    worker?.onmessage?.({
+      data: { blob: encodedBlob },
+    } as MessageEvent);
+
+    await expect(promise).resolves.toBe(encodedBlob);
+    expect(worker?.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects and terminates the worker when encoding fails", async () => {
+    const promise = exportToMp3(new Float32Array([0.1]));
+    const worker = workers[0];
+    const errorEvent = new ErrorEvent("error", { message: "worker failed" });
+
+    worker?.onerror?.(errorEvent);
+
+    await expect(promise).rejects.toBe(errorEvent);
+    expect(worker?.terminate).toHaveBeenCalledTimes(1);
   });
 });

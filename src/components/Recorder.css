@@ -231,6 +231,21 @@
 }
 
 /* Profile picker pills */
+.profile-picker-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.profile-picker-label {
+  margin: 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
 .profile-picker {
   display: flex;
   gap: 0.35rem;

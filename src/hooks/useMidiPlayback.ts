@@ -2,18 +2,30 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Soundfont } from "smplr";
 import type { MappedNote } from "../lib/noteMapper";
 
+const DEFAULT_INSTRUMENT = "acoustic_guitar_steel";
+const GUITAR_SUSTAIN_FLOOR_S = 0.18;
+const GUITAR_RELEASE_TAIL_S = 0.12;
+
 export interface UseMidiPlaybackReturn {
   load: (notes: MappedNote[]) => void;
   play: () => Promise<void>;
-  previewNote: (midi: number, amplitude?: number) => Promise<void>;
+  previewNote: (note: Pick<MappedNote, "midi" | "amplitude" | "durationS">) => Promise<void>;
   stop: () => void;
   isPlaying: boolean;
   duration: number;
 }
 
-function getDuration(notes: MappedNote[]): number {
+function getPlaybackDuration(durationS: number): number {
+  return Math.max(durationS, GUITAR_SUSTAIN_FLOOR_S) + GUITAR_RELEASE_TAIL_S;
+}
+
+function getDuration(notes: Pick<MappedNote, "startTimeS" | "durationS">[]): number {
   if (notes.length === 0) return 0;
-  return Math.max(...notes.map((n) => n.startTimeS + n.durationS));
+  return Math.max(...notes.map((note) => note.startTimeS + getPlaybackDuration(note.durationS)));
+}
+
+function getVelocity(amplitude = 0.2, minVelocity = 10): number {
+  return Math.max(minVelocity, Math.min(100, Math.round(amplitude * 127 * 3)));
 }
 
 export function useMidiPlayback(): UseMidiPlaybackReturn {
@@ -36,7 +48,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     if (!samplerRef.current) {
       const ctx = getAudioContext();
       samplerRef.current = new Soundfont(ctx, {
-        instrument: "acoustic_grand_piano",
+        instrument: DEFAULT_INSTRUMENT,
       });
     }
     return samplerRef.current;
@@ -84,13 +96,13 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     const clipDuration = getDuration(notes);
 
     for (const note of notes) {
-      const velocity = Math.max(10, Math.min(100, Math.round((note.amplitude || 0.2) * 127 * 3))); // Scale amplitude safely
-      
+      const velocity = getVelocity(note.amplitude);
+
       sampler.start({
         note: note.midi,
         velocity,
         time: startAt + note.startTimeS,
-        duration: note.durationS,
+        duration: getPlaybackDuration(note.durationS),
       });
     }
 
@@ -100,22 +112,21 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     }, Math.ceil((clipDuration + 0.1) * 1000));
   }, [clearPlayback, getAudioContext, getSampler]);
 
-  const previewNote = useCallback(async (midi: number, amplitude = 0.2) => {
+  const previewNote = useCallback(async (note: Pick<MappedNote, "midi" | "amplitude" | "durationS">) => {
     const ctx = getAudioContext();
     if (ctx.state === "suspended") {
       await ctx.resume();
     }
 
     const sampler = getSampler();
-    
-    // Scale basic-pitch amplitude (usually 0.1-0.4) to 0-127 velocity
-    const velocity = Math.max(20, Math.min(100, Math.round(amplitude * 127 * 3)));
-    
+
+    const velocity = getVelocity(note.amplitude, 20);
+
     sampler.start({
-      note: midi,
+      note: note.midi,
       velocity,
       time: ctx.currentTime,
-      duration: 0.5,
+      duration: getPlaybackDuration(note.durationS),
     });
   }, [getAudioContext, getSampler]);
 

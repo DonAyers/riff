@@ -1,55 +1,34 @@
 import { expect, test } from "@playwright/test";
-import path from "node:path";
-
-const fixtureFile = path.resolve(
-  process.cwd(),
-  "tests",
-  "fixtures",
-  "known-c-major.wav",
-);
+import { gotoApp, importAndAnalyzeFixture } from "./helpers";
 
 test("export buttons appear after importing and analysing audio", async ({ page }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 
-  await page.goto("/");
+  await gotoApp(page);
+  await importAndAnalyzeFixture(page);
 
-  // Enable auto-process so import triggers analysis
-  const autoCheckbox = page.getByRole("checkbox", { name: /auto-process after recording/i });
-  await autoCheckbox.check();
-
-  // Import the fixture file
-  const fileInput = page.locator(".import-file-input");
-  await fileInput.setInputFiles(fixtureFile);
-
-  // Wait for analysis to complete
-  await expect(page.getByText("Notes Detected")).toBeVisible({ timeout: 60000 });
-
-  // Export panel should be visible with MIDI and WAV buttons
+  // Export panel should be visible with the current song-lane export options.
   const exportGroup = page.getByRole("group", { name: /export options/i });
   await expect(exportGroup).toBeVisible({ timeout: 10000 });
 
-  await expect(page.getByRole("button", { name: /export as midi/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /export as midi/i })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Export as MIDI" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export as MIDI" })).toBeEnabled();
 
-  await expect(page.getByRole("button", { name: /export as wav/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /export as wav/i })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Export as WAV" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export as WAV" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Export as MP3" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export as MP3" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: /export original audio/i })).toHaveCount(0);
 });
 
 test("MIDI export triggers a download", async ({ page }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 
-  await page.goto("/");
-
-  const autoCheckbox = page.getByRole("checkbox", { name: /auto-process after recording/i });
-  await autoCheckbox.check();
-
-  const fileInput = page.locator(".import-file-input");
-  await fileInput.setInputFiles(fixtureFile);
-
-  await expect(page.getByText("Notes Detected")).toBeVisible({ timeout: 60000 });
+  await gotoApp(page);
+  await importAndAnalyzeFixture(page);
 
   // Wait for the MIDI export button and trigger download
-  const midiBtn = page.getByRole("button", { name: /export as midi/i });
+  const midiBtn = page.getByRole("button", { name: "Export as MIDI" });
   await expect(midiBtn).toBeEnabled({ timeout: 10000 });
 
   const [download] = await Promise.all([
@@ -61,19 +40,12 @@ test("MIDI export triggers a download", async ({ page }) => {
 });
 
 test("WAV export triggers a download", async ({ page }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 
-  await page.goto("/");
+  await gotoApp(page);
+  await importAndAnalyzeFixture(page);
 
-  const autoCheckbox = page.getByRole("checkbox", { name: /auto-process after recording/i });
-  await autoCheckbox.check();
-
-  const fileInput = page.locator(".import-file-input");
-  await fileInput.setInputFiles(fixtureFile);
-
-  await expect(page.getByText("Notes Detected")).toBeVisible({ timeout: 60000 });
-
-  const wavBtn = page.getByRole("button", { name: /export as wav/i });
+  const wavBtn = page.getByRole("button", { name: "Export as WAV" });
   await expect(wavBtn).toBeEnabled({ timeout: 10000 });
 
   const [download] = await Promise.all([
