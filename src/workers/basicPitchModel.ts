@@ -1,5 +1,8 @@
 import * as tf from "@tensorflow/tfjs";
 
+// Suppress TF.js internal console warnings/logs in production and dev
+tf.env().set("PROD", true);
+
 interface WeightsManifestGroup {
   paths: string[];
   weights: tf.io.WeightsManifestEntry[];
