@@ -246,7 +246,7 @@ Resolved — the two stories map to **two distinct interaction modes ("lanes")**
 | **Primary output** | Key detection + chord timeline | Chord name + fretboard diagram |
 | **Secondary output** | Relative key, note summary | Alternate voicing, substitution suggestion |
 | **Analysis depth** | Whole-recording pitch histogram → key | Single-cluster chord detection |
-| **UI emphasis** | Piano roll / timeline view | Large chord diagram, Phrase & Variate buttons |
+| **UI emphasis** | Note timeline view | Large chord diagram, Phrase & Variate buttons |
 
 ### Lane switching
 

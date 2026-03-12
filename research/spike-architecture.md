@@ -1,7 +1,7 @@
 # Riff — Research Spike: Serverless, In-Browser Music App Architecture
 
 > **Date:** 2026-03-08  
-> **Scope:** Evaluate the current stack, compare to alternatives, audit cross-device audio concerns, and produce actionable recommendations for a fully server-free, installable music tool.
+> **Scope:** Evaluate the current stack, compare to alternatives, audit cross-device audio concerns, and produce actionable recommendations for a fully server-free, installable guitar transcription tool.
 
 ---
 
@@ -12,7 +12,7 @@ Riff is a single-page, server-free PWA that:
 1. Captures raw microphone audio in the browser
 2. Runs a neural-network pitch detector (Spotify's Basic Pitch) entirely client-side via TensorFlow.js
 3. Converts detected MIDI events to note names and chords using the Tonal music-theory library
-4. Displays a piano-roll timeline, note chips, and chord name
+4. Displays a guitar-friendly note timeline, note chips, and chord name
 5. Can play back the original recording (WAV) or a synthesized MIDI version (Web Audio oscillators)
 
 No audio ever leaves the device. There is no account, no backend, and no subscription.
@@ -345,9 +345,9 @@ Main Thread                    Worker
     │◄──[NoteEventTime[]]──       │
 ```
 
-### OffscreenCanvas for the piano roll
+### OffscreenCanvas for the note timeline
 
-The `PianoRoll` component currently uses DOM divs positioned with inline styles. For large numbers of notes this is inefficient. An `OffscreenCanvas` approach (drawing directly in a Worker) would be faster but is an optimization for later — the current DOM approach is adequate for typical riff lengths (< 100 notes).
+The `PianoRoll` component currently uses DOM divs positioned with inline styles to render the note timeline. For large numbers of notes this is inefficient. An `OffscreenCanvas` approach (drawing directly in a Worker) would be faster but is an optimization for later — the current DOM approach is adequate for typical riff lengths (< 100 notes).
 
 ### AudioContext lifecycle
 
@@ -376,7 +376,7 @@ The current code creates a new `AudioContext` per recording session. `AudioConte
 | Pitch detection | ✅ Neural | ❌ None | ✅ (simple) | ❌ None |
 | No backend | ✅ | ❌ | ✅ | ❌ |
 | Chord detection | ✅ | ❌ | ❌ | ❌ |
-| Piano roll | ✅ | ✅ | ✅ | ✅ |
+| Note timeline | ✅ | ✅ | ✅ | ✅ |
 
 ### Technology stack comparisons
 

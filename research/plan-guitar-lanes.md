@@ -15,7 +15,7 @@ The app will present two distinct interaction modes sharing a single recorder:
 | **When** | Record / import a multi-bar clip | Play a single chord / short strum |
 | **Input** | Long recording (≥ ~3 s) | Short burst (< ~3 s) |
 | **Primary result** | Detected key + chord timeline | Chord name + fretboard diagram |
-| **Secondary result** | Relative key, note summary, piano roll | Alternate voicing, substitution suggestion |
+| **Secondary result** | Relative key, note summary, note timeline | Alternate voicing, substitution suggestion |
 
 **Lane switching:** Explicit "Song" | "Chord" toggle at the top of the UI. Optional auto-detect heuristic (< 3 s with a single note cluster → Chord lane) can default the toggle after analysis; user can always override.
 

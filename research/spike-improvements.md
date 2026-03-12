@@ -186,7 +186,7 @@ If the internal format is already WebM/Opus or MP4/AAC, offer that blob as-is fo
 │ Chord: C Major                       │
 │ Notes: C4  E4  G4                    │
 │ ┌────────────────────────────┐       │
-│ │     Piano Roll             │       │
+│ │   Guitar Note Timeline     │       │
 │ └────────────────────────────┘       │
 │                                      │
 │ ▶ Play Recording   ▶ Play MIDI      │
@@ -236,7 +236,7 @@ If the internal format is already WebM/Opus or MP4/AAC, offer that blob as-is fo
 
 #### C1b. Code-split the analysis panel — saves perceived load time
 
-Currently everything loads in one chunk. The analysis components (PianoRoll, ChordDisplay, NoteDisplay) and the pitch detection worker are only needed after recording. Lazy-loading them would reduce the initial JS parse time:
+Currently everything loads in one chunk. The analysis components (`PianoRoll`, `ChordDisplay`, `NoteDisplay`) and the pitch detection worker are only needed after recording. Lazy-loading them would reduce the initial JS parse time:
 
 ```tsx
 const PianoRoll = lazy(() => import('./components/PianoRoll'));
@@ -299,7 +299,7 @@ Each `load()` call in `useAudioPlayback` creates a new `Audio()` element and blo
 
 #### C3a. Skeleton/shimmer states
 
-Show lightweight skeleton placeholders for the piano roll and note display regions while analysis is running, rather than just a progress bar. This signals to the user that content is coming.
+Show lightweight skeleton placeholders for the note timeline and note display regions while analysis is running, rather than just a progress bar. This signals to the user that content is coming.
 
 #### C3b. Optimistic save
 
@@ -434,9 +434,9 @@ Add a waveform display during/after recording. This gives visual feedback that a
 - After recording: static waveform of the full clip (rendered from Float32Array)
 - Can be lightweight — canvas-based, 2-3 KB of code
 
-### F2. Playback position indicator on piano roll
+### F2. Playback position indicator on note timeline
 
-Sync a vertical playhead line on the PianoRoll with audio playback position. Users can see which notes are playing in real time. Requires:
+Sync a vertical playhead line on the `PianoRoll` note timeline with audio playback position. Users can see which notes are playing in real time. Requires:
 - `requestAnimationFrame` loop during playback
 - `audioElement.currentTime` or manual timer for MIDI playback
 - CSS transform for the playhead position (GPU-accelerated)
@@ -457,7 +457,7 @@ Simple onset-based BPM detection works well for rhythmic riffs. Fall back to 120
 
 ### F4. Riff comparison / history
 
-Allow users to compare two riffs side-by-side (e.g., "Practice take 1" vs "Practice take 5"). Show overlapping piano rolls or diff the note lists. Useful for tracking practice progress.
+Allow users to compare two riffs side-by-side (e.g., "Practice take 1" vs "Practice take 5"). Show overlapping note timelines or diff the note lists. Useful for tracking practice progress.
 
 ### F5. Share via URL
 
@@ -505,7 +505,7 @@ Currently dark-only. Adding a light theme improves usability in bright environme
 | 7 | Dual-rate capture (native for playback, 22K for analysis) | E1 | Medium |
 | 8 | MP3 export via lamejs | B3 | Medium |
 | 9 | Waveform visualization | F1 | Medium |
-| 10 | Playback position on piano roll | F2 | Medium |
+| 10 | Playback position on note timeline | F2 | Medium |
 | 11 | 24-bit WAV export option | E2 | Small |
 | 12 | Skeleton states during analysis | C3a | Small |
 

@@ -194,16 +194,16 @@ These are P0/P1 blockers: correctness issues, a deprecated API, and the missing 
 
 ---
 
-### Task 10 · Improve MIDI Playback with SoundFont or Sampler `P3`
+### Task 10 · Improve MIDI Playback with Guitar SoundFont or Sampler `P3`
 
-**Why:** The current triangle-wave oscillator playback sounds robotic. Real instrument samples would be significantly more useful for verifying transcription.
+**Why:** The current triangle-wave oscillator playback sounds robotic. Guitar-oriented samples would be significantly more useful for verifying transcription in the product's guitar-first flow.
 
 **Steps:**
 1. Evaluate `WebAudioFont` (static SoundFont samples, no server) or `Tone.js` sampler.
-2. Bundle a small piano SoundFont (a single octave of samples can cover the full range via pitch-shifting).
+2. Bundle a small acoustic guitar SoundFont or sampler patch that can cover the instrument range via pitch-shifting.
 3. Replace oscillator playback in `useMidiPlayback.ts`.
 
-**Done when:** MIDI playback uses piano samples instead of oscillators.
+**Done when:** MIDI playback uses guitar-oriented samples instead of oscillators.
 
 ---
 
