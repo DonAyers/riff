@@ -5,12 +5,19 @@ import { useAudioPlayback } from "./useAudioPlayback";
 import { useMidiPlayback } from "./useMidiPlayback";
 import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes, filterNotes, type MappedNote } from "../lib/noteMapper";
 import { detectChord, detectChordTimeline, formatChordName, detectChordsWindowed, type ChordEvent } from "../lib/chordDetector";
-import { listRiffs, saveRiff, type StoredRiff } from "../lib/db";
+import { saveSession, listSessions, deleteSession, type RiffSession } from "../lib/db";
 import { readPcmFromOpfs, savePcmToOpfs, saveBlobToOpfs, readBlobFromOpfs } from "../lib/audioStorage";
 import { decodeAudioFile } from "../lib/audioImport";
 import { encodeCompressed, mimeToExtension, type AudioFormat } from "../lib/audioEncoder";
 import { PROFILES, normalizeStoredProfileId, type ProfileId } from "../lib/instrumentProfiles";
 import { detectKey, type KeyDetection } from "../lib/keyDetector";
+
+/** Derive sorted, unique pitch-class names from a notes array. */
+function deriveUniqueNoteNames(notes: readonly MappedNote[]): string[] {
+  const seen = new Set<string>();
+  for (const n of notes) seen.add(n.pitchClass);
+  return [...seen].sort();
+}
 
 const DEMO_NOTES: MappedNote[] = [
   { midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 0.45, amplitude: 0.8 },
@@ -42,7 +49,7 @@ export function useRiffSession() {
   const [hasRecording, setHasRecording] = useState(false);
   const [hasPendingAnalysis, setHasPendingAnalysis] = useState(false);
   const [autoProcess, setAutoProcess] = useState(() => localStorage.getItem("riff:auto-process") === "true");
-  const [savedRiffs, setSavedRiffs] = useState<StoredRiff[]>([]);
+  const [savedRiffs, setSavedRiffs] = useState<RiffSession[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [storageFormat, setStorageFormat] = useState<AudioFormat>(() => {
@@ -50,10 +57,13 @@ export function useRiffSession() {
     return stored === "compressed" ? "compressed" : "pcm";
   });
   const [activeRiffName, setActiveRiffName] = useState("riff");
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
   const [compressedMime, setCompressedMime] = useState<string | null>(null);
 
   const pendingAudioRef = useRef<Float32Array | null>(null);
+  /** Tracks import context so handleAnalyze can set source/importFileName. */
+  const importContextRef = useRef<{ fileName: string } | null>(null);
 
   useEffect(() => {
     preloadModel().catch(() => {
@@ -84,10 +94,10 @@ export function useRiffSession() {
   }, [profileId]);
 
   useEffect(() => {
-    listRiffs()
-      .then((riffs) => setSavedRiffs(riffs))
+    listSessions()
+      .then((sessions) => setSavedRiffs(sessions))
       .catch(() => {
-        // Ignore riff loading failures.
+        // Ignore session loading failures.
       });
   }, []);
 
@@ -129,7 +139,8 @@ export function useRiffSession() {
       const mapped = mapNoteEvents(detectionResult.notes);
       const filtered = filterNotes(mapped, profile);
       setNotes(filtered);
-      setKeyDetection(detectKey(filtered));
+      const keyResult = detectKey(filtered);
+      setKeyDetection(keyResult);
       midiPlayback.load(filtered);
 
       const timeline = detectChordTimeline(filtered, profile.chordWindowS > 0 ? profile.chordWindowS : 0);
@@ -187,21 +198,31 @@ export function useRiffSession() {
       const riffName = `Take ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
       setActiveRiffName(riffName);
 
-      const newRiff: StoredRiff = {
+      const importContext = importContextRef.current;
+      const now = Date.now();
+      const newSession: RiffSession = {
         id: crypto.randomUUID(),
         name: riffName,
-        timestamp: Date.now(),
+        createdAt: now,
+        updatedAt: now,
+        source: importContext ? "import" : "recording",
+        ...(importContext && { importFileName: importContext.fileName }),
         durationS: analysisAudio.length / 22050,
-        notes: filtered,
-        chord: chordName,
         audioFileName,
         audioFormat,
         audioMime,
+        profileId,
+        notes: filtered,
+        chordTimeline: timeline,
+        keyDetection: keyResult,
+        primaryChord: chordName,
+        uniqueNoteNames: deriveUniqueNoteNames(filtered),
       };
 
       try {
-        await saveRiff(newRiff);
-        setSavedRiffs((prev) => [newRiff, ...prev]);
+        await saveSession(newSession);
+        setSavedRiffs((prev) => [newSession, ...prev]);
+        setActiveSessionId(newSession.id);
       } catch {
         // Ignore save failures.
       }
@@ -241,6 +262,7 @@ export function useRiffSession() {
     setHasRecording(false);
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
+    importContextRef.current = { fileName: file.name };
     midiPlayback.stop();
 
     try {
@@ -262,31 +284,32 @@ export function useRiffSession() {
         setImportError("Could not decode this audio file. Try WAV, MP3, or FLAC.");
       }
     } finally {
+      importContextRef.current = null;
       setIsImporting(false);
     }
   }, [audioPlayback, autoProcess, handleAnalyze, midiPlayback, resetAnalysisState]);
 
-  const handleLoadSavedRiff = useCallback(async (riff: StoredRiff) => {
+  const handleLoadSavedRiff = useCallback(async (session: RiffSession) => {
     pendingAudioRef.current = null;
     setHasPendingAnalysis(false);
     setCompressedBlob(null);
     setCompressedMime(null);
 
-    if (riff.audioFileName) {
-      const format = riff.audioFormat ?? "pcm";
+    if (session.audioFileName) {
+      const format = session.audioFormat ?? "pcm";
 
-      if (format === "compressed" && riff.audioMime) {
-        const blob = await readBlobFromOpfs(riff.audioFileName, riff.audioMime);
+      if (format === "compressed" && session.audioMime) {
+        const blob = await readBlobFromOpfs(session.audioFileName, session.audioMime);
         if (blob) {
           audioPlayback.loadBlob(blob);
           setHasRecording(true);
           setCompressedBlob(blob);
-          setCompressedMime(riff.audioMime);
+          setCompressedMime(session.audioMime);
         } else {
           setHasRecording(false);
         }
       } else {
-        const restoredAudio = await readPcmFromOpfs(riff.audioFileName);
+        const restoredAudio = await readPcmFromOpfs(session.audioFileName);
         if (restoredAudio) {
           pendingAudioRef.current = restoredAudio;
           audioPlayback.load(restoredAudio);
@@ -299,13 +322,29 @@ export function useRiffSession() {
       setHasRecording(false);
     }
 
-    setNotes(riff.notes);
-    setChord(riff.chord);
-    setChordTimeline(detectChordTimeline(riff.notes, PROFILES[profileId].chordWindowS));
-    setKeyDetection(detectKey(riff.notes));
-    setActiveRiffName(riff.name);
-    midiPlayback.load(riff.notes);
-  }, [audioPlayback, midiPlayback, profileId]);
+    const notes = [...session.notes];
+    setNotes(notes);
+    setChord(session.primaryChord);
+
+    // Use persisted timeline if available, otherwise re-derive (v1 records have empty timeline).
+    if (session.chordTimeline.length > 0) {
+      setChordTimeline([...session.chordTimeline]);
+    } else {
+      setChordTimeline(detectChordTimeline(notes, PROFILES[profileId].chordWindowS));
+    }
+
+    // Use persisted key detection if available, otherwise re-derive.
+    setKeyDetection(session.keyDetection ?? detectKey(notes));
+
+    setActiveRiffName(session.name);
+    setActiveSessionId(session.id);
+    midiPlayback.load(notes);
+
+    // Restore the session's profile when it differs from the current one.
+    if (session.profileId !== profileId) {
+      setProfileId(session.profileId);
+    }
+  }, [audioPlayback, midiPlayback, profileId, setProfileId]);
 
   const handleLoadDemoAnalysis = useCallback(() => {
     midiPlayback.stop();
@@ -324,6 +363,12 @@ export function useRiffSession() {
     const detected = detectChord(pitchClasses);
     setChord(detected ? formatChordName(detected) : null);
   }, [midiPlayback, profileId]);
+
+  const handleDeleteSession = useCallback(async (id: string) => {
+    await deleteSession(id);
+    setSavedRiffs((prev) => prev.filter((s) => s.id !== id));
+    setActiveSessionId((prev) => (prev === id ? null : prev));
+  }, []);
 
   const uniqueNotes = getUniqueNotes(notes);
   const error = recorderError || detectionError || importError;
@@ -351,7 +396,9 @@ export function useRiffSession() {
     storageFormat,
     setStorageFormat,
     savedRiffs,
+    activeSessionId,
     handleLoadSavedRiff,
+    handleDeleteSession,
     audioPlayback,
     midiPlayback,
     pendingAudio: pendingAudioRef.current,

@@ -14,7 +14,7 @@ vi.mock("./components/Recorder", () => ({
   Recorder: () => <div data-testid="recorder" />,
 }));
 vi.mock("./components/LaneToggle", () => ({
-  LaneToggle: ({ activeLane, onChange }: { activeLane: "song" | "chord"; onChange: (lane: "song" | "chord") => void }) => (
+  LaneToggle: ({ onChange }: { activeLane: "song" | "chord"; onChange: (lane: "song" | "chord") => void }) => (
     <div>
       <button onClick={() => onChange("song")}>Song</button>
       <button onClick={() => onChange("chord")}>Chord</button>
@@ -47,8 +47,8 @@ vi.mock("./components/ProgressBar", () => ({
 vi.mock("./components/Playback", () => ({
   Playback: ({ label }: { label: string }) => <div data-testid="playback">{label}</div>,
 }));
-vi.mock("./components/SavedRiffs", () => ({
-  SavedRiffs: () => <div data-testid="saved-riffs" />,
+vi.mock("./components/SessionPicker", () => ({
+  SessionPicker: () => <div data-testid="session-picker" />,
 }));
 vi.mock("./components/ExportPanel", () => ({
   ExportPanel: () => <div data-testid="export-panel" />,
@@ -92,7 +92,9 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     storageFormat: "pcm",
     setStorageFormat: vi.fn(),
     savedRiffs: [],
+    activeSessionId: null,
     handleLoadSavedRiff: vi.fn(),
+    handleDeleteSession: vi.fn(),
     pendingAudio: null,
     activeRiffName: "",
     compressedBlob: null,

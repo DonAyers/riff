@@ -11,7 +11,7 @@ import { ChordDisplay } from "./components/ChordDisplay";
 import { PianoRoll } from "./components/PianoRoll";
 import { ProgressBar } from "./components/ProgressBar";
 import { Playback } from "./components/Playback";
-import { SavedRiffs } from "./components/SavedRiffs";
+import { SessionPicker } from "./components/SessionPicker";
 import { ExportPanel } from "./components/ExportPanel";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { SelectedChordDialog } from "./components/SelectedChordDialog";
@@ -62,7 +62,9 @@ function App() {
     storageFormat,
     setStorageFormat,
     savedRiffs,
+    activeSessionId,
     handleLoadSavedRiff,
+    handleDeleteSession,
     audioPlayback,
     midiPlayback,
     pendingAudio,
@@ -183,7 +185,12 @@ function App() {
               </div>
             )}
 
-            <SavedRiffs riffs={savedRiffs} onLoad={handleLoadSavedRiff} />
+            <SessionPicker
+              sessions={savedRiffs}
+              activeSessionId={activeSessionId}
+              onLoad={handleLoadSavedRiff}
+              onDelete={handleDeleteSession}
+            />
           </section>
 
           <section className="workspace-pane workspace-pane--analysis" aria-label="Analysis">

@@ -11,8 +11,9 @@ const {
   mockAudioLoadBlob,
   mockMidiLoad,
   mockMidiStop,
-  mockListRiffs,
-  mockSaveRiff,
+  mockListSessions,
+  mockSaveSession,
+  mockDeleteSession,
   mockReadPcmFromOpfs,
   mockReadBlobFromOpfs,
   mockDecodeAudioFile,
@@ -32,8 +33,9 @@ const {
   mockAudioLoadBlob: vi.fn(),
   mockMidiLoad: vi.fn(),
   mockMidiStop: vi.fn(),
-  mockListRiffs: vi.fn(),
-  mockSaveRiff: vi.fn(),
+  mockListSessions: vi.fn(),
+  mockSaveSession: vi.fn(),
+  mockDeleteSession: vi.fn(),
   mockReadPcmFromOpfs: vi.fn(),
   mockReadBlobFromOpfs: vi.fn(),
   mockDecodeAudioFile: vi.fn(),
@@ -89,8 +91,9 @@ vi.mock("./useMidiPlayback", () => ({
 }));
 
 vi.mock("../lib/db", () => ({
-  listRiffs: mockListRiffs,
-  saveRiff: mockSaveRiff,
+  listSessions: mockListSessions,
+  saveSession: mockSaveSession,
+  deleteSession: mockDeleteSession,
 }));
 
 vi.mock("../lib/audioStorage", () => ({
@@ -145,8 +148,9 @@ describe("useRiffSession", () => {
     mockAudioLoadBlob.mockReset();
     mockMidiLoad.mockReset();
     mockMidiStop.mockReset();
-    mockListRiffs.mockReset().mockResolvedValue([]);
-    mockSaveRiff.mockReset();
+    mockListSessions.mockReset().mockResolvedValue([]);
+    mockSaveSession.mockReset();
+    mockDeleteSession.mockReset();
     mockReadPcmFromOpfs.mockReset();
     mockReadBlobFromOpfs.mockReset();
     mockDecodeAudioFile.mockReset();
@@ -161,16 +165,22 @@ describe("useRiffSession", () => {
   });
 
   it("uses the current profile chord window when loading a saved riff", async () => {
-    const riff = {
+    const session = {
       id: "1",
       name: "Take 1",
-      timestamp: Date.now(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      source: "recording" as const,
       durationS: 2,
       notes: [{ midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 1, amplitude: 0.8 }],
-      chord: null,
+      chordTimeline: [],
+      keyDetection: null,
+      primaryChord: null,
+      uniqueNoteNames: ["C"],
       audioFileName: null,
       audioFormat: "pcm" as const,
       audioMime: undefined,
+      profileId: "guitar" as const,
     };
 
     const { result } = renderHook(() => useRiffSession());
@@ -184,10 +194,10 @@ describe("useRiffSession", () => {
     });
 
     await act(async () => {
-      await result.current.handleLoadSavedRiff(riff);
+      await result.current.handleLoadSavedRiff(session);
     });
 
-    expect(mockDetectChordTimeline).toHaveBeenCalledWith(riff.notes, PROFILES.default.chordWindowS);
+    expect(mockDetectChordTimeline).toHaveBeenCalledWith(session.notes, PROFILES.default.chordWindowS);
   });
 
   it("uses the current profile chord window for demo analysis", async () => {
