@@ -11,3 +11,8 @@ test-results
 tsconfig.tsbuildinfo
 .vscode/settings.json
 .env
+.agent/
+.agents/
+.claude/skills/
+.claude/settings.local.json
+skills/
