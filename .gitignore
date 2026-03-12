@@ -9,3 +9,5 @@ test-results
 .vscode/battle.json
 .vscode/battle.history.jsonl
 tsconfig.tsbuildinfo
+.vscode/settings.json
+.env
