@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Mic2, Square, Upload, Sparkles } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { ChevronDown, Mic2, Square, Upload, Sparkles } from "lucide-react";
 import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
 import type { RecorderState } from "../hooks/useAudioRecorder";
 import "./Recorder.css";
@@ -49,6 +49,8 @@ export function Recorder({
   const [seconds, setSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const advancedSectionId = useId();
 
   useEffect(() => {
     if (isRecording) {
@@ -74,7 +76,15 @@ export function Recorder({
 
   return (
     <div className="recorder">
-      <div className="recorder-timer">{formatTime(seconds)}</div>
+      <div className="recorder-timer-row">
+        <div className="recorder-timer">{formatTime(seconds)}</div>
+        {isRecording && (
+          <div className="recording-indicator" role="status" aria-live="polite">
+            <span className="recording-indicator__dot" aria-hidden="true" />
+            <span className="recording-indicator__text">Recording live</span>
+          </div>
+        )}
+      </div>
 
       <div className="recorder-main-row">
         <button
@@ -112,62 +122,80 @@ export function Recorder({
       </div>
 
       <p className="recorder-label">
-        {state === "idle" && !isImporting && "Record a guitar take"}
-        {state === "recording" && "Recording take…"}
-        {(state === "processing" || isImporting) && "Preparing take…"}
+        {state === "idle" && !isImporting && "Record or import audio to see chords"}
+        {state === "recording" && "Recording…"}
+        {(state === "processing" || isImporting) && "Processing audio…"}
       </p>
 
       {error && <p className="recorder-error">{error}</p>}
 
       <div className="recorder-settings">
-        <label className="setting-toggle" title="Auto-detect notes when recording stops">
+        <label className="setting-toggle" title="Automatically analyze audio when recording stops">
           <input
             type="checkbox"
             checked={autoProcess}
             onChange={(e) => onAutoProcessChange(e.target.checked)}
             disabled={settingsDisabled}
           />
-          <span>Auto-detect</span>
-        </label>
-
-        <label className="setting-toggle" title="Compress audio when saving">
-          <input
-            type="checkbox"
-            checked={storageFormat === "compressed"}
-            onChange={(e) => onStorageFormatChange(e.target.checked ? "compressed" : "pcm")}
-            disabled={settingsDisabled}
-          />
-          <span>Compress</span>
+          <span>Analyze automatically</span>
         </label>
       </div>
 
-      <div className="profile-panel">
-        <div className="profile-panel__copy">
-          <p className="profile-panel__eyebrow">Detection focus</p>
-          <p className="profile-panel__description">
-            Start with Guitar. Switch to Full range if a clip needs broader note coverage.
-          </p>
+      <div className="advanced-section">
+        <button
+          type="button"
+          className="advanced-toggle"
+          aria-expanded={advancedOpen}
+          aria-controls={advancedSectionId}
+          onClick={() => setAdvancedOpen((current) => !current)}
+        >
+          <ChevronDown size={14} strokeWidth={2} className={`chevron ${advancedOpen ? "open" : ""}`} />
+          <span>Advanced options</span>
+        </button>
+        {advancedOpen && (
+            <div className="advanced-content" id={advancedSectionId}>
+              <div className="advanced-settings">
+                <label className="setting-toggle" title="Reduce audio file size when saving">
+                  <input
+                    type="checkbox"
+                    checked={storageFormat === "compressed"}
+                    onChange={(e) => onStorageFormatChange(e.target.checked ? "compressed" : "pcm")}
+                    disabled={settingsDisabled}
+                  />
+                  <span>Save smaller audio files</span>
+                </label>
+              </div>
+
+              <div className="profile-panel">
+                <div className="profile-panel__copy">
+                  <p className="profile-panel__eyebrow">Instrument mode</p>
+                  <p className="profile-panel__description">
+                    Use Guitar for most guitar recordings. Choose Full range for wider note coverage.
+                  </p>
+                </div>
+                <div className="profile-picker" role="radiogroup" aria-label="Instrument mode">
+                  {PROFILE_UI_ORDER.map((id) => (
+                    <label
+                      key={id}
+                      className={`profile-pill ${id === profileId ? "active" : ""} ${settingsDisabled ? "disabled" : ""}`}
+                    >
+                      <input
+                        className="profile-pill__input"
+                        type="radio"
+                        name="detection-profile"
+                        value={id}
+                        checked={id === profileId}
+                        onChange={() => onProfileChange(id)}
+                        disabled={settingsDisabled}
+                      />
+                      <span>{PROFILES[id].label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="profile-picker" role="radiogroup" aria-label="Detection focus">
-          {PROFILE_UI_ORDER.map((id) => (
-            <label
-              key={id}
-              className={`profile-pill ${id === profileId ? "active" : ""} ${settingsDisabled ? "disabled" : ""}`}
-            >
-              <input
-                className="profile-pill__input"
-                type="radio"
-                name="detection-focus"
-                value={id}
-                checked={id === profileId}
-                onChange={() => onProfileChange(id)}
-                disabled={settingsDisabled}
-              />
-              <span>{PROFILES[id].label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
 
       <div className="recorder-action-row">
         <button
@@ -176,7 +204,7 @@ export function Recorder({
           disabled={autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"}
         >
           <Sparkles size={14} strokeWidth={2} />
-          Detect notes
+          Analyze now
         </button>
       </div>
     </div>

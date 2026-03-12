@@ -1,11 +1,31 @@
-import { expect, test } from "@playwright/test";
-import { gotoApp, importAndAnalyzeFixture, switchLane } from "./helpers";
+import { expect, test, type Page } from "@playwright/test";
+import { fixturePath, getImportFileInput, gotoApp, switchLane, waitForAnalysisResults } from "./helpers";
+
+async function importFixtureAndAnalyzeAutomatically(page: Page, fileName = "known-c-major.wav"): Promise<void> {
+  const analyzeAutomatically = page.getByRole("checkbox", { name: /analyze automatically/i });
+  await expect(analyzeAutomatically).toBeVisible();
+
+  if (!(await analyzeAutomatically.isChecked())) {
+    await analyzeAutomatically.check();
+  }
+
+  await getImportFileInput(page).setInputFiles(fixturePath(fileName));
+  await waitForAnalysisResults(page);
+}
 
 test("importing an audio file runs analysis and shows detected notes", async ({ page }) => {
   test.setTimeout(120000);
 
   await gotoApp(page);
-  await importAndAnalyzeFixture(page);
+  await expect(page.getByText("Record or import audio to see chords")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /analyze automatically/i })).toBeVisible();
+
+  await getImportFileInput(page).setInputFiles(fixturePath("known-c-major.wav"));
+
+  const analyzeNowButton = page.getByRole("button", { name: /analyze now/i });
+  await expect(analyzeNowButton).toBeVisible();
+  await analyzeNowButton.click();
+  await waitForAnalysisResults(page);
 
   // Verify the known C major notes were detected
   await expect(page.locator(".note-chip", { hasText: "C4" })).toBeVisible({ timeout: 10000 });
@@ -22,7 +42,7 @@ test("imported analysis can switch to chord lane and keep playback controls avai
   test.setTimeout(120000);
 
   await gotoApp(page);
-  await importAndAnalyzeFixture(page, "guitar-c-major-clean.wav");
+  await importFixtureAndAnalyzeAutomatically(page, "guitar-c-major-clean.wav");
   await expect(page.locator(".note-chip").first()).toBeVisible({ timeout: 60000 });
 
   await switchLane(page, "Chord");
@@ -46,7 +66,7 @@ test("clicking a detected chord opens the selected chord sheet", async ({ page }
   test.setTimeout(120000);
 
   await gotoApp(page);
-  await importAndAnalyzeFixture(page, "guitar-c-major-clean.wav");
+  await importFixtureAndAnalyzeAutomatically(page, "guitar-c-major-clean.wav");
 
   const detectedChordButton = page.getByRole("button", {
     name: /^select chord c major$/i,
@@ -75,7 +95,7 @@ test("clicking a timeline chord opens the matching selected chord sheet", async 
   test.setTimeout(120000);
 
   await gotoApp(page);
-  await importAndAnalyzeFixture(page, "guitar-c-major-clean.wav");
+  await importFixtureAndAnalyzeAutomatically(page, "guitar-c-major-clean.wav");
 
   const timelineEventButton = page
     .getByRole("button", { name: /select chord c major at /i })
@@ -98,7 +118,7 @@ test("import button is disabled while recording", async ({ page }) => {
   await gotoApp(page);
 
   await page.getByRole("button", { name: /start recording/i }).click();
-  await expect(page.getByText("Recording take…")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole("status")).toHaveText(/recording live/i, { timeout: 15000 });
 
   await expect(page.getByRole("button", { name: /import audio file/i })).toBeDisabled();
 

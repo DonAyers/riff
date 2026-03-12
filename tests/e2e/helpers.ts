@@ -2,6 +2,12 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import path from "node:path";
 
 const FIXTURES_DIR = path.resolve(process.cwd(), "tests", "fixtures");
+const SETTING_LABEL_ALIASES = {
+  "Analyze automatically": ["Analyze automatically", "Auto-detect"],
+  "Auto-detect": ["Analyze automatically", "Auto-detect"],
+  "Save smaller audio files": ["Save smaller audio files", "Compress storage"],
+  "Compress storage": ["Save smaller audio files", "Compress storage"],
+} as const;
 
 type InstrumentProfileStorage = "default" | "guitar";
 
@@ -36,10 +42,19 @@ export async function gotoApp(page: Page, options: GotoAppOptions = {}): Promise
   await page.goto("/");
 }
 
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getSettingLabelMatcher(label: string): RegExp {
+  const labels = SETTING_LABEL_ALIASES[label as keyof typeof SETTING_LABEL_ALIASES] ?? [label];
+  return new RegExp(`^\\s*(?:${labels.map(escapeRegex).join("|")})\\s*$`);
+}
+
 export function getSettingToggle(page: Page, label: string): Locator {
   return page
     .locator("label.setting-toggle")
-    .filter({ hasText: label })
+    .filter({ hasText: getSettingLabelMatcher(label) })
     .locator('input[type="checkbox"]');
 }
 
@@ -86,10 +101,22 @@ export async function importAndAnalyzeFixture(
   await waitForAnalysisResults(page);
 }
 
-export async function selectDetectionFocus(
+export async function openAdvancedOptions(page: Page): Promise<void> {
+  const toggle = page.getByRole("button", { name: "Advanced options" });
+  await expect(toggle).toHaveCount(1);
+
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+
+export async function selectInstrumentMode(
   page: Page,
   profileLabel: "Full range" | "Guitar"
 ): Promise<void> {
+  await openAdvancedOptions(page);
   const profile = page.getByRole("radio", { name: profileLabel });
   await profile.check();
   await expect(profile).toBeChecked();

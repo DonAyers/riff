@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { gotoApp, importFixture, selectDetectionFocus, setSettingToggle, waitForAnalysisResults } from "./helpers";
+import {
+  gotoApp,
+  importFixture,
+  openAdvancedOptions,
+  selectInstrumentMode,
+  setSettingToggle,
+  waitForAnalysisResults,
+} from "./helpers";
 
 /**
  * Helper: import a fixture WAV with a specific instrument profile selected,
@@ -12,7 +19,8 @@ async function importWithProfile(
 ) {
   await gotoApp(page);
 
-  await selectDetectionFocus(page, profileLabel);
+  await openAdvancedOptions(page);
+  await selectInstrumentMode(page, profileLabel);
   await setSettingToggle(page, "Auto-detect", true);
   await importFixture(page, fixtureFileName);
   await waitForAnalysisResults(page);
@@ -21,12 +29,14 @@ async function importWithProfile(
 test.describe("instrument profile e2e", () => {
   test.setTimeout(120000);
 
-  test("detection focus stays guitar-first", async ({ page }) => {
+  test("instrument mode stays guitar-first", async ({ page }) => {
     await gotoApp(page);
 
+    await openAdvancedOptions(page);
     const profileOptions = page.locator(".profile-picker").getByRole("radio");
 
-    await expect(page.getByRole("radiogroup", { name: "Detection focus" })).toBeVisible();
+    await expect(page.getByRole("radiogroup", { name: "Instrument mode" })).toBeVisible();
+    await expect(page.getByText("Use Guitar for most guitar recordings. Choose Full range for wider note coverage.")).toBeVisible();
     await expect(profileOptions.nth(0)).toHaveValue("guitar");
     await expect(profileOptions.nth(1)).toHaveValue("default");
     await expect(page.getByRole("radio", { name: "Guitar" })).toBeVisible();
@@ -69,10 +79,12 @@ test.describe("instrument profile e2e", () => {
   test("profile selection persists across page reload", async ({ page }) => {
     await gotoApp(page);
 
-    await selectDetectionFocus(page, "Full range");
+    await openAdvancedOptions(page);
+    await selectInstrumentMode(page, "Full range");
 
     await page.reload();
 
+    await openAdvancedOptions(page);
     await expect(page.getByRole("radio", { name: "Full range" })).toBeChecked();
   });
 });

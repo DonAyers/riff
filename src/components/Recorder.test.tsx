@@ -70,18 +70,132 @@ describe("Recorder", () => {
     expect(onImport).toHaveBeenCalledWith(file);
   });
 
-  it("shows 'Preparing take…' when isImporting is true", () => {
-    render(<Recorder {...defaultProps} isImporting={true} />);
-    expect(screen.getByText("Preparing take…")).toBeTruthy();
+  describe("default copy", () => {
+    it("shows plain language when idle", () => {
+      render(<Recorder {...defaultProps} />);
+      expect(screen.getByText("Record or import audio to see chords")).toBeInTheDocument();
+    });
+
+    it("shows plain language when recording", () => {
+      render(<Recorder {...defaultProps} state="recording" />);
+      expect(screen.getByText("Recording…")).toBeInTheDocument();
+    });
+
+    it("shows plain language when processing", () => {
+      render(<Recorder {...defaultProps} state="processing" />);
+      expect(screen.getByText("Processing audio…")).toBeInTheDocument();
+    });
+
+    it("shows plain language when importing", () => {
+      render(<Recorder {...defaultProps} isImporting={true} />);
+      expect(screen.getByText("Processing audio…")).toBeInTheDocument();
+    });
   });
 
-  it("keeps the detection focus guitar-first", () => {
-    render(<Recorder {...defaultProps} />);
+  describe("recording indicator", () => {
+    it("shows live recording status when actively recording", () => {
+      render(<Recorder {...defaultProps} state="recording" />);
+      expect(screen.getByRole("status")).toHaveTextContent("Recording live");
+      expect(document.querySelector(".recording-indicator__dot")).toBeInTheDocument();
+    });
 
-    expect(screen.getByRole("radiogroup", { name: /detection focus/i })).toBeInTheDocument();
-    expect(
-      screen.getByText("Start with Guitar. Switch to Full range if a clip needs broader note coverage.")
-    ).toBeInTheDocument();
+    it("hides indicator when not recording", () => {
+      render(<Recorder {...defaultProps} state="idle" />);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("hides indicator when processing", () => {
+      render(<Recorder {...defaultProps} state="processing" />);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("advanced options", () => {
+    it("renders advanced section collapsed by default", () => {
+      render(<Recorder {...defaultProps} />);
+      expect(screen.getByRole("button", { name: /advanced options/i })).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("expands advanced section when clicked", () => {
+      render(<Recorder {...defaultProps} />);
+      const toggle = screen.getByRole("button", { name: /advanced options/i });
+
+      fireEvent.click(toggle);
+
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("checkbox", { name: /save smaller audio files/i })).toBeVisible();
+    });
+
+    it("collapses advanced section when clicked again", () => {
+      render(<Recorder {...defaultProps} />);
+      const toggle = screen.getByRole("button", { name: /advanced options/i });
+
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByRole("checkbox", { name: /save smaller audio files/i })).not.toBeInTheDocument();
+    });
+
+    it("hides storage format in advanced section", () => {
+      render(<Recorder {...defaultProps} />);
+
+      expect(screen.queryByRole("checkbox", { name: /save smaller audio files/i })).not.toBeInTheDocument();
+
+      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      fireEvent.click(toggle);
+
+      expect(screen.getByRole("checkbox", { name: /save smaller audio files/i })).toBeVisible();
+    });
+
+    it("hides detection profile in advanced section", () => {
+      render(<Recorder {...defaultProps} />);
+
+      expect(screen.queryByRole("radiogroup", { name: /instrument mode/i })).not.toBeInTheDocument();
+
+      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      fireEvent.click(toggle);
+
+      expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeVisible();
+    });
+  });
+
+  describe("renamed controls", () => {
+    it("renames auto-detect to analyze automatically", () => {
+      render(<Recorder {...defaultProps} />);
+      expect(screen.getByRole("checkbox", { name: /analyze automatically/i })).toBeInTheDocument();
+    });
+
+    it("renames detect notes to analyze now", () => {
+      render(<Recorder {...defaultProps} hasPendingAnalysis={true} />);
+      expect(screen.getByRole("button", { name: /analyze now/i })).toBeInTheDocument();
+    });
+
+    it("renames compress to save smaller audio files in advanced", () => {
+      render(<Recorder {...defaultProps} />);
+      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      fireEvent.click(toggle);
+      expect(screen.getByRole("checkbox", { name: /save smaller audio files/i })).toBeInTheDocument();
+      expect(screen.getByTitle("Reduce audio file size when saving")).toBeInTheDocument();
+    });
+
+    it("renames detection focus to instrument mode in advanced", () => {
+      render(<Recorder {...defaultProps} />);
+      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      fireEvent.click(toggle);
+
+      expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeInTheDocument();
+      expect(screen.getByText("Use Guitar for most guitar recordings. Choose Full range for wider note coverage.")).toBeInTheDocument();
+    });
+  });
+
+  it("keeps guitar-focused profile options", () => {
+    render(<Recorder {...defaultProps} />);
+    const toggle = screen.getByRole("button", { name: /advanced options/i });
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeInTheDocument();
     expect(screen.getAllByRole("radio").map((option) => option.getAttribute("value"))).toEqual(["guitar", "default"]);
     expect(screen.getByRole("radio", { name: "Guitar" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Full range" })).toBeInTheDocument();
@@ -103,8 +217,11 @@ describe("Recorder", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("checkbox", { name: /auto-detect/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /compress/i }));
+    const toggle = screen.getByRole("button", { name: /advanced options/i });
+    fireEvent.click(toggle);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /analyze automatically/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /save smaller audio files/i }));
     fireEvent.click(screen.getByRole("radio", { name: "Full range" }));
 
     expect(onAutoProcessChange).toHaveBeenCalledWith(true);
@@ -112,16 +229,26 @@ describe("Recorder", () => {
     expect(onProfileChange).toHaveBeenCalledWith("default");
   });
 
-  it("disables guitar-first controls while analysis is busy", () => {
+  it("disables controls while analysis is busy", () => {
     render(<Recorder {...defaultProps} isLoading={true} hasPendingAnalysis={true} />);
 
-    expect(screen.getByRole("checkbox", { name: /auto-detect/i })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: /compress/i })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /analyze automatically/i })).toBeDisabled();
+
+    const toggle = screen.getByRole("button", { name: /advanced options/i });
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole("checkbox", { name: /save smaller audio files/i })).toBeDisabled();
     expect(screen.getByRole("radio", { name: "Guitar" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /detect notes/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /analyze now/i })).toBeDisabled();
   });
 
-  it("enables manual note detection when a take is ready and auto-detect is off", () => {
+  it("applies recording treatment to the record button when live", () => {
+    render(<Recorder {...defaultProps} state="recording" />);
+
+    expect(screen.getByRole("button", { name: "Stop recording" })).toHaveClass("recording");
+  });
+
+  it("enables manual analysis when audio is ready and auto-analyze is off", () => {
     const onAnalyze = vi.fn();
 
     render(
@@ -132,10 +259,10 @@ describe("Recorder", () => {
       />
     );
 
-    const detectButton = screen.getByRole("button", { name: /detect notes/i });
-    expect(detectButton).toBeEnabled();
+    const analyzeButton = screen.getByRole("button", { name: /analyze now/i });
+    expect(analyzeButton).toBeEnabled();
 
-    fireEvent.click(detectButton);
+    fireEvent.click(analyzeButton);
 
     expect(onAnalyze).toHaveBeenCalledTimes(1);
   });
