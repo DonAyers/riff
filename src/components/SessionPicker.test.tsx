@@ -55,7 +55,7 @@ describe("SessionPicker", () => {
     expect(screen.getByText(/Am/)).toBeInTheDocument();
     expect(screen.getByText(/2 notes/)).toBeInTheDocument();
     // Dropdown should not be visible
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: /saved riffs/i })).not.toBeInTheDocument();
   });
 
   it("opens dropdown on trigger click", () => {
@@ -70,12 +70,12 @@ describe("SessionPicker", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select a session/i }));
+    fireEvent.click(screen.getByRole("button", { name: /saved riffs/i }));
 
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: /saved riffs/i })).toBeInTheDocument();
   });
 
-  it("lists all sessions in dropdown", () => {
+  it("lists all sessions in dropdown sorted newest-first", () => {
     const s1 = makeSession({ name: "Take A", createdAt: 1000 });
     const s2 = makeSession({ name: "Take B", createdAt: 2000 });
     const s3 = makeSession({ name: "Take C", createdAt: 3000 });
@@ -89,18 +89,18 @@ describe("SessionPicker", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select a session/i }));
+    fireEvent.click(screen.getByRole("button", { name: /saved riffs/i }));
 
-    const options = screen.getAllByRole("option");
-    expect(options).toHaveLength(3);
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(3);
 
     // Should be sorted newest-first
-    expect(options[0]).toHaveTextContent("Take C");
-    expect(options[1]).toHaveTextContent("Take B");
-    expect(options[2]).toHaveTextContent("Take A");
+    expect(items[0]).toHaveTextContent("Take C");
+    expect(items[1]).toHaveTextContent("Take B");
+    expect(items[2]).toHaveTextContent("Take A");
   });
 
-  it("highlights active session", () => {
+  it("marks the active session with aria-current", () => {
     const s1 = makeSession({ name: "Take A" });
     const s2 = makeSession({ name: "Take B" });
 
@@ -113,12 +113,14 @@ describe("SessionPicker", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Take A"));
+    // Trigger shows active session name; click to open
+    fireEvent.click(screen.getByRole("button", { name: /take a/i }));
 
-    const options = screen.getAllByRole("option");
-    const activeOption = options.find((o) => o.getAttribute("aria-selected") === "true");
-    expect(activeOption).toBeDefined();
-    expect(activeOption).toHaveTextContent("Take A");
+    const activeBtn = screen
+      .getAllByRole("button")
+      .find((btn) => btn.getAttribute("aria-current") === "true");
+    expect(activeBtn).toBeDefined();
+    expect(activeBtn).toHaveTextContent("Take A");
   });
 
   it("calls onLoad when clicking a session item", () => {
@@ -134,8 +136,9 @@ describe("SessionPicker", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select a session/i }));
-    fireEvent.click(screen.getByRole("option", { name: /take x/i }));
+    fireEvent.click(screen.getByRole("button", { name: /saved riffs/i }));
+    // Anchor match to start so it doesn't match "Delete Take X"
+    fireEvent.click(screen.getByRole("button", { name: /^Take X/i }));
 
     expect(onLoad).toHaveBeenCalledWith(session);
   });
@@ -152,14 +155,14 @@ describe("SessionPicker", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select a session/i }));
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /saved riffs/i }));
+    expect(screen.getByRole("list", { name: /saved riffs/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("option", { name: /take x/i }));
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Take X/i }));
+    expect(screen.queryByRole("list", { name: /saved riffs/i })).not.toBeInTheDocument();
   });
 
-  it("calls onDelete when clicking delete button", () => {
+  it("calls onDelete when clicking the delete button", () => {
     const session = makeSession({ name: "Take Y" });
     const onDelete = vi.fn();
 
@@ -172,10 +175,31 @@ describe("SessionPicker", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select a session/i }));
-    fireEvent.click(screen.getByLabelText(`Delete ${session.name}`));
+    fireEvent.click(screen.getByRole("button", { name: /saved riffs/i }));
+    fireEvent.click(screen.getByRole("button", { name: `Delete ${session.name}` }));
 
     expect(onDelete).toHaveBeenCalledWith(session.id);
+  });
+
+  it("delete button is a proper <button>, not a nested interactive element", () => {
+    const session = makeSession({ name: "Take Z" });
+
+    render(
+      <SessionPicker
+        sessions={[session]}
+        activeSessionId={null}
+        onLoad={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /saved riffs/i }));
+
+    const deleteBtn = screen.getByRole("button", { name: `Delete ${session.name}` });
+    // Must be a real <button> element, not a span with role="button"
+    expect(deleteBtn.tagName).toBe("BUTTON");
+    // Must not be nested inside another <button> — closest() includes self, so check parent
+    expect(deleteBtn.parentElement?.closest("button")).toBeNull();
   });
 
   it("closes dropdown on Escape key", () => {
@@ -190,14 +214,14 @@ describe("SessionPicker", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /select a session/i }));
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /saved riffs/i }));
+    expect(screen.getByRole("list", { name: /saved riffs/i })).toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: /saved riffs/i })).not.toBeInTheDocument();
   });
 
-  it("shows fallback trigger text when no active session", () => {
+  it("shows fallback trigger label and count when no active session", () => {
     const session = makeSession();
 
     render(
@@ -209,7 +233,7 @@ describe("SessionPicker", () => {
       />,
     );
 
-    expect(screen.getByText("Select a session")).toBeInTheDocument();
+    expect(screen.getByText("Saved riffs")).toBeInTheDocument();
     expect(screen.getByText("1 saved")).toBeInTheDocument();
   });
 

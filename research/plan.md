@@ -1,7 +1,10 @@
 # Riff — Actionable Development Plan
 
+> Historical roadmap. For the focused product direction built around the two core user stories, use `research/plan-two-core-workflows.md` as the current planning doc.
+
 > Derived from the architecture spike (2026-03-08).  
-> Tasks are ordered by priority. Complete Phase 1 before moving to Phase 2.
+> Tasks are ordered by priority. Complete Phase 1 before moving to Phase 2.  
+> Status last audited against the repo on 2026-03-13.
 
 ---
 
@@ -209,15 +212,22 @@ These are P0/P1 blockers: correctness issues, a deprecated API, and the missing 
 
 ## Summary Checklist
 
+## Status Audit (2026-03-13)
+
+- Tasks 2-8 are implemented in the current app and have supporting unit/integration coverage.
+- Task 1 is functionally implemented via `AudioWorkletNode`, but a `ScriptProcessorNode` fallback still exists for compatibility. If the goal is to remove all deprecated API references, there is still cleanup to do.
+- Task 9 has not been started. The pitch worker still relies on TF.js / Basic Pitch, and `onnxruntime-web` is not in the repo.
+- Task 10 is implemented with sampler-based guitar playback rather than the original triangle-wave oscillator playback.
+
 | # | Task | Priority | Status |
 |---|---|---|---|
-| 1 | Replace `ScriptProcessorNode` with `AudioWorkletNode` | 🔴 P0 | [x] |
-| 2 | Add `OfflineAudioContext` resampling (iOS fix) | 🔴 P0 | [x] |
-| 3 | Move TF.js inference to a Web Worker | 🟡 P1 | [x] |
-| 4 | Add `vite-plugin-pwa` + service worker + icons | 🟡 P1 | [x] |
-| 5 | Persist a single `AudioContext` | 🟡 P1 | [x] |
-| 6 | IndexedDB riff metadata storage | 🟠 P2 | [x] |
-| 7 | OPFS raw audio storage | 🟠 P2 | [x] |
-| 8 | Lazy-load Basic Pitch | 🟢 P3 | [x] |
-| 9 | Evaluate ONNX Runtime Web | 🟢 P3 | [ ] |
-| 10 | Better MIDI playback (SoundFont/sampler) | 🟢 P3 | [ ] |
+| 1 | Replace `ScriptProcessorNode` with `AudioWorkletNode` | 🔴 P0 | Done (worklet path shipped; compatibility fallback remains) |
+| 2 | Add `OfflineAudioContext` resampling (iOS fix) | 🔴 P0 | Done |
+| 3 | Move TF.js inference to a Web Worker | 🟡 P1 | Done |
+| 4 | Add `vite-plugin-pwa` + service worker + icons | 🟡 P1 | Done |
+| 5 | Persist a single `AudioContext` | 🟡 P1 | Done |
+| 6 | IndexedDB riff metadata storage | 🟠 P2 | Done |
+| 7 | OPFS raw audio storage | 🟠 P2 | Done |
+| 8 | Lazy-load Basic Pitch | 🟢 P3 | Done |
+| 9 | Evaluate ONNX Runtime Web | 🟢 P3 | Open |
+| 10 | Better MIDI playback (SoundFont/sampler) | 🟢 P3 | Done |

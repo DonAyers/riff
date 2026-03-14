@@ -84,7 +84,7 @@
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1;
+  line-height: 1.05;
   margin-top: -0.75rem;
 }
 
@@ -132,6 +132,29 @@
 .onboarding-step-body span {
   font-size: 0.82rem;
   color: var(--fg-muted);
+}
+
+.onboarding-about {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.onboarding-about__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.onboarding-about__value {
+  font-size: 0.82rem;
+  color: var(--fg);
+  font-family: "SF Mono", "Fira Code", monospace;
 }
 
 .onboarding-cta {

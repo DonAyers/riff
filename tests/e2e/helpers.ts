@@ -122,7 +122,7 @@ export async function selectInstrumentMode(
   await expect(profile).toBeChecked();
 }
 
-export async function switchLane(page: Page, lane: "Song" | "Chord"): Promise<void> {
+export async function switchLane(page: Page, lane: "Melody" | "Guitar"): Promise<void> {
   const tab = page.getByRole("tab", { name: lane });
   await tab.click();
   await expect(tab).toHaveAttribute("aria-selected", "true");

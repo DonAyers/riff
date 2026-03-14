@@ -68,21 +68,12 @@ export function SessionPicker({
     [onLoad],
   );
 
-  const handleDelete = useCallback(
-    (e: React.MouseEvent, id: string) => {
-      e.stopPropagation();
-      onDelete(id);
-    },
-    [onDelete],
-  );
-
   if (sessions.length === 0) {
     return null;
   }
 
-  const triggerLabel = activeSession
-    ? activeSession.name
-    : "Select a session";
+  // When a session is loaded the trigger shows its name; otherwise a static label.
+  const triggerLabel = activeSession ? activeSession.name : "Saved riffs";
 
   const triggerMeta = activeSession
     ? [
@@ -98,7 +89,7 @@ export function SessionPicker({
         className="session-picker-trigger"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup="true"
         ref={triggerRef}
       >
         <span className="session-picker-trigger__info">
@@ -115,57 +106,58 @@ export function SessionPicker({
       </button>
 
       {open && (
-        <div className="session-picker-dropdown" role="listbox">
+        <ul
+          className="session-picker-dropdown"
+          role="list"
+          aria-label="Saved riffs"
+        >
           {sorted.map((session) => {
             const isActive = session.id === activeSessionId;
 
             return (
-              <button
+              <li
                 key={session.id}
-                type="button"
-                role="option"
-                aria-selected={isActive}
-                className={`session-picker-item${isActive ? " session-picker-item--active" : ""}`}
-                onClick={() => handleSelect(session)}
+                className={`session-picker-item-row${isActive ? " session-picker-item-row--active" : ""}`}
               >
-                <span
-                  className="session-picker-item__check"
-                  aria-hidden="true"
+                {/* Load button — takes up the full remaining width */}
+                <button
+                  type="button"
+                  className={`session-picker-item${isActive ? " session-picker-item--active" : ""}`}
+                  aria-current={isActive ? "true" : undefined}
+                  onClick={() => handleSelect(session)}
                 >
-                  {isActive && <Check size={14} strokeWidth={2.5} />}
-                </span>
-
-                <span className="session-picker-item__details">
-                  <span className="session-picker-item__name">
-                    {session.name}
+                  <span
+                    className="session-picker-item__check"
+                    aria-hidden="true"
+                  >
+                    {isActive && <Check size={14} strokeWidth={2.5} />}
                   </span>
-                  <span className="session-picker-item__meta">
-                    {session.primaryChord ?? "—"} ·{" "}
-                    {session.notes.length} notes ·{" "}
-                    {formatDuration(session.durationS)}
-                  </span>
-                </span>
 
-                <span
-                  role="button"
-                  tabIndex={0}
+                  <span className="session-picker-item__details">
+                    <span className="session-picker-item__name">
+                      {session.name}
+                    </span>
+                    <span className="session-picker-item__meta">
+                      {session.primaryChord ?? "—"} ·{" "}
+                      {session.notes.length} notes ·{" "}
+                      {formatDuration(session.durationS)}
+                    </span>
+                  </span>
+                </button>
+
+                {/* Delete button — sibling, not child, of the load button */}
+                <button
+                  type="button"
                   className="session-picker-item__delete"
                   aria-label={`Delete ${session.name}`}
-                  onClick={(e) => handleDelete(e, session.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onDelete(session.id);
-                    }
-                  }}
+                  onClick={() => onDelete(session.id)}
                 >
-                  <Trash2 size={14} strokeWidth={2} />
-                </span>
-              </button>
+                  <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );

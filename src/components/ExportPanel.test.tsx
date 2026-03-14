@@ -55,6 +55,14 @@ describe("ExportPanel", () => {
     expect(screen.getByRole("group", { name: /export options/i })).toBeInTheDocument();
   });
 
+  it("all export buttons have explicit type='button'", () => {
+    render(<ExportPanel {...defaultProps} />);
+    const buttons = screen.getAllByRole("button");
+    for (const btn of buttons) {
+      expect(btn).toHaveAttribute("type", "button");
+    }
+  });
+
   it("disables MIDI button when notes array is empty", () => {
     render(<ExportPanel {...defaultProps} notes={[]} />);
     expect(screen.getByRole("button", { name: /export as midi/i })).toBeDisabled();
@@ -131,6 +139,32 @@ describe("ExportPanel", () => {
       expect.any(Blob),
       "Test-Riff.mp3",
     );
+  });
+
+  it("shows 'Encoding…' label and aria-busy while MP3 export is in progress", async () => {
+    // Hold the MP3 export promise so we can inspect mid-flight state
+    let resolveMp3!: (b: Blob) => void;
+    vi.mocked(audioExport.exportToMp3).mockReturnValueOnce(
+      new Promise<Blob>((res) => {
+        resolveMp3 = res;
+      }),
+    );
+
+    render(<ExportPanel {...defaultProps} />);
+    fireEvent.click(screen.getByRole("button", { name: /export as mp3/i }));
+
+    // Mid-flight: button label and aria-busy should reflect encoding state
+    const encodingBtn = await screen.findByRole("button", { name: /encoding mp3/i });
+    expect(encodingBtn).toBeInTheDocument();
+    expect(encodingBtn).toHaveAttribute("aria-busy", "true");
+    expect(encodingBtn).toBeDisabled();
+    expect(encodingBtn).toHaveTextContent("Encoding…");
+
+    // Resolve and confirm it resets
+    resolveMp3(new Blob(["mp3"], { type: "audio/mp3" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /export as mp3/i })).toBeInTheDocument();
+    });
   });
 
   it("calls downloadBlob with compressed blob when native button is clicked", () => {

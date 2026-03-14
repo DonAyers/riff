@@ -16,8 +16,8 @@ vi.mock("./components/Recorder", () => ({
 vi.mock("./components/LaneToggle", () => ({
   LaneToggle: ({ onChange }: { activeLane: "song" | "chord"; onChange: (lane: "song" | "chord") => void }) => (
     <div>
-      <button onClick={() => onChange("song")}>Song</button>
-      <button onClick={() => onChange("chord")}>Chord</button>
+      <button onClick={() => onChange("song")}>Melody</button>
+      <button onClick={() => onChange("chord")}>Guitar</button>
     </div>
   ),
 }));
@@ -42,7 +42,23 @@ vi.mock("./components/PianoRoll", () => ({
   PianoRoll: () => <div data-testid="piano-roll" />,
 }));
 vi.mock("./components/ProgressBar", () => ({
-  ProgressBar: () => <div data-testid="progress-bar" />,
+  ProgressBar: ({
+    visible,
+    label,
+    description,
+    variant = "inline",
+  }: {
+    visible: boolean;
+    label?: string;
+    description?: string;
+    variant?: "inline" | "panel";
+  }) =>
+    visible ? (
+      <div data-testid={`progress-bar-${variant}`}>
+        <span>{label}</span>
+        <span>{description}</span>
+      </div>
+    ) : null,
 }));
 vi.mock("./components/Playback", () => ({
   Playback: ({ label }: { label: string }) => <div data-testid="playback">{label}</div>,
@@ -177,7 +193,7 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    expect(screen.getByText(buildLabel)).toBeInTheDocument();
+    expect(screen.queryByText(buildLabel)).not.toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: /capture/i })
     ).toBeInTheDocument();
@@ -186,9 +202,38 @@ describe("App mic permission fallback", () => {
         name: /analysis/i,
       })
     ).toBeInTheDocument();
-    expect(screen.getByText(/song lane ready/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /song/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /chord/i })).toBeInTheDocument();
+    expect(
+      screen.getByText("Capture an idea, then review the notes or chords in one place.")
+    ).toBeInTheDocument();
+    expect(screen.getByText(/step 1/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /capture/i })).toBeInTheDocument();
+    expect(screen.getByText(/step 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing to review yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /melody/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /guitar/i })).toBeInTheDocument();
+  });
+
+  it("shows calmer loading states in both shell panels while analysis is running", () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        isLoading: true,
+        progress: 42,
+        hasRecording: true,
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByTestId("progress-bar-inline")).toHaveTextContent(
+      "Working on your audio"
+    );
+    expect(screen.getByTestId("progress-bar-panel")).toHaveTextContent(
+      "Listening for notes"
+    );
+    expect(
+      screen.getByText(/this panel updates on its own when the pass finishes/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText("MIDI preview")).not.toBeInTheDocument();
   });
 
   it("renders analysis widgets when notes are available", () => {
@@ -222,10 +267,10 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: /chord/i }));
+    fireEvent.click(screen.getByRole("button", { name: /guitar/i }));
 
-    expect(screen.getByText(/voicing 1 of \d+/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /next phrase/i })).toBeInTheDocument();
+    expect(screen.getByText(/shape 1 of \d+/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /next shape/i })).toBeInTheDocument();
     expect(screen.getByTestId("chord-fretboard")).toBeInTheDocument();
     expect(screen.queryByTestId("piano-roll")).not.toBeInTheDocument();
   });
@@ -241,7 +286,7 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: /chord/i }));
+    fireEvent.click(screen.getByRole("button", { name: /guitar/i }));
     fireEvent.click(screen.getByRole("button", { name: "Am" }));
 
     expect(lookupVoicingsMock).toHaveBeenLastCalledWith("Am");
@@ -263,12 +308,10 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole("button", { name: /chord/i }));
+    fireEvent.click(screen.getByRole("button", { name: /guitar/i }));
 
-    expect(screen.getByText(/no saved voicing yet/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/does not have a seeded guitar shape yet/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/no guitar shape yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/does not have a saved guitar shape yet/i)).toBeInTheDocument();
     expect(screen.queryByTestId("chord-fretboard")).not.toBeInTheDocument();
   });
 

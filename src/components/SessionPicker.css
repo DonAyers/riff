@@ -69,13 +69,44 @@
   max-height: 280px;
   overflow-y: auto;
   padding: var(--space-xs);
+  /* Reset list styles; role="list" is set explicitly to preserve semantics */
+  list-style: none;
 }
+
+/* ── Row wrapper: flex container for load button + delete button ── */
+
+.session-picker-item-row {
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.session-picker-item-row:hover {
+  background: var(--surface-soft);
+}
+
+/* Expose delete on keyboard focus anywhere in the row */
+.session-picker-item-row:focus-within .session-picker-item__delete {
+  opacity: 1;
+}
+
+.session-picker-item-row--active {
+  background: var(--accent-dim);
+}
+
+.session-picker-item-row--active:hover {
+  background: var(--accent-dim);
+}
+
+/* ── Load button (fills remaining space) ── */
 
 .session-picker-item {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: var(--space-md) var(--space-sm);
   border: none;
   background: transparent;
@@ -85,15 +116,6 @@
   font-size: var(--text-sm);
   font-family: inherit;
   text-align: left;
-  transition: background var(--duration-fast) var(--ease-out);
-}
-
-.session-picker-item:hover {
-  background: var(--surface-soft);
-}
-
-.session-picker-item--active {
-  background: var(--accent-dim);
 }
 
 .session-picker-item:focus-visible {
@@ -113,6 +135,7 @@
 }
 
 .session-picker-item__name {
+  display: block;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -120,24 +143,33 @@
 }
 
 .session-picker-item__meta {
+  display: block;
   color: var(--fg-muted);
   font-size: var(--text-xs);
 }
 
+/* ── Delete button (sibling of load button, not nested inside it) ── */
+
 .session-picker-item__delete {
   flex-shrink: 0;
-  padding: var(--space-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs) var(--space-sm);
+  min-height: 44px;
+  min-width: 36px;
   background: none;
   border: none;
   color: var(--fg-muted);
   cursor: pointer;
   border-radius: var(--radius-sm);
+  /* Hidden by default; revealed on row hover, focus-within, or touch */
   opacity: 0;
-  transition: opacity var(--duration-fast);
-  line-height: 0;
+  transition: opacity var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
-.session-picker-item:hover .session-picker-item__delete {
+.session-picker-item-row:hover .session-picker-item__delete {
   opacity: 1;
 }
 
@@ -149,4 +181,11 @@
   opacity: 1;
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Always show delete on touch devices (no hover mechanism) */
+@media (hover: none) {
+  .session-picker-item__delete {
+    opacity: 1;
+  }
 }

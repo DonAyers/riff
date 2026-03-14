@@ -9,7 +9,7 @@ interface LaneToggleProps {
 
 export function LaneToggle({ activeLane, onChange }: LaneToggleProps) {
   return (
-    <div className="lane-toggle" role="tablist" aria-label="Analysis lane">
+    <div className="lane-toggle" role="tablist" aria-label="Workflow">
       <button
         type="button"
         role="tab"
@@ -17,7 +17,7 @@ export function LaneToggle({ activeLane, onChange }: LaneToggleProps) {
         className={`lane-toggle__button ${activeLane === "song" ? "is-active" : ""}`}
         onClick={() => onChange("song")}
       >
-        Song
+        Melody
       </button>
       <button
         type="button"
@@ -26,7 +26,7 @@ export function LaneToggle({ activeLane, onChange }: LaneToggleProps) {
         className={`lane-toggle__button ${activeLane === "chord" ? "is-active" : ""}`}
         onClick={() => onChange("chord")}
       >
-        Chord
+        Guitar
       </button>
     </div>
   );

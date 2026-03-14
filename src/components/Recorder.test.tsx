@@ -73,7 +73,7 @@ describe("Recorder", () => {
   describe("default copy", () => {
     it("shows plain language when idle", () => {
       render(<Recorder {...defaultProps} />);
-      expect(screen.getByText("Record or import audio to see chords")).toBeInTheDocument();
+      expect(screen.getByText("Record live or import audio")).toBeInTheDocument();
     });
 
     it("shows plain language when recording", () => {
@@ -186,7 +186,7 @@ describe("Recorder", () => {
       fireEvent.click(toggle);
 
       expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeInTheDocument();
-      expect(screen.getByText("Use Guitar for most guitar recordings. Choose Full range for wider note coverage.")).toBeInTheDocument();
+      expect(screen.getByText("Use Guitar for most guitar recordings. Choose Full range for other instruments.")).toBeInTheDocument();
     });
   });
 

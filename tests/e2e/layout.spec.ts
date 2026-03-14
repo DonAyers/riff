@@ -12,9 +12,9 @@ test("desktop layout keeps capture and analysis panes side by side", async ({ pa
 
   await expect(capturePane).toBeVisible();
   await expect(analysisPane).toBeVisible();
-  await expect(page.getByText(/guitar focus/i)).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Song Lane" })).toBeVisible();
-  await expect(page.getByText(/song lane ready/i)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Capture" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Review notes" })).toBeVisible();
+  await expect(page.getByText(/nothing to review yet/i)).toBeVisible();
 
   const captureBox = await capturePane.boundingBox();
   const analysisBox = await analysisPane.boundingBox();

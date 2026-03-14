@@ -81,6 +81,7 @@ export function ExportPanel({
       <span className="export-label">Export</span>
       <div className="export-buttons">
         <button
+          type="button"
           className="export-btn"
           onClick={handleExportMidi}
           disabled={!hasMidi}
@@ -93,6 +94,7 @@ export function ExportPanel({
         </button>
 
         <button
+          type="button"
           className="export-btn"
           onClick={handleExportWav}
           disabled={!hasWav}
@@ -105,19 +107,22 @@ export function ExportPanel({
         </button>
 
         <button
+          type="button"
           className="export-btn"
           onClick={handleExportMp3}
           disabled={!hasWav || isExportingMp3}
-          aria-label="Export as MP3"
+          aria-label={isExportingMp3 ? "Encoding MP3, please wait" : "Export as MP3"}
+          aria-busy={isExportingMp3}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
             <path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.84v6h5.66V9h3.84L12 2z" />
           </svg>
-          {isExportingMp3 ? "..." : "MP3"}
+          {isExportingMp3 ? "Encoding…" : "MP3"}
         </button>
 
         {hasNative && (
           <button
+            type="button"
             className="export-btn"
             onClick={handleExportNative}
             aria-label="Export original audio"

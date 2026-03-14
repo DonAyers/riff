@@ -1,32 +1,96 @@
 .progress-bar-container {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
+  position: relative;
+  display: grid;
+  gap: var(--space-sm);
   width: 100%;
-  max-width: 300px;
+  max-width: 320px;
   margin: 0 auto;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.progress-bar-container--panel {
+  max-width: none;
+  margin: 0;
+  padding: 1rem 1.05rem;
+  background: rgba(130, 98, 255, 0.06);
+  border-color: rgba(130, 98, 255, 0.18);
+}
+
+.progress-bar-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.progress-bar-eyebrow {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.progress-bar-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.progress-bar-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.progress-bar-description {
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.5;
+  font-size: 0.82rem;
 }
 
 .progress-bar {
-  flex: 1;
-  height: 4px;
+  width: 100%;
+  height: 0.4rem;
   background: rgba(139, 92, 246, 0.12);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-full);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--accent);
-  border-radius: var(--radius-xs);
-  transition: width 0.2s ease;
+  border-radius: var(--radius-full);
+  transition: width 0.25s ease;
 }
 
 .progress-text {
   font-size: 0.7rem;
+  font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--fg-muted);
   min-width: 36px;
   text-align: right;
   font-family: "SF Mono", "Fira Code", monospace;
+}
+
+.progress-bar-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill {
+    transition: none;
+  }
 }

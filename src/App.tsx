@@ -15,21 +15,54 @@ import { SessionPicker } from "./components/SessionPicker";
 import { ExportPanel } from "./components/ExportPanel";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { SelectedChordDialog } from "./components/SelectedChordDialog";
-import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
 import "./styles/App.css";
 
-const TAGLINES = [
-  "Every riff, decoded.",
-  "Just record it. Frig.",
-  "May the frig be with you.",
-  "The red light is not judging you.",
-  "One more take. For real this time.",
-];
+const APP_SUBTITLE = "Capture an idea, then review the notes or chords in one place.";
 
-const tagline = TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
+const CAPTURE_PANEL_COPY = {
+  eyebrow: "Step 1",
+  title: "Capture",
+  description: "Use the controls below to record or bring in a file. The review panel fills in as soon as analysis finishes.",
+} as const;
+
+const WORKFLOW_COPY = {
+  song: {
+    eyebrow: "Step 2",
+    title: "Review notes",
+    description: "Notes, timing, and playback show up here together after analysis.",
+    emptyKicker: "Nothing to review yet",
+    emptyBody: "Record or import something on the left, then come back here for notes, timing, and playback.",
+  },
+  chord: {
+    eyebrow: "Step 2",
+    title: "Review chords",
+    description: "Key, chord changes, and playable guitar shapes show up here after analysis.",
+    emptyKicker: "Nothing to review yet",
+    emptyBody: "Record or import something on the left, then come back here for the key, chord changes, and guitar shapes.",
+  },
+} as const;
+
+const CAPTURE_LOADING_COPY = {
+  eyebrow: "Analysis in progress",
+  label: "Working on your audio",
+  description: "Stay here or switch to review. Results will appear automatically when they are ready.",
+} as const;
+
+const ANALYSIS_LOADING_COPY = {
+  song: {
+    eyebrow: "Analysis in progress",
+    label: "Listening for notes",
+    description: "Riff is checking pitch and timing now. Notes, timing, and playback will show up here together.",
+  },
+  chord: {
+    eyebrow: "Analysis in progress",
+    label: "Checking the chords",
+    description: "Riff is checking the key, chord changes, and playable guitar shapes. This panel will fill in here as soon as it is ready.",
+  },
+} as const;
 
 function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
@@ -78,6 +111,8 @@ function App() {
   const hasResults = notes.length > 0;
   const showPlaybackStack = !isLoading && (hasRecording || hasResults);
   const isSongLane = activeLane === "song";
+  const activeWorkflow = WORKFLOW_COPY[activeLane];
+  const activeLoadingCopy = ANALYSIS_LOADING_COPY[activeLane];
   const displayedChord = variateOverride ?? chord;
   const chordVoicings = lookupVoicings(displayedChord);
   const variateSuggestions = getVariateSuggestions(displayedChord);
@@ -121,16 +156,21 @@ function App() {
             <button
               className="help-btn"
               onClick={() => setShowOnboarding(true)}
-              aria-label="Help — how Riff works"
+              aria-label="Help and about"
             >
               <HelpCircle size={18} strokeWidth={1.8} />
             </button>
           </div>
-          <p className="tagline">{tagline}</p>
+          <p className="tagline">{APP_SUBTITLE}</p>
         </header>
 
         <main className="app-main">
           <section className="workspace-pane workspace-pane--capture" aria-label="Capture">
+            <div className="workspace-pane__intro">
+              <span className="workspace-pane__kicker">{CAPTURE_PANEL_COPY.eyebrow}</span>
+              <h2 className="workspace-pane__title">{CAPTURE_PANEL_COPY.title}</h2>
+              <p className="workspace-pane__description">{CAPTURE_PANEL_COPY.description}</p>
+            </div>
             <div className="recorder-card">
               <Recorder
                 state={isLoading ? "processing" : recorderState}
@@ -161,7 +201,14 @@ function App() {
                   Try demo
                 </button>
               )}
-              <ProgressBar progress={progress} visible={isLoading} />
+              <ProgressBar
+                progress={progress}
+                visible={isLoading}
+                eyebrow={CAPTURE_LOADING_COPY.eyebrow}
+                label={CAPTURE_LOADING_COPY.label}
+                description={CAPTURE_LOADING_COPY.description}
+                ariaLabel="Audio processing progress"
+              />
             </div>
 
             {showPlaybackStack && (
@@ -195,15 +242,34 @@ function App() {
 
           <section className="workspace-pane workspace-pane--analysis" aria-label="Analysis">
             <div className="analysis-panel">
+              <div className="analysis-panel__topline">
+                <span className="analysis-panel__eyebrow">{activeWorkflow.eyebrow}</span>
+              </div>
+
               <div className="analysis-panel__header">
-                <div>
-                  <span className="analysis-panel__eyebrow">Guitar focus</span>
-                  <h2 className="analysis-panel__title">{isSongLane ? "Song Lane" : "Chord Lane"}</h2>
+                <div className="analysis-panel__intro">
+                  <h2 className="analysis-panel__title">{activeWorkflow.title}</h2>
+                  <p className="analysis-panel__description">{activeWorkflow.description}</p>
                 </div>
                 <LaneToggle activeLane={activeLane} onChange={setActiveLane} />
               </div>
 
-              {hasResults ? (
+              {isLoading ? (
+                <div className="analysis-loading">
+                  <ProgressBar
+                    progress={progress}
+                    visible={isLoading}
+                    eyebrow={activeLoadingCopy.eyebrow}
+                    label={activeLoadingCopy.label}
+                    description={activeLoadingCopy.description}
+                    variant="panel"
+                    ariaLabel="Analysis progress"
+                  />
+                  <p className="analysis-loading__hint">
+                    Keep the recording controls handy. This panel updates on its own when the pass finishes.
+                  </p>
+                </div>
+              ) : hasResults ? (
                 <div className="results">
                   {isSongLane ? (
                     <>
@@ -269,10 +335,10 @@ function App() {
                             <>
                               <div className="chord-lane-panel__header">
                                 <div>
-                                  <span className="chord-lane-panel__kicker">Phrase</span>
+                                  <span className="chord-lane-panel__kicker">Guitar shape</span>
                                   <h3>{displayedChord ?? "Detected chord"}</h3>
                                   <p>
-                                    Voicing {activeVoicingIndex + 1} of {chordVoicings.length}
+                                    Shape {activeVoicingIndex + 1} of {chordVoicings.length}
                                   </p>
                                 </div>
                                 <button
@@ -281,16 +347,16 @@ function App() {
                                   onClick={handleNextVoicing}
                                   disabled={chordVoicings.length <= 1}
                                 >
-                                  Next phrase
+                                  Next shape
                                 </button>
                               </div>
                               <ChordFretboard chordName={displayedChord} voicing={activeVoicing} />
                             </>
                           ) : (
                             <div className="lane-placeholder">
-                              <span className="lane-placeholder__kicker">Chord lane</span>
-                              <h3>No saved voicing yet</h3>
-                              <p>This detected chord does not have a seeded guitar shape yet. Add more voicings in the next pass.</p>
+                              <span className="lane-placeholder__kicker">Guitar shape</span>
+                              <h3>No guitar shape yet</h3>
+                              <p>This chord does not have a saved guitar shape yet.</p>
                             </div>
                           )}
                         </div>
@@ -315,21 +381,13 @@ function App() {
               ) : (
                 <div className="analysis-empty" aria-live="polite">
                   <span className="analysis-empty-icon" aria-hidden="true">♩</span>
-                  <span className="analysis-empty-kicker">{isSongLane ? "Song lane ready" : "Chord lane ready"}</span>
-                  <p>
-                    {isSongLane
-                      ? "Record or import a take to surface notes, chord, and timeline analysis."
-                      : "Strum or import a chord and this panel will focus on chord identity and guitar-friendly voicings."}
-                  </p>
+                  <span className="analysis-empty-kicker">{activeWorkflow.emptyKicker}</span>
+                  <p>{activeWorkflow.emptyBody}</p>
                 </div>
               )}
             </div>
           </section>
         </main>
-
-        <div className="build-badge" aria-label={`Build ${buildLabel}`} title={`Build ${buildLabel}`}>
-          {buildLabel}
-        </div>
       </div>
 
       {showOnboarding && (

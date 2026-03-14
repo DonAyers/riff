@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Mic2, Sparkles, Download, X } from "lucide-react";
+import { buildLabel } from "../lib/buildInfo";
 import "./OnboardingSheet.css";
 
 const STORAGE_KEY = "riff_onboarded";
@@ -24,19 +25,19 @@ const STEPS = [
   {
     icon: <Mic2 size={22} strokeWidth={1.6} />,
     label: "Record",
-    desc: "Hit the button and play something.",
+    desc: "Use the main button to record, or bring in a file.",
   },
   {
     icon: <Sparkles size={22} strokeWidth={1.6} />,
-    label: "Detect",
-    desc: "We analyze the notes and chord.",
+    label: "Review",
+    desc: "Riff turns it into notes, chords, and playback.",
   },
   {
     icon: <Download size={22} strokeWidth={1.6} />,
     label: "Export",
-    desc: "Grab it as MIDI or audio.",
+    desc: "Save MIDI or audio when you want to keep it.",
   },
-];
+] as const;
 
 interface OnboardingSheetProps {
   onClose: () => void;
@@ -62,7 +63,7 @@ export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
       className="onboarding-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-label="How Riff works"
+      aria-label="Help and about Riff"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
@@ -76,8 +77,8 @@ export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
           <X size={18} strokeWidth={2} />
         </button>
 
-        <p className="onboarding-kicker">How it works</p>
-        <h2 className="onboarding-title">Three steps.</h2>
+        <p className="onboarding-kicker">Help</p>
+        <h2 className="onboarding-title">Capture first. Review second.</h2>
 
         <ol className="onboarding-steps">
           {STEPS.map((step) => (
@@ -90,6 +91,11 @@ export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
             </li>
           ))}
         </ol>
+
+        <div className="onboarding-about" aria-label="About this build">
+          <span className="onboarding-about__label">About this build</span>
+          <span className="onboarding-about__value">{buildLabel}</span>
+        </div>
 
         <button className="onboarding-cta" onClick={handleClose}>
           Got it

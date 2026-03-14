@@ -122,7 +122,7 @@ export function Recorder({
       </div>
 
       <p className="recorder-label">
-        {state === "idle" && !isImporting && "Record or import audio to see chords"}
+        {state === "idle" && !isImporting && "Record live or import audio"}
         {state === "recording" && "Recording…"}
         {(state === "processing" || isImporting) && "Processing audio…"}
       </p>
@@ -170,7 +170,7 @@ export function Recorder({
                 <div className="profile-panel__copy">
                   <p className="profile-panel__eyebrow">Instrument mode</p>
                   <p className="profile-panel__description">
-                    Use Guitar for most guitar recordings. Choose Full range for wider note coverage.
+                    Use Guitar for most guitar recordings. Choose Full range for other instruments.
                   </p>
                 </div>
                 <div className="profile-picker" role="radiogroup" aria-label="Instrument mode">

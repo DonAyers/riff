@@ -1,8 +1,11 @@
 # Guitar Lanes — Actionable Development Plan
 
+> Historical roadmap. For the focused product direction built around the two core user stories, use `research/plan-two-core-workflows.md` as the current planning doc.
+
 > Derived from the guitar-stories spike (2026-03-10).  
 > Supersedes the generic analysis flow with a **two-lane** UX model focused on guitar players.  
-> Tasks are ordered by phase. Complete each phase before moving to the next.
+> Tasks are ordered by phase. Complete each phase before moving to the next.  
+> Status last audited against the repo on 2026-03-13.
 
 ---
 
@@ -265,17 +268,24 @@ Ship after Phases 1–2 are solid and real user feedback is collected.
 
 ## Summary Checklist
 
+## Status Audit (2026-03-13)
+
+- The two-lane app shell, Song lane, and Chord lane are all shipped in the current app, with equivalent unit and Playwright coverage already in place.
+- The current chord voicing implementation uses a curated/static plus generated lookup in `src/lib/chordVoicings.ts` rather than a vendored `chords-db` JSON dataset, so Task 6 is only partially complete relative to the original plan.
+- Chord substitutions are live in the Chord lane as inline suggestion chips instead of a separate `Variate` button, so Task 11 is done with a UI adaptation.
+- Cross-lane key context is not wired into substitution suggestions yet, and the substitution engine itself is still local-chord-only rather than fully key-aware.
+
 | # | Task | Phase | Priority | Status |
 |---|---|---|---|---|
-| 1 | Two-lane toggle UI | 1 | 🟡 P1 | [ ] |
-| 2 | Key detection engine | 1 | 🟡 P1 | [ ] |
-| 3 | Key display component | 1 | 🟡 P1 | [ ] |
-| 4 | Multi-chord timeline | 1 | 🟠 P2 | [ ] |
-| 5 | Song lane integration + e2e | 1 | 🟠 P2 | [ ] |
-| 6 | Vendor chord voicing dataset | 2 | 🟡 P1 | [ ] |
-| 7 | Fretboard diagram SVG component | 2 | 🟡 P1 | [ ] |
-| 8 | Voicing cycling ("Phrase") | 2 | 🟠 P2 | [ ] |
-| 9 | Chord lane integration + e2e | 2 | 🟠 P2 | [ ] |
-| 10 | Substitution rule engine | 3 | 🟢 P3 | [ ] |
-| 11 | "Variate" button UI | 3 | 🟢 P3 | [ ] |
-| 12 | Cross-lane key context | 3 | 🟢 P3 | [ ] |
+| 1 | Two-lane toggle UI | 1 | 🟡 P1 | Done |
+| 2 | Key detection engine | 1 | 🟡 P1 | Done |
+| 3 | Key display component | 1 | 🟡 P1 | Done |
+| 4 | Multi-chord timeline | 1 | 🟠 P2 | Done |
+| 5 | Song lane integration + e2e | 1 | 🟠 P2 | Done |
+| 6 | Vendor chord voicing dataset | 2 | 🟡 P1 | Partial (voicings shipped, but not via vendored dataset) |
+| 7 | Fretboard diagram SVG component | 2 | 🟡 P1 | Done |
+| 8 | Voicing cycling ("Phrase") | 2 | 🟠 P2 | Done |
+| 9 | Chord lane integration + e2e | 2 | 🟠 P2 | Done |
+| 10 | Substitution rule engine | 3 | 🟢 P3 | Partial (works without key-aware context) |
+| 11 | "Variate" button UI | 3 | 🟢 P3 | Done (inline suggestion chips) |
+| 12 | Cross-lane key context | 3 | 🟢 P3 | Open |
