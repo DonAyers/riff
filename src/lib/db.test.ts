@@ -1,13 +1,33 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MappedNote } from "./noteMapper";
+
+const { mockDb, mockOpenDB } = vi.hoisted(() => {
+  const db = {
+    put: vi.fn(),
+    get: vi.fn(),
+    delete: vi.fn(),
+    getAll: vi.fn(),
+    getAllFromIndex: vi.fn(),
+  };
+
+  return {
+    mockDb: db,
+    mockOpenDB: vi.fn().mockResolvedValue(db),
+  };
+});
 
 // Mock idb so the module-level openDB call doesn't require a real IndexedDB.
 vi.mock("idb", () => ({
-  openDB: vi.fn().mockResolvedValue({}),
+  openDB: mockOpenDB,
 }));
 
 import type { StoredRiff, RiffSession } from "./db";
-import { normalizeSession } from "./db";
+import {
+  deleteAudioBlobFromIndexedDB,
+  normalizeSession,
+  readAudioBlobFromIndexedDB,
+  saveAudioBlobToIndexedDB,
+} from "./db";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -85,6 +105,14 @@ function makeRiffSession(overrides: Partial<RiffSession> = {}): RiffSession {
 // ---------------------------------------------------------------------------
 
 describe("normalizeSession", () => {
+  beforeEach(() => {
+    mockDb.put.mockReset();
+    mockDb.get.mockReset();
+    mockDb.delete.mockReset();
+    mockDb.getAll.mockReset();
+    mockDb.getAllFromIndex.mockReset();
+  });
+
   describe("v1 StoredRiff → RiffSession", () => {
     it("migrates all required fields from a v1 record", () => {
       const v1 = makeStoredRiff();
@@ -193,5 +221,36 @@ describe("normalizeSession", () => {
 
       expect(result.keyDetection).toBeNull();
     });
+  });
+});
+
+describe("audio blob fallback storage", () => {
+  beforeEach(() => {
+    mockDb.put.mockReset();
+    mockDb.get.mockReset();
+    mockDb.delete.mockReset();
+  });
+
+  it("stores fallback audio blobs in IndexedDB", async () => {
+    const blob = new Blob(["riff"], { type: "audio/webm" });
+    mockDb.put.mockResolvedValue(undefined);
+
+    await expect(saveAudioBlobToIndexedDB("riff-1.webm", blob)).resolves.toBe(true);
+    expect(mockDb.put).toHaveBeenCalledWith("audioBlobs", blob, "riff-1.webm");
+  });
+
+  it("reads fallback audio blobs from IndexedDB", async () => {
+    const blob = new Blob(["riff"], { type: "audio/webm" });
+    mockDb.get.mockResolvedValue(blob);
+
+    await expect(readAudioBlobFromIndexedDB("riff-1.webm")).resolves.toBe(blob);
+    expect(mockDb.get).toHaveBeenCalledWith("audioBlobs", "riff-1.webm");
+  });
+
+  it("deletes fallback audio blobs from IndexedDB", async () => {
+    mockDb.delete.mockResolvedValue(undefined);
+
+    await expect(deleteAudioBlobFromIndexedDB("riff-1.webm")).resolves.toBeUndefined();
+    expect(mockDb.delete).toHaveBeenCalledWith("audioBlobs", "riff-1.webm");
   });
 });

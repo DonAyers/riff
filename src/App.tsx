@@ -286,7 +286,14 @@ function App() {
                         />
                       </div>
                       <ChordTimeline events={chordTimeline} onChordSelect={handleChordSelect} />
-                      <PianoRoll notes={notes} />
+                      <PianoRoll
+                        notes={notes}
+                        isPlaying={midiPlayback.isPlaying}
+                        currentTimeS={midiPlayback.currentTimeS}
+                        durationS={midiPlayback.duration}
+                        onPlay={midiPlayback.play}
+                        onStop={midiPlayback.stop}
+                      />
                       <ExportPanel
                         notes={notes}
                         pcmAudio={pendingAudio}

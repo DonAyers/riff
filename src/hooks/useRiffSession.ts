@@ -6,7 +6,7 @@ import { useMidiPlayback } from "./useMidiPlayback";
 import { mapNoteEvents, getUniquePitchClasses, getUniqueNotes, filterNotes, type MappedNote } from "../lib/noteMapper";
 import { detectChord, detectChordTimeline, formatChordName, detectChordsWindowed, type ChordEvent } from "../lib/chordDetector";
 import { saveSession, listSessions, deleteSession, type RiffSession } from "../lib/db";
-import { readPcmFromOpfs, savePcmToOpfs, saveBlobToOpfs, readBlobFromOpfs } from "../lib/audioStorage";
+import { deleteStoredAudio, readPcmFromOpfs, savePcmToOpfs, saveBlobToOpfs, readBlobFromOpfs } from "../lib/audioStorage";
 import { decodeAudioFile } from "../lib/audioImport";
 import { encodeCompressed, mimeToExtension, type AudioFormat } from "../lib/audioEncoder";
 import { PROFILES, normalizeStoredProfileId, type ProfileId } from "../lib/instrumentProfiles";
@@ -28,6 +28,7 @@ const DEMO_NOTES: MappedNote[] = [
 ];
 
 const PROFILE_STORAGE_KEY = "riff:instrument-profile";
+const MODEL_PRELOAD_FALLBACK_DELAY_MS = 250;
 
 export function useRiffSession() {
   const { state, startRecording, stopRecording, error: recorderError } = useAudioRecorder();
@@ -66,9 +67,30 @@ export function useRiffSession() {
   const importContextRef = useRef<{ fileName: string } | null>(null);
 
   useEffect(() => {
-    preloadModel().catch(() => {
-      // Model preload can retry during analysis.
-    });
+    const scheduler = globalThis as typeof globalThis & {
+      requestIdleCallback?: (callback: () => void) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const preloadOnIdle = () => {
+      preloadModel().catch(() => {
+        // Model preload can retry during analysis.
+      });
+    };
+
+    if (typeof scheduler.requestIdleCallback === "function") {
+      const idleCallbackId = scheduler.requestIdleCallback(() => {
+        preloadOnIdle();
+      });
+
+      return () => {
+        scheduler.cancelIdleCallback?.(idleCallbackId);
+      };
+    }
+
+    const timeoutId = globalThis.setTimeout(preloadOnIdle, MODEL_PRELOAD_FALLBACK_DELAY_MS);
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
   }, [preloadModel]);
 
   useEffect(() => {
@@ -365,10 +387,14 @@ export function useRiffSession() {
   }, [midiPlayback, profileId]);
 
   const handleDeleteSession = useCallback(async (id: string) => {
+    const session = savedRiffs.find((item) => item.id === id);
     await deleteSession(id);
+    if (session?.audioFileName) {
+      await deleteStoredAudio(session.audioFileName);
+    }
     setSavedRiffs((prev) => prev.filter((s) => s.id !== id));
     setActiveSessionId((prev) => (prev === id ? null : prev));
-  }, []);
+  }, [savedRiffs]);
 
   const uniqueNotes = getUniqueNotes(notes);
   const error = recorderError || detectionError || importError;

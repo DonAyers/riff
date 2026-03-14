@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+const PROGRESS_UPDATE_INTERVAL_MS = 100;
+
 interface WorkerProgressMessage {
   type: "progress";
   requestId: number;
@@ -79,6 +81,10 @@ export function usePitchDetection(): UsePitchDetectionReturn {
 
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
+  const progressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const displayedProgressRef = useRef(0);
+  const pendingProgressRef = useRef<number | null>(null);
+  const lastProgressCommitAtRef = useRef(0);
   const pendingRef = useRef<
     Map<
       number,
@@ -95,6 +101,69 @@ export function usePitchDetection(): UsePitchDetectionReturn {
     >
   >(new Map());
 
+  const clearProgressTimer = useCallback(() => {
+    if (progressTimeoutRef.current !== null) {
+      clearTimeout(progressTimeoutRef.current);
+      progressTimeoutRef.current = null;
+    }
+  }, []);
+
+  const commitProgress = useCallback(
+    (nextProgress: number) => {
+      clearProgressTimer();
+      pendingProgressRef.current = null;
+      displayedProgressRef.current = nextProgress;
+      lastProgressCommitAtRef.current = Date.now();
+      setProgress(nextProgress);
+    },
+    [clearProgressTimer]
+  );
+
+  const resetProgress = useCallback(() => {
+    clearProgressTimer();
+    displayedProgressRef.current = 0;
+    pendingProgressRef.current = null;
+    lastProgressCommitAtRef.current = 0;
+    setProgress(0);
+  }, [clearProgressTimer]);
+
+  const queueProgressUpdate = useCallback(
+    (nextProgress: number) => {
+      const normalizedProgress = Math.min(100, Math.max(0, Math.round(nextProgress)));
+      const queuedProgress = Math.max(
+        normalizedProgress,
+        pendingProgressRef.current ?? displayedProgressRef.current
+      );
+
+      if (queuedProgress <= displayedProgressRef.current) {
+        return;
+      }
+
+      pendingProgressRef.current = queuedProgress;
+
+      const elapsed = Date.now() - lastProgressCommitAtRef.current;
+      if (elapsed >= PROGRESS_UPDATE_INTERVAL_MS || queuedProgress === 100) {
+        commitProgress(queuedProgress);
+        return;
+      }
+
+      if (progressTimeoutRef.current !== null) {
+        return;
+      }
+
+      progressTimeoutRef.current = setTimeout(() => {
+        const bufferedProgress = pendingProgressRef.current;
+        if (bufferedProgress !== null && bufferedProgress > displayedProgressRef.current) {
+          commitProgress(bufferedProgress);
+          return;
+        }
+
+        clearProgressTimer();
+      }, PROGRESS_UPDATE_INTERVAL_MS - elapsed);
+    },
+    [clearProgressTimer, commitProgress]
+  );
+
   useEffect(() => {
     const worker = new Worker(
       new URL("../workers/pitchDetection.worker.ts", import.meta.url),
@@ -110,7 +179,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
 
       if (message.type === "progress") {
         if (pending.type === "detect") {
-          setProgress(message.progress);
+          queueProgressUpdate(message.progress);
         }
         return;
       }
@@ -126,9 +195,10 @@ export function usePitchDetection(): UsePitchDetectionReturn {
       pendingRef.current.delete(message.requestId);
 
       if (message.type === "error") {
-        setError(message.error);
         if (pending.type === "detect") {
+          clearProgressTimer();
           setIsLoading(false);
+          setError(message.error);
         }
         const restoredAudio = message.audioBuffer ? new Float32Array(message.audioBuffer) : null;
         pending.reject(new PitchDetectionError(message.error, restoredAudio));
@@ -140,6 +210,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
         return;
       }
 
+      commitProgress(100);
       setIsLoading(false);
       const mapped: DetectedNote[] = message.notes.map((n) => ({
         pitchMidi: n.pitchMidi,
@@ -156,6 +227,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
     workerRef.current = worker;
 
     return () => {
+      clearProgressTimer();
       for (const pending of pendingRef.current.values()) {
         pending.reject(new Error("Pitch detection worker terminated"));
       }
@@ -163,7 +235,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
       worker.terminate();
       workerRef.current = null;
     };
-  }, []);
+  }, [clearProgressTimer, commitProgress, queueProgressUpdate]);
 
   const detect = useCallback(
     async (audio: Float32Array, options?: DetectOptions): Promise<DetectResult> => {
@@ -174,7 +246,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
       }
 
       setIsLoading(true);
-      setProgress(0);
+      resetProgress();
       setError(null);
 
       const requestId = ++requestIdRef.current;
@@ -195,7 +267,7 @@ export function usePitchDetection(): UsePitchDetectionReturn {
         );
       });
     },
-    []
+    [resetProgress]
   );
 
   const preload = useCallback(async (): Promise<void> => {

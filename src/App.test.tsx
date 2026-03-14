@@ -127,6 +127,7 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     },
     midiPlayback: {
       isPlaying: false,
+      currentTimeS: 0,
       duration: 0,
       load: vi.fn(),
       play: vi.fn(),

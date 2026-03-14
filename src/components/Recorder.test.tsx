@@ -113,40 +113,41 @@ describe("Recorder", () => {
   describe("advanced options", () => {
     it("renders advanced section collapsed by default", () => {
       render(<Recorder {...defaultProps} />);
-      expect(screen.getByRole("button", { name: /advanced options/i })).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByRole("button", { name: /show advanced options/i })).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByText("Advanced")).toBeInTheDocument();
     });
 
     it("expands advanced section when clicked", () => {
       render(<Recorder {...defaultProps} />);
-      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      const toggle = screen.getByRole("button", { name: /show advanced options/i });
 
       fireEvent.click(toggle);
 
-      expect(toggle).toHaveAttribute("aria-expanded", "true");
-      expect(screen.getByRole("checkbox", { name: /save smaller audio files/i })).toBeVisible();
+      expect(screen.getByRole("button", { name: /hide advanced options/i })).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("checkbox", { name: /use compressed audio/i })).toBeVisible();
     });
 
     it("collapses advanced section when clicked again", () => {
       render(<Recorder {...defaultProps} />);
-      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      const toggle = screen.getByRole("button", { name: /show advanced options/i });
 
       fireEvent.click(toggle);
-      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("button", { name: /hide advanced options/i })).toHaveAttribute("aria-expanded", "true");
 
-      fireEvent.click(toggle);
-      expect(toggle).toHaveAttribute("aria-expanded", "false");
-      expect(screen.queryByRole("checkbox", { name: /save smaller audio files/i })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /hide advanced options/i }));
+      expect(screen.getByRole("button", { name: /show advanced options/i })).toHaveAttribute("aria-expanded", "false");
+      expect(screen.queryByRole("checkbox", { name: /use compressed audio/i })).not.toBeInTheDocument();
     });
 
     it("hides storage format in advanced section", () => {
       render(<Recorder {...defaultProps} />);
 
-      expect(screen.queryByRole("checkbox", { name: /save smaller audio files/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("checkbox", { name: /use compressed audio/i })).not.toBeInTheDocument();
 
-      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      const toggle = screen.getByRole("button", { name: /show advanced options/i });
       fireEvent.click(toggle);
 
-      expect(screen.getByRole("checkbox", { name: /save smaller audio files/i })).toBeVisible();
+      expect(screen.getByRole("checkbox", { name: /use compressed audio/i })).toBeVisible();
     });
 
     it("hides detection profile in advanced section", () => {
@@ -154,7 +155,7 @@ describe("Recorder", () => {
 
       expect(screen.queryByRole("radiogroup", { name: /instrument mode/i })).not.toBeInTheDocument();
 
-      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      const toggle = screen.getByRole("button", { name: /show advanced options/i });
       fireEvent.click(toggle);
 
       expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeVisible();
@@ -172,17 +173,17 @@ describe("Recorder", () => {
       expect(screen.getByRole("button", { name: /analyze now/i })).toBeInTheDocument();
     });
 
-    it("renames compress to save smaller audio files in advanced", () => {
+    it("renames compress to use compressed audio in advanced", () => {
       render(<Recorder {...defaultProps} />);
-      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      const toggle = screen.getByRole("button", { name: /show advanced options/i });
       fireEvent.click(toggle);
-      expect(screen.getByRole("checkbox", { name: /save smaller audio files/i })).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: /use compressed audio/i })).toBeInTheDocument();
       expect(screen.getByTitle("Reduce audio file size when saving")).toBeInTheDocument();
     });
 
     it("renames detection focus to instrument mode in advanced", () => {
       render(<Recorder {...defaultProps} />);
-      const toggle = screen.getByRole("button", { name: /advanced options/i });
+      const toggle = screen.getByRole("button", { name: /show advanced options/i });
       fireEvent.click(toggle);
 
       expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeInTheDocument();
@@ -192,7 +193,7 @@ describe("Recorder", () => {
 
   it("keeps guitar-focused profile options", () => {
     render(<Recorder {...defaultProps} />);
-    const toggle = screen.getByRole("button", { name: /advanced options/i });
+    const toggle = screen.getByRole("button", { name: /show advanced options/i });
     fireEvent.click(toggle);
 
     expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeInTheDocument();
@@ -217,11 +218,11 @@ describe("Recorder", () => {
       />
     );
 
-    const toggle = screen.getByRole("button", { name: /advanced options/i });
+    const toggle = screen.getByRole("button", { name: /show advanced options/i });
     fireEvent.click(toggle);
 
     fireEvent.click(screen.getByRole("checkbox", { name: /analyze automatically/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /save smaller audio files/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /use compressed audio/i }));
     fireEvent.click(screen.getByRole("radio", { name: "Full range" }));
 
     expect(onAutoProcessChange).toHaveBeenCalledWith(true);
@@ -234,10 +235,10 @@ describe("Recorder", () => {
 
     expect(screen.getByRole("checkbox", { name: /analyze automatically/i })).toBeDisabled();
 
-    const toggle = screen.getByRole("button", { name: /advanced options/i });
+    const toggle = screen.getByRole("button", { name: /show advanced options/i });
     fireEvent.click(toggle);
 
-    expect(screen.getByRole("checkbox", { name: /save smaller audio files/i })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /use compressed audio/i })).toBeDisabled();
     expect(screen.getByRole("radio", { name: "Guitar" })).toBeDisabled();
     expect(screen.getByRole("button", { name: /analyze now/i })).toBeDisabled();
   });

@@ -21,7 +21,9 @@ test("known clip transcribes and shows notes/chord", async ({ page }) => {
   await expect(page.locator(".note-chip", { hasText: "G4" })).toBeVisible({ timeout: 60000 });
   await expect(page.getByRole("button", { name: /^select chord c major$/i })).toBeVisible({ timeout: 60000 });
   await expect(page.getByText(/detected key/i)).toBeVisible({ timeout: 60000 });
-  await expect(page.getByRole("button", { name: /play midi preview/i })).toBeVisible({ timeout: 60000 });
+  await expect(
+    page.locator(".piano-roll").getByRole("button", { name: /play midi preview/i })
+  ).toBeVisible({ timeout: 60000 });
 
   const c4Button = page.getByRole("button", { name: /play note c4/i }).first();
   await expect(c4Button).toBeVisible({ timeout: 60000 });

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, Mic2, Square, Upload, Sparkles } from "lucide-react";
+import { ChevronDown, Mic2, Settings2, Sparkles, Square, Upload } from "lucide-react";
 import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
 import type { RecorderState } from "../hooks/useAudioRecorder";
 import "./Recorder.css";
@@ -147,10 +147,12 @@ export function Recorder({
           className="advanced-toggle"
           aria-expanded={advancedOpen}
           aria-controls={advancedSectionId}
+          aria-label={advancedOpen ? "Hide advanced options" : "Show advanced options"}
           onClick={() => setAdvancedOpen((current) => !current)}
         >
-          <ChevronDown size={14} strokeWidth={2} className={`chevron ${advancedOpen ? "open" : ""}`} />
-          <span>Advanced options</span>
+          <Settings2 size={15} strokeWidth={1.8} className="advanced-toggle__icon" aria-hidden="true" />
+          <span className="advanced-toggle__label">Advanced</span>
+          <ChevronDown size={14} strokeWidth={2} className={`chevron ${advancedOpen ? "open" : ""}`} aria-hidden="true" />
         </button>
         {advancedOpen && (
             <div className="advanced-content" id={advancedSectionId}>
@@ -162,7 +164,7 @@ export function Recorder({
                     onChange={(e) => onStorageFormatChange(e.target.checked ? "compressed" : "pcm")}
                     disabled={settingsDisabled}
                   />
-                  <span>Save smaller audio files</span>
+                  <span>Use compressed audio</span>
                 </label>
               </div>
 

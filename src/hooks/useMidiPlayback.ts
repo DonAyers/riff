@@ -16,6 +16,7 @@ export interface UseMidiPlaybackReturn {
   previewNote: (note: Pick<MappedNote, "midi" | "amplitude" | "durationS">) => Promise<void>;
   stop: () => void;
   isPlaying: boolean;
+  currentTimeS: number;
   duration: number;
 }
 
@@ -34,6 +35,7 @@ function getVelocity(amplitude = 0.2, minVelocity = 10): number {
 
 export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybackReturn {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTimeS, setCurrentTimeS] = useState(0);
   const [duration, setDuration] = useState(0);
 
   const notesRef = useRef<MappedNote[]>([]);
@@ -41,6 +43,8 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplerRef = useRef<Soundfont | null>(null);
   const endTimerRef = useRef<number | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const playbackIdRef = useRef(0);
 
   const mapPlaybackNotes = useCallback(
     (notes: MappedNote[]): PlaybackNote[] => {
@@ -84,29 +88,70 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
     return samplerRef.current;
   }, [getAudioContext]);
 
+  const stopTimelineUpdates = useCallback(() => {
+    if (animationFrameRef.current !== null) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+  }, []);
+
   const clearPlayback = useCallback(() => {
     if (endTimerRef.current !== null) {
       window.clearTimeout(endTimerRef.current);
       endTimerRef.current = null;
     }
 
+     stopTimelineUpdates();
+
     if (samplerRef.current) {
       samplerRef.current.stop();
     }
+  }, [stopTimelineUpdates]);
+
+  const invalidatePlayback = useCallback(() => {
+    playbackIdRef.current += 1;
+    return playbackIdRef.current;
   }, []);
+
+  const resumeAudioContext = useCallback(async (ctx: AudioContext) => {
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+  }, []);
+
+  const startTimelineUpdates = useCallback((ctx: AudioContext, playbackId: number, startAtS: number, clipDurationS: number) => {
+    const update = () => {
+      if (playbackId !== playbackIdRef.current) {
+        return;
+      }
+
+      const elapsedS = Math.max(0, Math.min(clipDurationS, ctx.currentTime - startAtS));
+      setCurrentTimeS(elapsedS);
+
+      if (elapsedS >= clipDurationS) {
+        animationFrameRef.current = null;
+        return;
+      }
+
+      animationFrameRef.current = window.requestAnimationFrame(update);
+    };
+
+    stopTimelineUpdates();
+    animationFrameRef.current = window.requestAnimationFrame(update);
+  }, [stopTimelineUpdates]);
 
   const load = useCallback(
     (notes: MappedNote[]) => {
+      invalidatePlayback();
       notesRef.current = notes;
       const playbackNotes = mapPlaybackNotes(notes);
       playbackNotesRef.current = playbackNotes;
       setDuration(getClipDuration(playbackNotes));
+      setCurrentTimeS(0);
       clearPlayback();
       setIsPlaying(false);
-      // Initialize sampler in the background when mapped
-      getSampler();
     },
-    [clearPlayback, getSampler, mapPlaybackNotes],
+    [clearPlayback, invalidatePlayback, mapPlaybackNotes],
   );
 
   const play = useCallback(async () => {
@@ -114,15 +159,19 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
     if (playbackNotes.length === 0) return;
 
     const ctx = getAudioContext();
-    if (ctx.state === "suspended") {
-      await ctx.resume();
-    }
+    await resumeAudioContext(ctx);
 
+    const playbackId = invalidatePlayback();
     clearPlayback();
     setIsPlaying(true);
+    setCurrentTimeS(0);
 
     const sampler = getSampler();
     await sampler.load; // wait for instrument to be loaded if not already
+
+    if (playbackId !== playbackIdRef.current) {
+      return;
+    }
 
     const startAt = ctx.currentTime + 0.03;
     const clipDuration = getClipDuration(playbackNotes);
@@ -138,17 +187,22 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
       });
     }
 
+    startTimelineUpdates(ctx, playbackId, startAt, clipDuration);
+
     endTimerRef.current = window.setTimeout(() => {
+      if (playbackId !== playbackIdRef.current) {
+        return;
+      }
+
       setIsPlaying(false);
+      setCurrentTimeS(0);
       clearPlayback();
     }, Math.ceil((clipDuration + 0.1) * 1000));
-  }, [clearPlayback, getAudioContext, getSampler]);
+  }, [clearPlayback, getAudioContext, getSampler, invalidatePlayback, resumeAudioContext, startTimelineUpdates]);
 
   const previewNote = useCallback(async (note: Pick<MappedNote, "midi" | "amplitude" | "durationS">) => {
     const ctx = getAudioContext();
-    if (ctx.state === "suspended") {
-      await ctx.resume();
-    }
+    await resumeAudioContext(ctx);
 
     const sampler = getSampler();
 
@@ -160,28 +214,32 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
       time: ctx.currentTime,
       duration: getPlaybackDuration(note.durationS),
     });
-  }, [getAudioContext, getSampler]);
+  }, [getAudioContext, getSampler, resumeAudioContext]);
 
   const stop = useCallback(() => {
+    invalidatePlayback();
     clearPlayback();
     setIsPlaying(false);
-  }, [clearPlayback]);
+    setCurrentTimeS(0);
+  }, [clearPlayback, invalidatePlayback]);
 
   useEffect(() => {
     return () => {
+      invalidatePlayback();
       clearPlayback();
       if (audioContextRef.current) {
         audioContextRef.current.close().catch(() => {});
       }
     };
-  }, [clearPlayback]);
+  }, [clearPlayback, invalidatePlayback]);
 
   useEffect(() => {
     if (notesRef.current.length === 0) return;
     const playbackNotes = mapPlaybackNotes(notesRef.current);
     playbackNotesRef.current = playbackNotes;
     setDuration(getClipDuration(playbackNotes));
+    setCurrentTimeS(0);
   }, [mapPlaybackNotes]);
 
-  return { load, play, previewNote, stop, isPlaying, duration };
+  return { load, play, previewNote, stop, isPlaying, currentTimeS, duration };
 }

@@ -40,7 +40,12 @@ describe("SessionPicker", () => {
   });
 
   it("shows trigger with active session info when collapsed", () => {
-    const session = makeSession({ name: "Take 1:00 PM", primaryChord: "Am" });
+    const session = makeSession({
+      name: "Take 1:00 PM",
+      primaryChord: "Am",
+      audioFormat: "compressed",
+      audioMime: "audio/webm;codecs=opus",
+    });
 
     render(
       <SessionPicker
@@ -53,7 +58,7 @@ describe("SessionPicker", () => {
 
     expect(screen.getByText("Take 1:00 PM")).toBeInTheDocument();
     expect(screen.getByText(/Am/)).toBeInTheDocument();
-    expect(screen.getByText(/2 notes/)).toBeInTheDocument();
+    expect(screen.getByText(/2 notes · WebM/)).toBeInTheDocument();
     // Dropdown should not be visible
     expect(screen.queryByRole("list", { name: /saved riffs/i })).not.toBeInTheDocument();
   });
@@ -250,6 +255,27 @@ describe("SessionPicker", () => {
     );
 
     // The trigger meta should show "—" for null chord
-    expect(screen.getByText(/— · 2 notes/)).toBeInTheDocument();
+    expect(screen.getByText(/— · 2 notes · PCM/)).toBeInTheDocument();
+  });
+
+  it("shows saved audio format in the dropdown metadata", () => {
+    const session = makeSession({
+      name: "Compressed Take",
+      audioFormat: "compressed",
+      audioMime: "audio/webm;codecs=opus",
+    });
+
+    render(
+      <SessionPicker
+        sessions={[session]}
+        activeSessionId={null}
+        onLoad={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /saved riffs/i }));
+
+    expect(screen.getByText(/1:23 · WebM/)).toBeInTheDocument();
   });
 });

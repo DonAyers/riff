@@ -21,7 +21,7 @@ test("landing page shows simplified recorder defaults and lane controls", async 
 
   const advancedOptionsToggle = page.getByRole("button", { name: /advanced options/i });
   await expect(advancedOptionsToggle).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByRole("checkbox", { name: /save smaller audio files/i })).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: /use compressed audio/i })).toHaveCount(0);
   await expect(page.getByRole("radiogroup", { name: /instrument mode/i })).toHaveCount(0);
 
   await expect(page.getByRole("heading", { level: 2, name: "Review notes" })).toBeVisible();
@@ -31,7 +31,7 @@ test("landing page shows simplified recorder defaults and lane controls", async 
 
   await advancedOptionsToggle.click();
   await expect(advancedOptionsToggle).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("checkbox", { name: /save smaller audio files/i })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /use compressed audio/i })).toBeVisible();
   await expect(page.getByRole("radiogroup", { name: /instrument mode/i })).toBeVisible();
   await expect(
     page.getByText(/use guitar for most guitar recordings\. choose full range for other instruments\./i)

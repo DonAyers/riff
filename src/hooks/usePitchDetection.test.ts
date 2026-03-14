@@ -31,6 +31,7 @@ describe("usePitchDetection", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -85,5 +86,56 @@ describe("usePitchDetection", () => {
     expect((thrown as Error).message).toBe("Pitch model failed");
     expect(result.current.error).toBe("Pitch model failed");
     expect((thrown as { audio: Float32Array }).audio).toEqual(new Float32Array([0.1, 0.2]));
+  });
+
+  it("throttles progress updates to the latest worker value", async () => {
+    vi.useFakeTimers();
+
+    const { result } = renderHook(() => usePitchDetection());
+    const worker = MockWorker.instances[0];
+
+    let pendingDetection = undefined as unknown as ReturnType<typeof result.current.detect>;
+    let detectedNotes = undefined as unknown as Awaited<ReturnType<typeof result.current.detect>>;
+    act(() => {
+      pendingDetection = result.current.detect(new Float32Array([0.1, 0.2]));
+    });
+
+    act(() => {
+      worker.emit({ type: "progress", requestId: 1, progress: 10 });
+    });
+
+    expect(result.current.progress).toBe(10);
+
+    act(() => {
+      worker.emit({ type: "progress", requestId: 1, progress: 25 });
+      worker.emit({ type: "progress", requestId: 1, progress: 40 });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(99);
+    });
+    expect(result.current.progress).toBe(10);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current.progress).toBe(40);
+
+    await act(async () => {
+      worker.emit({
+        type: "result",
+        requestId: 1,
+        audioBuffer: new Float32Array([0.1, 0.2]).buffer,
+        notes: [],
+      });
+
+      detectedNotes = await pendingDetection;
+    });
+
+    expect(result.current.progress).toBe(100);
+    expect(detectedNotes).toEqual({
+      notes: [],
+      audio: new Float32Array([0.1, 0.2]),
+    });
   });
 });

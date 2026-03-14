@@ -133,10 +133,14 @@ interface RiffDb extends DBSchema {
       value: string;
     };
   };
+  audioBlobs: {
+    key: string;
+    value: Blob;
+  };
 }
 
 const DB_NAME = "riff-db";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const dbPromise = openDB<RiffDb>(DB_NAME, DB_VERSION, {
   upgrade(db, oldVersion) {
@@ -150,7 +154,11 @@ const dbPromise = openDB<RiffDb>(DB_NAME, DB_VERSION, {
       db.createObjectStore("settings", { keyPath: "key" });
     }
 
-    // V2 → no structural changes; records are normalized on read.
+    if (!db.objectStoreNames.contains("audioBlobs")) {
+      db.createObjectStore("audioBlobs");
+    }
+
+    // V2/V3 → records are normalized on read.
   },
 });
 
@@ -175,6 +183,41 @@ export async function listSessions(): Promise<RiffSession[]> {
 export async function deleteSession(id: string): Promise<void> {
   const db = await dbPromise;
   await db.delete("riffs", id);
+}
+
+export async function saveAudioBlobToIndexedDB(
+  fileName: string,
+  blob: Blob,
+): Promise<boolean> {
+  try {
+    const db = await dbPromise;
+    await db.put("audioBlobs", blob, fileName);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function readAudioBlobFromIndexedDB(
+  fileName: string,
+): Promise<Blob | null> {
+  try {
+    const db = await dbPromise;
+    return (await db.get("audioBlobs", fileName)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteAudioBlobFromIndexedDB(
+  fileName: string,
+): Promise<void> {
+  try {
+    const db = await dbPromise;
+    await db.delete("audioBlobs", fileName);
+  } catch {
+    // Ignore fallback cleanup failures.
+  }
 }
 
 // ---------------------------------------------------------------------------

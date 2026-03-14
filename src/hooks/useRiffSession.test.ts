@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRiffSession } from "./useRiffSession";
 import { PROFILES } from "../lib/instrumentProfiles";
 
@@ -16,6 +16,7 @@ const {
   mockDeleteSession,
   mockReadPcmFromOpfs,
   mockReadBlobFromOpfs,
+  mockDeleteStoredAudio,
   mockDecodeAudioFile,
   mockEncodeCompressed,
   mockSavePcmToOpfs,
@@ -38,6 +39,7 @@ const {
   mockDeleteSession: vi.fn(),
   mockReadPcmFromOpfs: vi.fn(),
   mockReadBlobFromOpfs: vi.fn(),
+  mockDeleteStoredAudio: vi.fn(),
   mockDecodeAudioFile: vi.fn(),
   mockEncodeCompressed: vi.fn(),
   mockSavePcmToOpfs: vi.fn(),
@@ -82,6 +84,7 @@ vi.mock("./useAudioPlayback", () => ({
 vi.mock("./useMidiPlayback", () => ({
   useMidiPlayback: () => ({
     isPlaying: false,
+    currentTimeS: 0,
     duration: 0,
     load: mockMidiLoad,
     play: vi.fn(),
@@ -101,6 +104,7 @@ vi.mock("../lib/audioStorage", () => ({
   savePcmToOpfs: mockSavePcmToOpfs,
   saveBlobToOpfs: mockSaveBlobToOpfs,
   readBlobFromOpfs: mockReadBlobFromOpfs,
+  deleteStoredAudio: mockDeleteStoredAudio,
 }));
 
 vi.mock("../lib/audioImport", () => ({
@@ -153,6 +157,7 @@ describe("useRiffSession", () => {
     mockDeleteSession.mockReset();
     mockReadPcmFromOpfs.mockReset();
     mockReadBlobFromOpfs.mockReset();
+    mockDeleteStoredAudio.mockReset();
     mockDecodeAudioFile.mockReset();
     mockEncodeCompressed.mockReset();
     mockSavePcmToOpfs.mockReset();
@@ -162,6 +167,34 @@ describe("useRiffSession", () => {
     mockDetectKey.mockReset().mockReturnValue({ primary: null, alternatives: [], ranked: [], lowConfidence: true });
     mockDetectChord.mockReset().mockReturnValue(null);
     mockFormatChordName.mockReset().mockImplementation((value: string) => value);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("preloads the model when the browser becomes idle", async () => {
+    const idleCallbacks: Array<() => void> = [];
+    const requestIdleCallback = vi.fn((callback: () => void) => {
+      idleCallbacks.push(callback);
+      return idleCallbacks.length;
+    });
+    const cancelIdleCallback = vi.fn();
+
+    vi.stubGlobal("requestIdleCallback", requestIdleCallback);
+    vi.stubGlobal("cancelIdleCallback", cancelIdleCallback);
+
+    renderHook(() => useRiffSession());
+
+    expect(requestIdleCallback).toHaveBeenCalledTimes(1);
+    expect(mockPreload).not.toHaveBeenCalled();
+
+    await act(async () => {
+      idleCallbacks[0]?.();
+    });
+
+    expect(mockPreload).toHaveBeenCalledTimes(1);
   });
 
   it("uses the current profile chord window when loading a saved riff", async () => {
@@ -310,5 +343,48 @@ describe("useRiffSession", () => {
     expect(result.current.notes).toHaveLength(1);
     expect(result.current.notes[0]?.midi).toBe(60);
     expect(result.current.chord).toBe("C Major");
+  });
+
+  it("deletes persisted audio when removing a saved session", async () => {
+    const session = {
+      id: "saved-1",
+      name: "Take 1",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      source: "recording" as const,
+      durationS: 2,
+      notes: [{ midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+      chordTimeline: [],
+      keyDetection: null,
+      primaryChord: null,
+      uniqueNoteNames: ["C"],
+      audioFileName: "saved-1.f32",
+      audioFormat: "pcm" as const,
+      audioMime: undefined,
+      profileId: "guitar" as const,
+    };
+    mockListSessions.mockResolvedValue([session]);
+    mockReadPcmFromOpfs.mockResolvedValue(new Float32Array([0.1, -0.1]));
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(result.current.savedRiffs).toEqual([session]);
+    });
+
+    await act(async () => {
+      await result.current.handleLoadSavedRiff(session);
+    });
+
+    expect(result.current.activeSessionId).toBe(session.id);
+
+    await act(async () => {
+      await result.current.handleDeleteSession(session.id);
+    });
+
+    expect(mockDeleteSession).toHaveBeenCalledWith(session.id);
+    expect(mockDeleteStoredAudio).toHaveBeenCalledWith("saved-1.f32");
+    expect(result.current.savedRiffs).toEqual([]);
+    expect(result.current.activeSessionId).toBeNull();
   });
 });

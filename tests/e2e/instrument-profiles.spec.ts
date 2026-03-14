@@ -36,7 +36,9 @@ test.describe("instrument profile e2e", () => {
     const profileOptions = page.locator(".profile-picker").getByRole("radio");
 
     await expect(page.getByRole("radiogroup", { name: "Instrument mode" })).toBeVisible();
-    await expect(page.getByText("Use Guitar for most guitar recordings. Choose Full range for wider note coverage.")).toBeVisible();
+    await expect(
+      page.getByText("Use Guitar for most guitar recordings. Choose Full range for other instruments.")
+    ).toBeVisible();
     await expect(profileOptions.nth(0)).toHaveValue("guitar");
     await expect(profileOptions.nth(1)).toHaveValue("default");
     await expect(page.getByRole("radio", { name: "Guitar" })).toBeVisible();

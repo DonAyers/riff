@@ -4,6 +4,26 @@ import { formatDuration } from "../lib/formatDuration";
 import type { RiffSession } from "../lib/db";
 import "./SessionPicker.css";
 
+function getAudioFormatLabel(session: RiffSession): string {
+  if (session.audioFormat !== "compressed") {
+    return "PCM";
+  }
+
+  if (session.audioMime?.includes("webm")) {
+    return "WebM";
+  }
+
+  if (session.audioMime?.includes("mp4") || session.audioMime?.includes("aac")) {
+    return "M4A";
+  }
+
+  if (session.audioMime?.includes("ogg")) {
+    return "Ogg";
+  }
+
+  return "Compressed";
+}
+
 export interface SessionPickerProps {
   sessions: RiffSession[];
   activeSessionId: string | null;
@@ -79,6 +99,7 @@ export function SessionPicker({
     ? [
         activeSession.primaryChord ?? "—",
         `${activeSession.notes.length} notes`,
+        getAudioFormatLabel(activeSession),
       ].join(" · ")
     : `${sessions.length} saved`;
 
@@ -140,7 +161,8 @@ export function SessionPicker({
                     <span className="session-picker-item__meta">
                       {session.primaryChord ?? "—"} ·{" "}
                       {session.notes.length} notes ·{" "}
-                      {formatDuration(session.durationS)}
+                      {formatDuration(session.durationS)} ·{" "}
+                      {getAudioFormatLabel(session)}
                     </span>
                   </span>
                 </button>

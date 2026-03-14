@@ -3,24 +3,75 @@
   min-width: 0;
 }
 
+.piano-roll__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
 .piano-roll h2 {
   font-size: 0.65rem;
   color: var(--fg-muted);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  margin-bottom: var(--space-lg);
+  margin: 0;
   font-weight: 500;
   text-align: left;
+}
+
+.piano-roll__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.piano-roll__time {
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  font-family: "SF Mono", "Fira Code", monospace;
+}
+
+.piano-roll__playback-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--fg-primary);
+  padding: 0.45rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+
+.piano-roll__playback-btn:hover {
+  border-color: rgba(130, 98, 255, 0.48);
+  background: rgba(130, 98, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.piano-roll__playback-btn:focus-visible {
+  outline: 2px solid rgba(130, 98, 255, 0.72);
+  outline-offset: 2px;
+}
+
+.piano-roll__playback-btn.is-active {
+  border-color: rgba(130, 98, 255, 0.52);
+  background: rgba(130, 98, 255, 0.18);
 }
 
 .piano-roll-container {
   display: flex;
   gap: 0;
   border: 1px solid var(--surface-soft);
-    border-radius: var(--radius-lg);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   height: clamp(220px, 34vw, 320px);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.014));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.014));
 }
 
 .piano-roll-labels {
@@ -52,6 +103,22 @@
   );
 }
 
+.piano-roll-playhead {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 1px rgba(130, 98, 255, 0.08);
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.piano-roll-playhead.is-active {
+  background: rgba(130, 98, 255, 0.92);
+  box-shadow: 0 0 18px rgba(130, 98, 255, 0.35);
+}
+
 .piano-roll-note {
   position: absolute;
   background: var(--accent);
@@ -59,7 +126,8 @@
   opacity: 0.8;
   min-width: 4px;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
-    transition: opacity 0.15s, transform 0.15s;
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 0;
 }
 
 .piano-roll-note:hover {

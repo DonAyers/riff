@@ -28,5 +28,7 @@ test("shows demo analysis fallback when microphone permission is denied", async 
   await waitForAnalysisResults(page);
   await expect(page.locator(".note-chip", { hasText: "C4" })).toBeVisible();
   await expect(page.getByRole("button", { name: /play recording/i })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /play midi preview/i })).toBeVisible();
+  await expect(
+    page.locator(".piano-roll").getByRole("button", { name: /play midi preview/i })
+  ).toBeVisible();
 });
