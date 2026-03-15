@@ -22,8 +22,27 @@
   margin: 0 auto;
   display: grid;
   gap: var(--space-lg);
+  padding-bottom: 3.5rem;
   position: relative;
   z-index: 1;
+}
+
+.build-badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  padding: 0.42rem 0.65rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(5, 9, 17, 0.76);
+  color: var(--fg-muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
 }
 
 /* ── Header ── */

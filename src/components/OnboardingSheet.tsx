@@ -1,6 +1,5 @@
 import { useCallback, useEffect, type MouseEvent } from "react";
 import { Mic2, Sparkles, Download, X } from "lucide-react";
-import { buildLabel } from "../lib/buildInfo";
 import "./OnboardingSheet.css";
 
 const STORAGE_KEY = "riff_onboarded";
@@ -81,20 +80,14 @@ export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
               keep. Everything stays on the device.
             </p>
           </div>
-          <div className="onboarding-header__meta">
-            <div className="onboarding-build" role="group" aria-label="Build information">
-              <span className="onboarding-build__label">Build</span>
-              <span className="onboarding-build__value">{buildLabel}</span>
-            </div>
-            <button
-              type="button"
-              className="onboarding-close"
-              onClick={handleClose}
-              aria-label="Close"
-            >
-              <X size={18} strokeWidth={2} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="onboarding-close"
+            onClick={handleClose}
+            aria-label="Close"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
         </div>
 
         <ol className="onboarding-steps">

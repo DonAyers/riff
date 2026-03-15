@@ -5,7 +5,7 @@ test("landing page shows simplified recorder defaults and lane controls", async 
   await gotoApp(page);
 
   await expect(page.getByRole("heading", { level: 1, name: /riff/i })).toBeVisible();
-  await expect(page.getByLabel(/^Build /)).toHaveCount(0);
+  await expect(page.getByLabel(/^Build /)).toBeVisible();
   await expect(page.getByRole("button", { name: /help and about/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /start recording/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /import audio file/i })).toBeVisible();
@@ -61,7 +61,7 @@ test("first visit shows onboarding and help reopens it later", async ({ page }) 
   const onboarding = page.getByRole("dialog", { name: /help and about riff/i });
   await expect(onboarding).toBeVisible();
   await expect(onboarding.getByRole("heading", { level: 2, name: /capture first\. review second\./i })).toBeVisible();
-  await expect(onboarding.getByText(/^v.+ · .+$/)).toBeVisible();
+  await expect(onboarding.getByRole("button", { name: /close/i })).toBeVisible();
 
   await onboarding.getByRole("button", { name: /got it/i }).click();
   await expect(onboarding).toBeHidden();

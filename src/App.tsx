@@ -15,6 +15,7 @@ import { SessionPicker } from "./components/SessionPicker";
 import { ExportPanel } from "./components/ExportPanel";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { SelectedChordDialog } from "./components/SelectedChordDialog";
+import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
@@ -395,6 +396,10 @@ function App() {
             </div>
           </section>
         </main>
+
+        <div className="build-badge" aria-label={`Build ${buildLabel}`} title={`Build ${buildLabel}`}>
+          {buildLabel}
+        </div>
       </div>
 
       {showOnboarding && (

@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { buildLabel } from "../lib/buildInfo";
 import { OnboardingSheet, hasSeenOnboarding } from "./OnboardingSheet";
 
 describe("OnboardingSheet", () => {
@@ -8,12 +7,10 @@ describe("OnboardingSheet", () => {
     localStorage.clear();
   });
 
-  it("shows build info in the help surface", () => {
+  it("keeps the close button visible in the help surface", () => {
     render(<OnboardingSheet onClose={vi.fn()} />);
 
-    expect(
-      screen.getByRole("group", { name: /build information/i })
-    ).toHaveTextContent(buildLabel);
+    expect(screen.getByRole("button", { name: /close/i })).toBeVisible();
   });
 
   it("marks onboarding as seen when dismissed", () => {

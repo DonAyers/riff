@@ -194,7 +194,7 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    expect(screen.queryByText(buildLabel)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(`Build ${buildLabel}`)).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: /capture/i })
     ).toBeInTheDocument();

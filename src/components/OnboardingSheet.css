@@ -48,12 +48,6 @@
   min-width: 0;
 }
 
-.onboarding-header__meta {
-  display: grid;
-  justify-items: end;
-  gap: var(--space-sm);
-}
-
 .onboarding-close {
   width: 32px;
   height: 32px;
@@ -93,31 +87,6 @@
   font-size: var(--text-sm);
   line-height: 1.55;
   color: var(--fg-muted);
-}
-
-.onboarding-build {
-  display: grid;
-  gap: var(--space-2xs);
-  justify-items: end;
-  padding: 0.65rem 0.8rem;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  text-align: right;
-}
-
-.onboarding-build__label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-}
-
-.onboarding-build__value {
-  font-size: var(--text-sm);
-  color: var(--fg);
-  font-family: var(--font-mono);
 }
 
 .onboarding-steps {
