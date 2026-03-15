@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, type MouseEvent } from "react";
 import { Mic2, Sparkles, Download, X } from "lucide-react";
 import { buildLabel } from "../lib/buildInfo";
 import "./OnboardingSheet.css";
@@ -44,19 +44,24 @@ interface OnboardingSheetProps {
 }
 
 export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
-  function handleClose() {
+  const handleClose = useCallback(() => {
     markOnboardingSeen();
     onClose();
-  }
+  }, [onClose]);
 
-  // close on Escape
+  const handleBackdropClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      handleClose();
+    }
+  }, [handleClose]);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [handleClose]);
 
   return (
     <div
@@ -64,21 +69,33 @@ export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
       role="dialog"
       aria-modal="true"
       aria-label="Help and about Riff"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) handleClose();
-      }}
+      onClick={handleBackdropClick}
     >
       <div className="onboarding-sheet">
-        <button
-          className="onboarding-close"
-          onClick={handleClose}
-          aria-label="Close"
-        >
-          <X size={18} strokeWidth={2} />
-        </button>
-
-        <p className="onboarding-kicker">Help</p>
-        <h2 className="onboarding-title">Capture first. Review second.</h2>
+        <div className="onboarding-header">
+          <div className="onboarding-header__copy">
+            <p className="onboarding-kicker">Help</p>
+            <h2 className="onboarding-title">Capture first. Review second.</h2>
+            <p className="onboarding-subtitle">
+              Record or import audio, review notes or guitar shapes, then export what you want to
+              keep. Everything stays on the device.
+            </p>
+          </div>
+          <div className="onboarding-header__meta">
+            <div className="onboarding-build" role="group" aria-label="Build information">
+              <span className="onboarding-build__label">Build</span>
+              <span className="onboarding-build__value">{buildLabel}</span>
+            </div>
+            <button
+              type="button"
+              className="onboarding-close"
+              onClick={handleClose}
+              aria-label="Close"
+            >
+              <X size={18} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
 
         <ol className="onboarding-steps">
           {STEPS.map((step) => (
@@ -92,12 +109,7 @@ export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
           ))}
         </ol>
 
-        <div className="onboarding-about" aria-label="About this build">
-          <span className="onboarding-about__label">About this build</span>
-          <span className="onboarding-about__value">{buildLabel}</span>
-        </div>
-
-        <button className="onboarding-cta" onClick={handleClose}>
+        <button type="button" className="onboarding-cta" onClick={handleClose}>
           Got it
         </button>
       </div>

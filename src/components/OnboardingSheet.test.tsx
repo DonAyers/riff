@@ -11,8 +11,9 @@ describe("OnboardingSheet", () => {
   it("shows build info in the help surface", () => {
     render(<OnboardingSheet onClose={vi.fn()} />);
 
-    expect(screen.getByText(/about this build/i)).toBeInTheDocument();
-    expect(screen.getByText(buildLabel)).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: /build information/i })
+    ).toHaveTextContent(buildLabel);
   });
 
   it("marks onboarding as seen when dismissed", () => {

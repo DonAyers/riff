@@ -1,176 +1,175 @@
 # Riff
 
-Record a guitar riff, chord, or arpeggio — see every note you played.
+Riff is a browser-based polyphonic music transcription app for capturing a musical idea and turning it into notes, chords, playback, and exports without leaving the device.
 
-Riff is a browser-based guitar transcription tool that uses [Spotify's Basic Pitch](https://github.com/spotify/basic-pitch) to perform polyphonic pitch detection entirely client-side. No backend, no account, no data leaves your device.
+It records from the microphone or imports audio files, runs Spotify's [Basic Pitch](https://github.com/spotify/basic-pitch) entirely client-side in a Web Worker, and keeps storage local with no backend or account system.
 
-## How It Works
+## What the app does today
 
-1. **Tap Record** — the app captures audio from your microphone
-2. **Play something** — a chord, a riff, or an arpeggio on guitar
-3. **Tap Stop** — Basic Pitch (a lightweight neural network running via TensorFlow.js) analyzes the audio
-4. **See results** — individual notes, chord name, and a guitar-friendly note timeline
+- Record live audio or import an existing audio file
+- Analyze automatically or manually after capture
+- Review results in two lanes:
+  - **Notes** for pitch, timing, note preview, and piano-roll playback
+  - **Guitar** for key, chord changes, substitutions, and playable chord shapes
+- Save riffs locally and reload them later
+- Show saved audio format on riff cards (`PCM`, `WebM`, `M4A`, `Ogg`, and similar)
+- Export **MIDI**, **WAV**, **MP3**, and the original compressed capture when available
+- Display the deployed build identity as `v<version> · <short-sha>` in the help modal and browser console
+- Work as an installable PWA with cached model assets for repeat use
 
+## Product flow
+
+1. **Capture** with the microphone or import a file
+2. **Analyze** with Basic Pitch in a worker thread
+3. **Review** notes, chords, key, timing, and guitar voicings
+4. **Playback** either the recorded audio or the MIDI preview
+5. **Export** what you want to keep
+
+```text
+Mic / Imported audio
+  -> AudioWorklet capture + decode
+  -> Basic Pitch in Web Worker
+  -> note mapping + chord detection + profile filtering
+  -> local session storage + playback + export
 ```
-Mic → Web Audio API → Basic Pitch (TF.js, in-browser) → Guitar Notes + Chord Name
-```
 
-## Tech Stack
+## Architecture highlights
+
+- `useRiffSession` is the orchestration layer for recording, analysis, playback, saved sessions, and export state.
+- `useAudioRecorder` handles microphone capture and iOS-friendly resampling.
+- `usePitchDetection` sends audio to `pitchDetection.worker.ts`, throttles progress updates, and supports model preload.
+- Instrument profiles tune note filtering and chord-window behavior for guitar-first and full-range analysis.
+- Saved session metadata lives in IndexedDB via `idb`.
+- Audio persistence prefers OPFS and falls back to IndexedDB blobs when OPFS is unavailable.
+- MIDI preview uses a sampler-based playback hook with stop protection and a piano-roll playhead.
+
+## Tech stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | UI | React 19 + TypeScript |
-| Bundler | Vite |
-| Audio capture | Web Audio API |
-| Pitch detection | [@spotify/basic-pitch](https://www.npmjs.com/package/@spotify/basic-pitch) (~8 MB model, runs in browser via WebGL) |
-| Music theory | [Tonal](https://github.com/tonaljs/tonal) (MIDI → note names, chord detection) |
-| Deployment | PWA — installable, works offline on any device with a modern browser |
+| Build | Vite 7 |
+| Testing | Vitest + Playwright |
+| Audio capture | Web Audio API + AudioWorklet |
+| Pitch detection | `@spotify/basic-pitch` + TensorFlow.js |
+| Music theory | Tonal / `@tonaljs` |
+| Local storage | IndexedDB (`idb`) + OPFS fallback |
+| Deployment | Vercel + `vite-plugin-pwa` |
 
-## Getting Started
+## Local development
 
 ```bash
-# Install dependencies
 npm install
-
-# Start dev server
 npm run dev
+```
 
-# Production build
+The dev server runs at `http://localhost:3000`.
+
+Useful commands:
+
+```bash
 npm run build
-```
-
-The dev server runs at `http://localhost:3000`. Open it in a browser and allow microphone access when prompted.
-
-## Testing
-
-Riff uses both unit/component tests and browser end-to-end tests.
-
-```bash
-# Run Vitest once
 npm run test
-
-# Run Vitest in watch mode
 npm run test:watch
-
-# Run Vitest with coverage report
 npm run test:coverage
-
-# Run Playwright end-to-end tests
 npm run test:e2e
+npm run release:check
 ```
 
-## Versioning and Releases
-
-Riff now exposes its deployed build identity directly in the app.
-
-- The bottom-right badge shows `v<package-version> · <short-commit-sha>`.
-- The same build label is logged to the browser console on startup.
-- This makes it easy to verify what is deployed in Vercel production or preview without checking the dashboard first.
-
-### Standard release flow
-
-For a small app like this, the practical standard is:
-
-1. Bump the semantic version.
-2. Run tests and a production build.
-3. Commit the release change.
-4. Create a Git tag like `v1.0.1`.
-5. Push `main` and the tag.
-6. Let Vercel deploy `main`, and let GitHub create release notes from the tag.
-
-### Commands
+Focused runs also work:
 
 ```bash
-# patch release example
+npm run test -- src/components/OnboardingSheet.test.tsx
+npx playwright test tests/e2e/smoke.spec.ts
+```
+
+## Build identity and releases
+
+Riff injects build metadata at build time from `package.json` and the current Git SHA.
+
+- The app logs `Riff build v<version> · <short-sha>` on startup
+- The help / instructions modal shows the same build label in its top-right corner
+- Vercel deployments automatically pick up the correct commit SHA when `VERCEL_GIT_COMMIT_SHA` is present
+
+Typical release flow:
+
+```bash
 npm version patch
-
-# validate the release candidate
 npm run release:check
-
-# push the commit and tag
 git push origin main --follow-tags
 ```
 
-`npm version patch|minor|major` updates `package.json` and `package-lock.json`, creates a release commit, and creates the matching Git tag.
+## Deploying to Vercel
 
-When a tag like `v1.0.1` is pushed, GitHub Actions creates a GitHub Release with generated notes.
+Riff is a static Vite app and deploys cleanly to Vercel.
 
-## Deploy to Vercel
+### Dashboard flow
 
-Riff is a static Vite app, so deployment to Vercel is straightforward.
+1. Import the GitHub repository into Vercel
+2. Confirm:
+   - Build command: `npm run build`
+   - Output directory: `dist`
+3. Deploy
 
-### Option 1: Vercel Dashboard (recommended first deploy)
-
-1. Push this repo to GitHub.
-2. In Vercel, click **Add New... -> Project**.
-3. Import `DonAyers/riff`.
-4. Confirm build settings:
-	- Build Command: `npm run build`
-	- Output Directory: `dist`
-5. Deploy.
-
-### Option 2: Vercel CLI
+### CLI flow
 
 ```bash
-# one-time login
 npx vercel login
-
-# preview deployment
 npx vercel
-
-# production deployment
 npx vercel --prod
 ```
 
-`vercel.json` is included in this repo to pin the Vite build/output configuration.
-It uses `npm install` (not `npm ci`) to avoid cross-version lockfile strictness issues on Vercel.
+`vercel.json` is committed so the expected Vite build/output settings stay consistent.
 
-### Notes for this app
+## Storage and browser notes
 
-- Microphone access requires a secure origin. Vercel deployments are HTTPS by default, so recording works in production.
-- If your app grows into multiple client-side routes, keep SPA fallback behavior in mind.
+- Audio never leaves the device unless the user exports it
+- OPFS is the primary audio store where supported
+- IndexedDB blob fallback covers browsers without OPFS support
+- Model assets are cached for offline-friendly repeat use
+- iOS Safari still requires playback/recording to begin from a user gesture, so `AudioContext.resume()` is kept explicit
 
-## Project Structure
+## Project structure
 
-```
+```text
 src/
-├── hooks/
-│   ├── useAudioRecorder.ts      # Mic recording → Float32Array (22050 Hz mono)
-│   └── usePitchDetection.ts     # Float32Array → detected notes via Basic Pitch
-├── lib/
-│   ├── noteMapper.ts            # MIDI numbers → note names (C4, E4, G4)
-│   └── chordDetector.ts         # Pitch class set → chord name via Tonal
+├── App.tsx                         # Main shell and lane orchestration
 ├── components/
-│   ├── Recorder.tsx             # Record / stop button
-│   ├── NoteDisplay.tsx          # Note chips for each detected note
-│   ├── ChordDisplay.tsx         # Chord name display
-│   ├── PianoRoll.tsx            # Visual note timeline for detected riffs
-│   └── ProgressBar.tsx          # Model inference progress bar
-├── styles/
-│   ├── index.css                # Global reset + dark theme
-│   └── App.css                  # App layout
-├── App.tsx                      # Root — wires hooks, libs, and components
-└── main.tsx                     # Entry point
+│   ├── Recorder.tsx                # Capture/import controls + advanced options
+│   ├── Playback.tsx                # Recorded audio playback
+│   ├── PianoRoll.tsx               # MIDI preview controls + playhead
+│   ├── ChordTimeline.tsx           # Timeline of detected chord events
+│   ├── ChordFretboard.tsx          # Guitar voicing diagrams
+│   ├── SessionPicker.tsx           # Saved riffs UI
+│   ├── ExportPanel.tsx             # MIDI/WAV/MP3/native export actions
+│   └── OnboardingSheet.tsx         # Help, instructions, and build identity
+├── hooks/
+│   ├── useRiffSession.ts           # App-level state machine
+│   ├── useAudioRecorder.ts         # Mic capture + resampling
+│   ├── usePitchDetection.ts        # Worker bridge + progress handling
+│   └── useMidiPlayback.ts          # MIDI preview playback and current time
+├── lib/
+│   ├── db.ts                       # Saved session schema and IndexedDB helpers
+│   ├── audioStorage.ts             # OPFS / IndexedDB audio persistence
+│   ├── audioExport.ts              # MIDI, WAV, and MP3 export
+│   ├── instrumentProfiles.ts       # Detection profiles
+│   ├── noteMapper.ts               # MIDI -> note names
+│   ├── chordDetector.ts            # Chord and timeline detection
+│   └── buildInfo.ts                # Version + commit label
+└── workers/
+    └── pitchDetection.worker.ts    # Basic Pitch inference off the main thread
 ```
 
-## Browser Support
+## Browser support
 
-Works in any modern browser with Web Audio API and WebGL support:
-- Chrome / Edge (desktop & Android)
+Riff targets modern browsers with Web Audio, Web Workers, and WebGL support:
+
+- Chrome / Edge
+- Safari
 - Firefox
-- Safari (iOS 14.5+ / macOS)
+- Samsung Internet and other Chromium-family mobile browsers
 
-> **iOS note:** `AudioContext` must be created from a user gesture (tap). The app handles this — recording starts on button press.
-
-## Future Ideas
-
-- Real-time note display while playing
-- Scale / key detection
-- Saved riff library
-- Guitar tablature output
-- Tuner mode
-- Tempo / BPM detection
-- Capacitor wrapper for native App Store / Play Store distribution
+Behavior can vary by platform, but the app now includes storage fallbacks and iOS playback safeguards for the main supported flows.
 
 ## License
 
