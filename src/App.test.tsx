@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import App from "./App";
@@ -6,6 +7,10 @@ import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
+
+const { hasSeenOnboardingMock } = vi.hoisted(() => ({
+  hasSeenOnboardingMock: vi.fn(() => true),
+}));
 
 vi.mock("./hooks/useRiffSession", () => ({
   useRiffSession: vi.fn(),
@@ -68,11 +73,23 @@ vi.mock("./components/SessionPicker", () => ({
   SessionPicker: () => <div data-testid="session-picker" />,
 }));
 vi.mock("./components/ExportPanel", () => ({
-  ExportPanel: () => <div data-testid="export-panel" />,
+  ExportPanel: ({
+    shortcutTargetRef,
+  }: {
+    shortcutTargetRef?: Ref<HTMLButtonElement>;
+  }) => (
+    <div data-testid="export-panel">
+      <button ref={shortcutTargetRef}>Export as MIDI</button>
+    </div>
+  ),
 }));
 vi.mock("./components/OnboardingSheet", () => ({
-  OnboardingSheet: () => null,
-  hasSeenOnboarding: () => true,
+  OnboardingSheet: ({ onClose }: { onClose: () => void }) => (
+    <div role="dialog" aria-label="Help and about Riff">
+      <button onClick={onClose}>Close</button>
+    </div>
+  ),
+  hasSeenOnboarding: hasSeenOnboardingMock,
 }));
 vi.mock("./lib/chordVoicings", () => ({
   lookupVoicings: vi.fn(),
@@ -117,6 +134,7 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     handleLoadSavedRiff: vi.fn(),
     handleDeleteSession: vi.fn(),
     pendingAudio: null,
+    pendingAudioSampleRate: null,
     activeRiffName: "",
     compressedBlob: null,
     compressedMime: null,
@@ -193,6 +211,8 @@ describe("App mic permission fallback", () => {
     );
     detectStorageEvictionRiskMock.mockReset();
     detectStorageEvictionRiskMock.mockResolvedValue(false);
+    hasSeenOnboardingMock.mockReset();
+    hasSeenOnboardingMock.mockReturnValue(true);
   });
 
   it("renders capture and analysis workspace regions", () => {
@@ -365,6 +385,179 @@ describe("App mic permission fallback", () => {
     expect(screen.getByText(/no guitar shape yet/i)).toBeInTheDocument();
     expect(screen.getByText(/does not have a saved guitar shape yet/i)).toBeInTheDocument();
     expect(screen.queryByTestId("chord-fretboard")).not.toBeInTheDocument();
+  });
+
+  it("starts recording from the record shortcut when focus is safe", () => {
+    const handleStart = vi.fn();
+
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        handleStart,
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "r" });
+
+    expect(handleStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops recording from the record shortcut while recording", () => {
+    const handleStop = vi.fn();
+
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        recorderState: "recording",
+        handleStop,
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "r" });
+
+    expect(handleStop).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes playback shortcuts to the active preview", () => {
+    const audioPause = vi.fn();
+    const midiPlay = vi.fn();
+    const midiStop = vi.fn();
+
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        uniqueNotes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        audioPlayback: {
+          isPlaying: true,
+          duration: 1,
+          load: vi.fn(),
+          loadBlob: vi.fn(),
+          reset: vi.fn(),
+          play: vi.fn(),
+          pause: audioPause,
+        },
+        midiPlayback: {
+          isPlaying: false,
+          currentTimeS: 0,
+          duration: 1,
+          load: vi.fn(),
+          play: midiPlay,
+          stop: midiStop,
+          previewNote: vi.fn(),
+        },
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "p" });
+
+    expect(audioPause).toHaveBeenCalledTimes(1);
+    expect(midiPlay).not.toHaveBeenCalled();
+    expect(midiStop).not.toHaveBeenCalled();
+  });
+
+  it("starts the MIDI preview from the playback shortcut when results are ready", () => {
+    const midiPlay = vi.fn();
+
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        uniqueNotes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        midiPlayback: {
+          isPlaying: false,
+          currentTimeS: 0,
+          duration: 1,
+          load: vi.fn(),
+          play: midiPlay,
+          stop: vi.fn(),
+          previewNote: vi.fn(),
+        },
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "p" });
+
+    expect(midiPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs analysis from the analyze shortcut when the take is ready", () => {
+    const handleAnalyze = vi.fn();
+
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        handleAnalyze,
+        hasPendingAnalysis: true,
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "a" });
+
+    expect(handleAnalyze).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves focus to the export shortcut target when results are available", async () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        uniqueNotes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    const exportButton = await screen.findByRole("button", { name: "Export as MIDI" });
+    fireEvent.keyDown(window, { key: "e" });
+
+    expect(exportButton).toHaveFocus();
+  });
+
+  it("ignores shortcuts while the focus is inside an input", () => {
+    const handleAnalyze = vi.fn();
+
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        handleAnalyze,
+        hasPendingAnalysis: true,
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    fireEvent.keyDown(input, { key: "a" });
+
+    expect(handleAnalyze).not.toHaveBeenCalled();
+
+    input.remove();
+  });
+
+  it("keeps shortcuts disabled while the onboarding dialog is open", () => {
+    const handleStart = vi.fn();
+    hasSeenOnboardingMock.mockReturnValue(false);
+
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        handleStart,
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByRole("dialog", { name: /help and about riff/i })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "r" });
+
+    expect(handleStart).not.toHaveBeenCalled();
   });
 
   it("shows and triggers demo analysis button when recording fails", () => {

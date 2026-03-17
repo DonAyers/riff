@@ -11,6 +11,7 @@ function makeSession(overrides: Partial<RiffSession> = {}): RiffSession {
     updatedAt: Date.now(),
     source: "recording",
     durationS: 83,
+    audioSampleRate: 22050,
     audioFileName: null,
     profileId: "guitar",
     notes: [

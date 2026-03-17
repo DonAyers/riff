@@ -31,4 +31,13 @@ describe("OnboardingSheet", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/export the ones you want to keep/i)).toBeInTheDocument();
   });
+
+  it("shows the keyboard shortcut help block", () => {
+    render(<OnboardingSheet onClose={vi.fn()} />);
+
+    expect(screen.getByText(/keyboard shortcuts/i)).toBeInTheDocument();
+    expect(screen.getByText("R")).toBeInTheDocument();
+    expect(screen.getByText(/start or stop recording/i)).toBeInTheDocument();
+    expect(screen.getByText(/jump to the export buttons/i)).toBeInTheDocument();
+  });
 });

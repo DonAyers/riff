@@ -1,4 +1,12 @@
-import { lazy, Suspense, useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { HelpCircle, FlaskConical } from "lucide-react";
 import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
@@ -18,6 +26,7 @@ import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
 import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
+import { useGlobalKeyboardShortcuts } from "./hooks/useGlobalKeyboardShortcuts";
 import "./components/ChordFretboard.css";
 import "./components/ExportPanel.css";
 import "./components/SelectedChordDialog.css";
@@ -236,6 +245,7 @@ function App() {
     audioPlayback,
     midiPlayback,
     pendingAudio,
+    pendingAudioSampleRate,
     activeRiffName,
     compressedBlob,
     compressedMime,
@@ -252,13 +262,16 @@ function App() {
   const chordVoicings = lookupVoicings(displayedChord);
   const variateSuggestions = getVariateSuggestions(displayedChord);
   const activeVoicing = chordVoicings[activeVoicingIndex] ?? null;
+  const exportShortcutTargetRef = useRef<HTMLButtonElement>(null);
   const exportPanelProps = {
     notes,
     pcmAudio: pendingAudio,
+    pcmSampleRate: pendingAudioSampleRate,
     compressedBlob,
     compressedMime,
     riffName: activeRiffName,
     visible: hasResults,
+    shortcutTargetRef: exportShortcutTargetRef,
   } as const;
 
   useEffect(() => {
@@ -303,6 +316,64 @@ function App() {
     setSelectedChordContext(null);
     setSelectedChordVoicingIndex(0);
   };
+
+  const handlePlaybackShortcut = useCallback(() => {
+    if (audioPlayback.isPlaying) {
+      audioPlayback.pause();
+      return;
+    }
+
+    if (midiPlayback.isPlaying) {
+      midiPlayback.stop();
+      return;
+    }
+
+    if (hasResults) {
+      void midiPlayback.play();
+      return;
+    }
+
+    if (hasRecording) {
+      void audioPlayback.play();
+    }
+  }, [audioPlayback, hasRecording, hasResults, midiPlayback]);
+
+  const handleExportShortcut = useCallback(() => {
+    exportShortcutTargetRef.current?.focus();
+  }, []);
+
+  useGlobalKeyboardShortcuts({
+    disabled: showOnboarding || selectedChordName !== null,
+    handlers: {
+      record: {
+        enabled: recorderState === "recording" || (!isLoading && !isImporting && recorderState === "idle"),
+        run: () => {
+          if (recorderState === "recording") {
+            void handleStop();
+            return;
+          }
+
+          if (recorderState === "idle") {
+            handleStart();
+          }
+        },
+      },
+      playback: {
+        enabled: hasRecording || hasResults || audioPlayback.isPlaying || midiPlayback.isPlaying,
+        run: handlePlaybackShortcut,
+      },
+      analyze: {
+        enabled: !autoProcess && hasPendingAnalysis && !isLoading && recorderState === "idle",
+        run: () => {
+          void handleAnalyze();
+        },
+      },
+      export: {
+        enabled: hasResults,
+        run: handleExportShortcut,
+      },
+    },
+  });
 
   return (
     <div className="app">

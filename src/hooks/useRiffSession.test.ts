@@ -212,6 +212,7 @@ describe("useRiffSession", () => {
       updatedAt: Date.now(),
       source: "recording" as const,
       durationS: 2,
+      audioSampleRate: 22050,
       notes: [{ midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 1, amplitude: 0.8 }],
       chordTimeline: [],
       keyDetection: null,
@@ -275,7 +276,11 @@ describe("useRiffSession", () => {
   });
 
   it("resets audio playback before importing replacement audio", async () => {
-    const importedAudio = new Float32Array([0.1, -0.1]);
+    const importedAudio = {
+      analysisAudio: new Float32Array([0.1, -0.1]),
+      storedAudio: new Float32Array([0.1, -0.1, 0.2, -0.2]),
+      storedSampleRate: 44100,
+    };
     mockDecodeAudioFile.mockResolvedValue(importedAudio);
 
     const { result } = renderHook(() => useRiffSession());
@@ -293,7 +298,8 @@ describe("useRiffSession", () => {
     expect(mockAudioReset.mock.invocationCallOrder[0]).toBeLessThan(
       mockAudioLoad.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
-    expect(mockAudioLoad).toHaveBeenCalledWith(importedAudio);
+    expect(mockAudioLoad).toHaveBeenCalledWith(importedAudio.storedAudio, 44100);
+    expect(result.current.pendingAudioSampleRate).toBe(44100);
   });
 
   it("defaults to guitar when no stored profile exists", async () => {
@@ -326,9 +332,13 @@ describe("useRiffSession", () => {
   );
 
   it("analyzes takes with the guitar-first detection profile by default", async () => {
-    const sourceAudio = new Float32Array([0.1, -0.1, 0.2]);
+    const sourceAudio = {
+      analysisAudio: new Float32Array([0.1, -0.1, 0.2]),
+      storedAudio: new Float32Array([0.1, -0.1, 0.2, 0.3]),
+      storedSampleRate: 44100,
+    };
     mockDetect.mockResolvedValue({
-      audio: sourceAudio,
+      audio: sourceAudio.analysisAudio,
       notes: [
         {
           pitchMidi: 60,
@@ -357,7 +367,7 @@ describe("useRiffSession", () => {
       await result.current.handleAnalyze(sourceAudio);
     });
 
-    expect(mockDetect).toHaveBeenCalledWith(sourceAudio, {
+    expect(mockDetect).toHaveBeenCalledWith(sourceAudio.analysisAudio, {
       confidenceThreshold: PROFILES.guitar.confidenceThreshold,
       onsetThreshold: PROFILES.guitar.onsetThreshold,
       maxPolyphony: PROFILES.guitar.maxPolyphony,
@@ -390,6 +400,98 @@ describe("useRiffSession", () => {
     expect(result.current.chord).toBe("C Major");
   });
 
+  it("stores native-rate PCM for sessions while analyzing at 22050 Hz", async () => {
+    const sourceAudio = {
+      analysisAudio: new Float32Array([0.1, -0.1, 0.2]),
+      storedAudio: new Float32Array([0.1, -0.1, 0.2, 0.3]),
+      storedSampleRate: 44100,
+    };
+    mockDetect.mockResolvedValue({
+      audio: sourceAudio.analysisAudio,
+      notes: [
+        {
+          pitchMidi: 60,
+          startTimeS: 0,
+          durationS: 0.25,
+          amplitude: 0.8,
+        },
+      ],
+    });
+    mockSavePcmToOpfs.mockResolvedValue(true);
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.handleAnalyze(sourceAudio);
+    });
+
+    expect(mockSavePcmToOpfs).toHaveBeenCalledWith(
+      expect.stringMatching(/^riff-.*\.f32$/),
+      sourceAudio.storedAudio,
+    );
+    expect(mockSaveSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audioFormat: "pcm",
+        audioSampleRate: 44100,
+        durationS: sourceAudio.storedAudio.length / 44100,
+      }),
+    );
+  });
+
+  it("stores native-rate compressed audio when compressed storage is enabled", async () => {
+    const encodedBlob = new Blob(["native"], { type: "audio/webm" });
+    const sourceAudio = {
+      analysisAudio: new Float32Array([0.1, -0.1, 0.2]),
+      storedAudio: new Float32Array([0.1, -0.1, 0.2, 0.3]),
+      storedSampleRate: 44100,
+    };
+    mockDetect.mockResolvedValue({
+      audio: sourceAudio.analysisAudio,
+      notes: [
+        {
+          pitchMidi: 60,
+          startTimeS: 0,
+          durationS: 0.25,
+          amplitude: 0.8,
+        },
+      ],
+    });
+    mockEncodeCompressed.mockResolvedValue({
+      blob: encodedBlob,
+      mime: "audio/webm;codecs=opus",
+    });
+    mockSaveBlobToOpfs.mockResolvedValue(true);
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    act(() => {
+      result.current.setStorageFormat("compressed");
+    });
+
+    await act(async () => {
+      await result.current.handleAnalyze(sourceAudio);
+    });
+
+    expect(mockEncodeCompressed).toHaveBeenCalledWith(sourceAudio.storedAudio, 44100);
+    expect(result.current.compressedBlob).toBe(encodedBlob);
+    expect(result.current.compressedMime).toBe("audio/webm;codecs=opus");
+    expect(mockSaveSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audioFormat: "compressed",
+        audioMime: "audio/webm;codecs=opus",
+        audioSampleRate: 44100,
+      }),
+    );
+  });
+
   it("deletes persisted audio when removing a saved session", async () => {
     const session = {
       id: "saved-1",
@@ -398,6 +500,7 @@ describe("useRiffSession", () => {
       updatedAt: Date.now(),
       source: "recording" as const,
       durationS: 2,
+      audioSampleRate: 22050,
       notes: [{ midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 1, amplitude: 0.8 }],
       chordTimeline: [],
       keyDetection: null,
@@ -442,6 +545,7 @@ describe("useRiffSession", () => {
       updatedAt: Date.now(),
       source: "recording" as const,
       durationS: 2,
+      audioSampleRate: 22050,
       notes: [{ midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 1, amplitude: 0.8 }],
       chordTimeline: [],
       keyDetection: null,
@@ -469,7 +573,43 @@ describe("useRiffSession", () => {
     expect(mockAudioReset.mock.invocationCallOrder[0]).toBeLessThan(
       mockAudioLoad.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
-    expect(mockAudioLoad).toHaveBeenCalledWith(restoredAudio);
+    expect(mockAudioLoad).toHaveBeenCalledWith(restoredAudio, 22050);
+  });
+
+  it("uses persisted audio sample rate when loading saved PCM audio", async () => {
+    const restoredAudio = new Float32Array([0.1, -0.1]);
+    const session = {
+      id: "saved-3",
+      name: "Take 3",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      source: "recording" as const,
+      durationS: 2,
+      audioSampleRate: 44100,
+      notes: [{ midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+      chordTimeline: [],
+      keyDetection: null,
+      primaryChord: null,
+      uniqueNoteNames: ["C"],
+      audioFileName: "saved-3.f32",
+      audioFormat: "pcm" as const,
+      audioMime: undefined,
+      profileId: "guitar" as const,
+    };
+    mockReadPcmFromOpfs.mockResolvedValue(restoredAudio);
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.handleLoadSavedRiff(session);
+    });
+
+    expect(mockAudioLoad).toHaveBeenCalledWith(restoredAudio, 44100);
+    expect(result.current.pendingAudioSampleRate).toBe(44100);
   });
 
   it("resets audio playback when switching to demo analysis", async () => {

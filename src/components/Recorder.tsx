@@ -92,6 +92,8 @@ export function Recorder({
           onClick={isRecording ? onStop : onStart}
           disabled={isBusy}
           aria-label={isRecording ? "Stop recording" : "Start recording"}
+          aria-keyshortcuts="R"
+          title={isRecording ? "Stop recording (R)" : "Start recording (R)"}
         >
           {isRecording
             ? <Square size={26} strokeWidth={0} fill="currentColor" />
@@ -204,6 +206,8 @@ export function Recorder({
           className="analyze-btn"
           onClick={onAnalyze}
           disabled={autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"}
+          aria-keyshortcuts="A"
+          title="Analyze now (A)"
         >
           <Sparkles size={14} strokeWidth={2} />
           Analyze now

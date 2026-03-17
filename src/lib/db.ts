@@ -4,6 +4,7 @@ import type { AudioFormat } from "./audioEncoder";
 import type { ChordEvent } from "./chordDetector";
 import type { KeyDetection } from "./keyDetector";
 import type { ProfileId } from "./instrumentProfiles";
+import { ANALYSIS_SAMPLE_RATE } from "./audioData";
 
 // ---------------------------------------------------------------------------
 // V1 schema – kept for backward-compat and migration
@@ -37,6 +38,7 @@ export interface RiffSession {
   source: "recording" | "import";
   importFileName?: string;
   durationS: number;
+  audioSampleRate: number;
   audioFileName: string | null;
   audioFormat?: AudioFormat;
   audioMime?: string;
@@ -84,7 +86,14 @@ export function normalizeSession(
   record: StoredRiff | RiffSession,
 ): RiffSession {
   if (!isStoredRiff(record)) {
-    return record;
+    if (record.audioSampleRate != null) {
+      return record;
+    }
+
+    return {
+      ...record,
+      audioSampleRate: ANALYSIS_SAMPLE_RATE,
+    };
   }
 
   const notes: readonly MappedNote[] = record.notes ?? [];
@@ -96,6 +105,7 @@ export function normalizeSession(
     updatedAt: record.timestamp,
     source: "recording",
     durationS: record.durationS,
+    audioSampleRate: ANALYSIS_SAMPLE_RATE,
     audioFileName: record.audioFileName,
     ...(record.audioFormat != null && { audioFormat: record.audioFormat }),
     ...(record.audioMime != null && { audioMime: record.audioMime }),

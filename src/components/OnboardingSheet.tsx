@@ -1,5 +1,6 @@
 import { useCallback, useEffect, type MouseEvent } from "react";
 import { Mic2, Sparkles, Download, X } from "lucide-react";
+import { KEYBOARD_SHORTCUTS } from "../lib/keyboardShortcuts";
 import "./OnboardingSheet.css";
 
 const STORAGE_KEY = "riff_onboarded";
@@ -107,6 +108,30 @@ export function OnboardingSheet({ onClose, showStorageHint = false }: Onboarding
             </li>
           ))}
         </ol>
+
+        <section className="onboarding-shortcuts" aria-labelledby="onboarding-shortcuts-title">
+          <div className="onboarding-shortcuts__copy">
+            <p id="onboarding-shortcuts-title" className="onboarding-shortcuts__title">
+              Keyboard shortcuts
+            </p>
+            <p className="onboarding-shortcuts__hint">
+              Shortcuts work when focus is outside buttons, fields, and dialogs.
+            </p>
+          </div>
+          <dl className="onboarding-shortcuts__list">
+            {KEYBOARD_SHORTCUTS.map((shortcut) => (
+              <div key={shortcut.action} className="onboarding-shortcut">
+                <dt>
+                  <kbd>{shortcut.key.toUpperCase()}</kbd>
+                </dt>
+                <dd>
+                  <strong>{shortcut.label}</strong>
+                  <span>{shortcut.description}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
         <button type="button" className="onboarding-cta" onClick={handleClose}>
           Got it

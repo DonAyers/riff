@@ -77,10 +77,12 @@ describe("decodeAudioFile", () => {
     const file = new File([new ArrayBuffer(10)], "test.wav", { type: "audio/wav" });
     const result = await decodeAudioFile(file);
 
-    // At target sample rate, no resampling — should get the same data back
-    expect(result).toBeInstanceOf(Float32Array);
-    expect(result.length).toBe(5);
-    expect(result[0]).toBeCloseTo(0.1);
+    expect(result.analysisAudio).toBeInstanceOf(Float32Array);
+    expect(result.analysisAudio.length).toBe(5);
+    expect(result.analysisAudio[0]).toBeCloseTo(0.1);
+    expect(result.storedAudio).toEqual(pcm);
+    expect(result.storedSampleRate).toBe(22050);
+    expect(result.analysisAudio).not.toBe(result.storedAudio);
   });
 
   it("mixes stereo to mono by averaging channels", async () => {
@@ -96,10 +98,11 @@ describe("decodeAudioFile", () => {
     const file = new File([new ArrayBuffer(10)], "stereo.wav", { type: "audio/wav" });
     const result = await decodeAudioFile(file);
 
-    expect(result.length).toBe(3);
-    expect(result[0]).toBeCloseTo(0.5); // (1.0 + 0.0) / 2
-    expect(result[1]).toBeCloseTo(0.5); // (0.0 + 1.0) / 2
-    expect(result[2]).toBeCloseTo(0.5); // (0.5 + 0.5) / 2
+    expect(result.analysisAudio.length).toBe(3);
+    expect(result.analysisAudio[0]).toBeCloseTo(0.5); // (1.0 + 0.0) / 2
+    expect(result.analysisAudio[1]).toBeCloseTo(0.5); // (0.0 + 1.0) / 2
+    expect(result.analysisAudio[2]).toBeCloseTo(0.5); // (0.5 + 0.5) / 2
+    expect(result.storedAudio).toEqual(result.analysisAudio);
   });
 
   it("resamples when input sample rate differs from 22050", async () => {
@@ -122,14 +125,15 @@ describe("decodeAudioFile", () => {
     const file = new File([new ArrayBuffer(10)], "high-sr.wav", { type: "audio/wav" });
     const result = await decodeAudioFile(file);
 
-    // Should have gone through resampling and returned the resampled data
-    expect(result.length).toBe(22050);
+    expect(result.analysisAudio.length).toBe(22050);
+    expect(result.storedAudio.length).toBe(44100);
+    expect(result.storedSampleRate).toBe(44100);
   });
 
-  it("trims audio longer than 120 seconds", async () => {
-    const sampleRate = 22050;
+  it("trims audio longer than 120 seconds using the native sample rate", async () => {
+    const sampleRate = 44100;
     const longLength = sampleRate * 150; // 150 seconds
-    const maxLength = sampleRate * 120; // 120 second cap
+    const maxNativeLength = sampleRate * 120; // 120 second cap
     const pcm = new Float32Array(longLength);
     mockDecodeResult = makeMockAudioBuffer({
       numberOfChannels: 1,
@@ -137,12 +141,18 @@ describe("decodeAudioFile", () => {
       sampleRate,
       channelData: [pcm],
     });
+    offlineRenderResult = makeMockAudioBuffer({
+      numberOfChannels: 1,
+      length: 22050 * 120,
+      sampleRate: 22050,
+      channelData: [new Float32Array(22050 * 120)],
+    });
 
     const file = new File([new ArrayBuffer(10)], "long.wav", { type: "audio/wav" });
     const result = await decodeAudioFile(file);
 
-    // Should be capped to 120 seconds worth at 22050 Hz
-    expect(result.length).toBe(maxLength);
+    expect(result.storedAudio.length).toBe(maxNativeLength);
+    expect(result.analysisAudio.length).toBe(22050 * 120);
   });
 
   it("closes AudioContext even when decode fails", async () => {

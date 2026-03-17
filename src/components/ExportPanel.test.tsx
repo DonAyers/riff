@@ -1,3 +1,4 @@
+import { createRef } from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ExportPanel } from "./ExportPanel";
@@ -30,6 +31,7 @@ const SAMPLE_NOTE: MappedNote = {
 const defaultProps = {
   notes: [SAMPLE_NOTE],
   pcmAudio: new Float32Array(100),
+  pcmSampleRate: 22050,
   compressedBlob: null as Blob | null,
   compressedMime: null as string | null,
   riffName: "Test Riff",
@@ -68,6 +70,14 @@ describe("ExportPanel", () => {
     for (const btn of buttons) {
       expect(btn).toHaveAttribute("type", "button");
     }
+  });
+
+  it("exposes the primary export button through the shortcut ref", () => {
+    const shortcutTargetRef = createRef<HTMLButtonElement>();
+
+    render(<ExportPanel {...defaultProps} shortcutTargetRef={shortcutTargetRef} />);
+
+    expect(shortcutTargetRef.current).toBe(screen.getByRole("button", { name: /export as midi/i }));
   });
 
   it("disables MIDI button when notes array is empty", () => {
@@ -148,6 +158,7 @@ describe("ExportPanel", () => {
     await waitFor(() => {
       expect(audioExport.exportToWav).toHaveBeenCalledWith(defaultProps.pcmAudio, {
         bitDepth: 16,
+        inputSampleRate: 22050,
         normalizePeak: false,
         sampleRate: 22050,
       });
@@ -170,6 +181,7 @@ describe("ExportPanel", () => {
     await waitFor(() => {
       expect(audioExport.exportToWav).toHaveBeenCalledWith(defaultProps.pcmAudio, {
         bitDepth: 24,
+        inputSampleRate: 22050,
         normalizePeak: true,
         sampleRate: 44100,
       });
@@ -203,12 +215,21 @@ describe("ExportPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /export as mp3/i }));
 
     await waitFor(() => {
-      expect(audioExport.exportToMp3).toHaveBeenCalledWith(defaultProps.pcmAudio);
+      expect(audioExport.exportToMp3).toHaveBeenCalledWith(defaultProps.pcmAudio, 22050);
     });
     expect(audioExport.downloadBlob).toHaveBeenCalledWith(
       expect.any(Blob),
       "Test-Riff.mp3",
     );
+  });
+
+  it("passes the source sample rate to MP3 export", async () => {
+    render(<ExportPanel {...defaultProps} pcmSampleRate={44100} />);
+    fireEvent.click(screen.getByRole("button", { name: /export as mp3/i }));
+
+    await waitFor(() => {
+      expect(audioExport.exportToMp3).toHaveBeenCalledWith(defaultProps.pcmAudio, 44100);
+    });
   });
 
   it("shows 'Encoding…' label and aria-busy while MP3 export is in progress", async () => {

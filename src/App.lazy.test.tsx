@@ -57,6 +57,7 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     handleLoadSavedRiff: vi.fn(),
     handleDeleteSession: vi.fn(),
     pendingAudio: new Float32Array([0.1, 0.2]),
+    pendingAudioSampleRate: 22050,
     activeRiffName: "Lazy Test",
     compressedBlob: null,
     compressedMime: null,

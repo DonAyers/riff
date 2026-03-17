@@ -54,8 +54,10 @@ describe("useAudioPlayback", () => {
     const { result } = renderHook(() => useAudioPlayback());
 
     act(() => {
-      result.current.load(new Float32Array([0.1, -0.2]));
+      result.current.load(new Float32Array([0.1, -0.2]), 44100);
     });
+
+    expect(mockEncodeWav).toHaveBeenCalledWith(new Float32Array([0.1, -0.2]), 44100);
 
     const firstAudio = MockAudio.instances[0];
     if (!firstAudio) {

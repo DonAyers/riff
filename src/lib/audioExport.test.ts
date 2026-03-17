@@ -185,6 +185,50 @@ describe("exportToWav", () => {
     expect(view.getUint32(24, true)).toBe(44100);
     expect(view.getUint32(40, true)).toBe(renderedSamples.length * 2);
   });
+
+  it("uses the provided input sample rate when resampling exports", async () => {
+    const mockStart = vi.fn();
+    const mockConnect = vi.fn();
+
+    vi.stubGlobal(
+      "OfflineAudioContext",
+      function MockOfflineAudioContext(
+        this: Record<string, unknown>,
+        _channels: number,
+        length: number,
+        sampleRate: number,
+      ) {
+        this.createBuffer = vi.fn().mockImplementation(
+          (_bufferChannels: number, bufferLength: number, bufferSampleRate: number) => {
+            const channelData = new Float32Array(bufferLength);
+            return {
+              getChannelData: () => channelData,
+              length: bufferLength,
+              sampleRate: bufferSampleRate,
+            } as unknown as AudioBuffer;
+          },
+        );
+        this.createBufferSource = vi.fn().mockReturnValue({
+          buffer: null,
+          connect: mockConnect,
+          start: mockStart,
+        });
+        this.destination = {};
+        this.startRendering = vi.fn().mockResolvedValue({
+          getChannelData: () => new Float32Array(length),
+        } as unknown as AudioBuffer);
+        expect(sampleRate).toBe(44100);
+      },
+    );
+
+    await exportToWav(makeSamples(48000, 0.25), {
+      inputSampleRate: 48000,
+      sampleRate: 44100,
+    });
+
+    expect(mockConnect).toHaveBeenCalledTimes(1);
+    expect(mockStart).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -26,7 +26,7 @@
 
 ## Audio quality and performance
 
-- [ ] Capture at native sample rate for storage while downsampling only for analysis.
+- [x] Capture at native sample rate for storage while downsampling only for analysis.
 - [x] Add optional 24-bit WAV export.
 - [x] Add optional peak normalization on export.
 - [x] Upsample WAV export to 44.1 kHz for better DAW compatibility.
@@ -41,7 +41,7 @@
 - [ ] Add waveform display during and after recording.
 - [x] Add a playback cursor / better play / stop controls to the piano roll.
 - [ ] Add automatic BPM detection for tighter MIDI export.
-- [ ] Add keyboard shortcuts for record, playback, analyze, and export actions.
+- [x] Add keyboard shortcuts for record, playback, analyze, and export actions.
 - [ ] Add share-by-URL for note and timing data.
 - [ ] Add a light theme.
 - [ ] Add side-by-side riff comparison.

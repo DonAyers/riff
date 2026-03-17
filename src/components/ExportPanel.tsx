@@ -1,4 +1,4 @@
-import { useCallback, useId, useState } from "react";
+import { useCallback, useId, useState, type Ref } from "react";
 import type { MappedNote } from "../lib/noteMapper";
 import {
   DEFAULT_WAV_EXPORT_OPTIONS,
@@ -13,8 +13,9 @@ import "./ExportPanel.css";
 
 interface ExportPanelProps {
   notes: MappedNote[];
-  /** Raw PCM audio at 22 kHz mono, if available */
+  /** Raw PCM audio for playback/export, if available */
   pcmAudio: Float32Array | null;
+  pcmSampleRate: number | null;
   /** Pre-encoded compressed blob (WebM/MP4), if available */
   compressedBlob: Blob | null;
   /** MIME of the compressed blob, for file extension */
@@ -22,6 +23,7 @@ interface ExportPanelProps {
   /** Riff name for filenames */
   riffName: string;
   visible: boolean;
+  shortcutTargetRef?: Ref<HTMLButtonElement>;
 }
 
 function mimeToExportExtension(mime: string): string {
@@ -38,10 +40,12 @@ function sanitizeFilename(name: string): string {
 export function ExportPanel({
   notes,
   pcmAudio,
+  pcmSampleRate,
   compressedBlob,
   compressedMime,
   riffName,
   visible,
+  shortcutTargetRef,
 }: ExportPanelProps) {
   const baseName = sanitizeFilename(riffName);
   const wavSettingsId = useId();
@@ -65,6 +69,7 @@ export function ExportPanel({
       setIsExportingWav(true);
       const blob = await exportToWav(pcmAudio, {
         bitDepth: wavBitDepth,
+        inputSampleRate: pcmSampleRate ?? DEFAULT_WAV_EXPORT_OPTIONS.inputSampleRate,
         normalizePeak: normalizeWavPeak,
         sampleRate: wavSampleRate,
       });
@@ -74,7 +79,7 @@ export function ExportPanel({
     } finally {
       setIsExportingWav(false);
     }
-  }, [baseName, normalizeWavPeak, pcmAudio, wavBitDepth, wavSampleRate]);
+  }, [baseName, normalizeWavPeak, pcmAudio, pcmSampleRate, wavBitDepth, wavSampleRate]);
 
   const handleExportNative = useCallback(() => {
     if (!compressedBlob || !compressedMime) return;
@@ -88,14 +93,17 @@ export function ExportPanel({
     if (!pcmAudio) return;
     try {
       setIsExportingMp3(true);
-      const blob = await exportToMp3(pcmAudio);
+      const blob = await exportToMp3(
+        pcmAudio,
+        pcmSampleRate ?? DEFAULT_WAV_EXPORT_OPTIONS.inputSampleRate,
+      );
       downloadBlob(blob, `${baseName}.mp3`);
     } catch (err) {
       console.error("Failed to export MP3:", err);
     } finally {
       setIsExportingMp3(false);
     }
-  }, [pcmAudio, baseName]);
+  }, [baseName, pcmAudio, pcmSampleRate]);
 
   if (!visible) return null;
 
@@ -111,11 +119,13 @@ export function ExportPanel({
       <span className="export-label">Export</span>
       <div className="export-buttons">
         <button
+          ref={shortcutTargetRef}
           type="button"
           className="export-btn"
           onClick={handleExportMidi}
           disabled={!hasMidi}
           aria-label="Export as MIDI"
+          title="Export as MIDI"
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
             <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" />

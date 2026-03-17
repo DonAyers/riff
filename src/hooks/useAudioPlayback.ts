@@ -3,7 +3,7 @@ import { encodeWav } from "../lib/audioExport";
 
 export interface UseAudioPlaybackReturn {
   /** Call with the raw PCM Float32Array to prepare playback */
-  load: (pcm: Float32Array) => void;
+  load: (pcm: Float32Array, sampleRate?: number) => void;
   /** Call with a pre-encoded audio Blob (MP3, WebM, etc.) to prepare playback */
   loadBlob: (blob: Blob) => void;
   /** Dispose the current audio element and any associated object URL */
@@ -61,10 +61,10 @@ export function useAudioPlayback(): UseAudioPlaybackReturn {
     setDuration(0);
   }, []);
 
-  const load = useCallback((pcm: Float32Array) => {
+  const load = useCallback((pcm: Float32Array, sampleRate?: number) => {
     reset();
 
-    const blob = encodeWav(pcm);
+    const blob = encodeWav(pcm, sampleRate);
     const url = URL.createObjectURL(blob);
     urlRef.current = url;
     attachAudio(url);

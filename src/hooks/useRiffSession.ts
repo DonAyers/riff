@@ -11,6 +11,7 @@ import { decodeAudioFile } from "../lib/audioImport";
 import { encodeCompressed, mimeToExtension, type AudioFormat } from "../lib/audioEncoder";
 import { PROFILES, normalizeStoredProfileId, type ProfileId } from "../lib/instrumentProfiles";
 import { detectKey, type KeyDetection } from "../lib/keyDetector";
+import { ANALYSIS_SAMPLE_RATE, type PreparedAudio } from "../lib/audioData";
 
 /** Derive sorted, unique pitch-class names from a notes array. */
 function deriveUniqueNoteNames(notes: readonly MappedNote[]): string[] {
@@ -62,7 +63,8 @@ export function useRiffSession() {
   const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
   const [compressedMime, setCompressedMime] = useState<string | null>(null);
 
-  const pendingAudioRef = useRef<Float32Array | null>(null);
+  const pendingAnalysisAudioRef = useRef<Float32Array | null>(null);
+  const pendingSourceAudioRef = useRef<{ pcm: Float32Array; sampleRate: number } | null>(null);
   /** Tracks import context so handleAnalyze can set source/importFileName. */
   const importContextRef = useRef<{ fileName: string } | null>(null);
 
@@ -141,14 +143,23 @@ export function useRiffSession() {
     resetAnalysisState();
     setHasRecording(false);
     setHasPendingAnalysis(false);
-    pendingAudioRef.current = null;
+    pendingAnalysisAudioRef.current = null;
+    pendingSourceAudioRef.current = null;
     resetPlaybackState();
     startRecording();
   }, [resetAnalysisState, resetPlaybackState, startRecording]);
 
-  const handleAnalyze = useCallback(async (providedAudio?: Float32Array) => {
-    const sourceAudio = providedAudio ?? pendingAudioRef.current;
-    if (!sourceAudio) return;
+  const handleAnalyze = useCallback(async (providedAudio?: PreparedAudio) => {
+    const sourceAudio = providedAudio?.analysisAudio ?? pendingAnalysisAudioRef.current;
+    const storedAudio = providedAudio
+      ? { pcm: providedAudio.storedAudio, sampleRate: providedAudio.storedSampleRate }
+      : pendingSourceAudioRef.current;
+    if (!sourceAudio || !storedAudio) return;
+
+    if (providedAudio) {
+      pendingAnalysisAudioRef.current = providedAudio.analysisAudio;
+      pendingSourceAudioRef.current = storedAudio;
+    }
 
     const profile = PROFILES[profileId];
     let analysisAudio = sourceAudio;
@@ -161,7 +172,7 @@ export function useRiffSession() {
       });
 
       analysisAudio = detectionResult.audio;
-      pendingAudioRef.current = analysisAudio;
+      pendingAnalysisAudioRef.current = analysisAudio;
 
       const mapped = mapNoteEvents(detectionResult.notes);
       const filtered = filterNotes(mapped, profile);
@@ -196,7 +207,7 @@ export function useRiffSession() {
       let audioMime: string | undefined;
 
       if (storageFormat === "compressed") {
-        const result = await encodeCompressed(analysisAudio, 22050);
+        const result = await encodeCompressed(storedAudio.pcm, storedAudio.sampleRate);
         if (result) {
           const ext = mimeToExtension(result.mime);
           audioFileName = `riff-${crypto.randomUUID()}.${ext}`;
@@ -214,7 +225,7 @@ export function useRiffSession() {
 
       if (!audioFileName) {
         audioFileName = `riff-${crypto.randomUUID()}.f32`;
-        const didPersist = await savePcmToOpfs(audioFileName, analysisAudio);
+        const didPersist = await savePcmToOpfs(audioFileName, storedAudio.pcm);
         if (!didPersist) {
           audioFileName = null;
         }
@@ -234,7 +245,8 @@ export function useRiffSession() {
         updatedAt: now,
         source: importContext ? "import" : "recording",
         ...(importContext && { importFileName: importContext.fileName }),
-        durationS: analysisAudio.length / 22050,
+        durationS: storedAudio.pcm.length / storedAudio.sampleRate,
+        audioSampleRate: storedAudio.sampleRate,
         audioFileName,
         audioFormat,
         audioMime,
@@ -255,9 +267,9 @@ export function useRiffSession() {
       }
     } catch (error) {
       if (error instanceof PitchDetectionError && error.audio) {
-        pendingAudioRef.current = error.audio;
+        pendingAnalysisAudioRef.current = error.audio;
       } else {
-        pendingAudioRef.current = analysisAudio;
+        pendingAnalysisAudioRef.current = analysisAudio;
       }
       setHasPendingAnalysis(true);
     }
@@ -267,9 +279,13 @@ export function useRiffSession() {
     const audio = await stopRecording();
     if (!audio) return;
 
-    audioPlayback.load(audio);
+    audioPlayback.load(audio.storedAudio, audio.storedSampleRate);
     setHasRecording(true);
-    pendingAudioRef.current = audio;
+    pendingAnalysisAudioRef.current = audio.analysisAudio;
+    pendingSourceAudioRef.current = {
+      pcm: audio.storedAudio,
+      sampleRate: audio.storedSampleRate,
+    };
     resetAnalysisState();
     midiPlayback.stop();
 
@@ -288,15 +304,20 @@ export function useRiffSession() {
     resetAnalysisState();
     setHasRecording(false);
     setHasPendingAnalysis(false);
-    pendingAudioRef.current = null;
+    pendingAnalysisAudioRef.current = null;
+    pendingSourceAudioRef.current = null;
     importContextRef.current = { fileName: file.name };
     resetPlaybackState();
 
     try {
       const audio = await decodeAudioFile(file);
-      audioPlayback.load(audio);
+      audioPlayback.load(audio.storedAudio, audio.storedSampleRate);
       setHasRecording(true);
-      pendingAudioRef.current = audio;
+      pendingAnalysisAudioRef.current = audio.analysisAudio;
+      pendingSourceAudioRef.current = {
+        pcm: audio.storedAudio,
+        sampleRate: audio.storedSampleRate,
+      };
 
       if (autoProcess) {
         setHasPendingAnalysis(false);
@@ -317,7 +338,8 @@ export function useRiffSession() {
   }, [audioPlayback, autoProcess, handleAnalyze, resetAnalysisState, resetPlaybackState]);
 
   const handleLoadSavedRiff = useCallback(async (session: RiffSession) => {
-    pendingAudioRef.current = null;
+    pendingAnalysisAudioRef.current = null;
+    pendingSourceAudioRef.current = null;
     setHasPendingAnalysis(false);
     setCompressedBlob(null);
     setCompressedMime(null);
@@ -339,8 +361,15 @@ export function useRiffSession() {
       } else {
         const restoredAudio = await readPcmFromOpfs(session.audioFileName);
         if (restoredAudio) {
-          pendingAudioRef.current = restoredAudio;
-          audioPlayback.load(restoredAudio);
+          const sampleRate = session.audioSampleRate ?? ANALYSIS_SAMPLE_RATE;
+          pendingSourceAudioRef.current = {
+            pcm: restoredAudio,
+            sampleRate,
+          };
+          pendingAnalysisAudioRef.current = sampleRate === ANALYSIS_SAMPLE_RATE
+            ? restoredAudio.slice()
+            : null;
+          audioPlayback.load(restoredAudio, sampleRate);
           setHasRecording(true);
         } else {
           setHasRecording(false);
@@ -376,7 +405,8 @@ export function useRiffSession() {
 
   const handleLoadDemoAnalysis = useCallback(() => {
     resetPlaybackState();
-    pendingAudioRef.current = null;
+    pendingAnalysisAudioRef.current = null;
+    pendingSourceAudioRef.current = null;
     setHasRecording(false);
     setHasPendingAnalysis(false);
     setCompressedBlob(null);
@@ -433,7 +463,8 @@ export function useRiffSession() {
     handleDeleteSession,
     audioPlayback,
     midiPlayback,
-    pendingAudio: pendingAudioRef.current,
+    pendingAudio: pendingSourceAudioRef.current?.pcm ?? null,
+    pendingAudioSampleRate: pendingSourceAudioRef.current?.sampleRate ?? null,
     activeRiffName,
     compressedBlob,
     compressedMime,

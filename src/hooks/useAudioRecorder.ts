@@ -1,16 +1,16 @@
 import { useCallback, useRef, useState } from "react";
 import audioCaptureWorkletUrl from "../worklets/audio-capture.worklet?url";
+import { ANALYSIS_SAMPLE_RATE, type PreparedAudio } from "../lib/audioData";
 
 export type RecorderState = "idle" | "recording" | "processing";
 
 export interface UseAudioRecorderReturn {
   state: RecorderState;
   startRecording: () => Promise<void>;
-  stopRecording: () => Promise<Float32Array | null>;
+  stopRecording: () => Promise<PreparedAudio | null>;
   error: string | null;
 }
 
-const TARGET_SAMPLE_RATE = 22050;
 const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096;
 type CaptureNode = AudioWorkletNode | ScriptProcessorNode;
 type CaptureBackend = "worklet" | "script-processor";
@@ -26,7 +26,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const muteGainRef = useRef<GainNode | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
-  const sampleRateRef = useRef<number>(TARGET_SAMPLE_RATE);
+  const sampleRateRef = useRef<number>(ANALYSIS_SAMPLE_RATE);
   const workletModuleLoadedRef = useRef(false);
 
   const ensureAudioContext = useCallback(async (): Promise<AudioContext> => {
@@ -148,14 +148,14 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
 
   const resampleToTarget = useCallback(
     async (pcm: Float32Array, inputSampleRate: number): Promise<Float32Array> => {
-      if (inputSampleRate === TARGET_SAMPLE_RATE) {
-        return pcm;
+      if (inputSampleRate === ANALYSIS_SAMPLE_RATE) {
+        return pcm.slice();
       }
 
       const frameCount = Math.ceil(
-        (pcm.length * TARGET_SAMPLE_RATE) / inputSampleRate
+        (pcm.length * ANALYSIS_SAMPLE_RATE) / inputSampleRate
       );
-      const offlineContext = new OfflineAudioContext(1, frameCount, TARGET_SAMPLE_RATE);
+      const offlineContext = new OfflineAudioContext(1, frameCount, ANALYSIS_SAMPLE_RATE);
       const buffer = offlineContext.createBuffer(1, pcm.length, inputSampleRate);
       buffer.getChannelData(0).set(pcm);
 
@@ -213,7 +213,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
   }, [createCaptureNode, disconnectCaptureGraph, ensureAudioContext, stopActiveStream]);
 
-  const stopRecording = useCallback(async (): Promise<Float32Array | null> => {
+  const stopRecording = useCallback(async (): Promise<PreparedAudio | null> => {
     setState("processing");
 
     // Stop all tracks and disconnect audio nodes
@@ -240,9 +240,15 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     }
 
     chunksRef.current = [];
+    const storedSampleRate = sampleRateRef.current;
+    const analysisAudio = await resampleToTarget(merged, storedSampleRate);
     setState("idle");
 
-    return resampleToTarget(merged, sampleRateRef.current);
+    return {
+      analysisAudio,
+      storedAudio: merged,
+      storedSampleRate,
+    };
   }, [disconnectCaptureGraph, resampleToTarget, stopActiveStream]);
 
   return { state, startRecording, stopRecording, error };

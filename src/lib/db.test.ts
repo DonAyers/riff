@@ -69,6 +69,7 @@ function makeRiffSession(overrides: Partial<RiffSession> = {}): RiffSession {
     updatedAt: 1_700_000_001_000,
     source: "recording",
     durationS: 4.2,
+    audioSampleRate: 22050,
     audioFileName: "session-1.webm",
     audioFormat: "compressed",
     audioMime: "audio/webm;codecs=opus",
@@ -124,6 +125,7 @@ describe("normalizeSession", () => {
       expect(session.updatedAt).toBe(v1.timestamp);
       expect(session.source).toBe("recording");
       expect(session.durationS).toBe(v1.durationS);
+      expect(session.audioSampleRate).toBe(22050);
       expect(session.audioFileName).toBe(v1.audioFileName);
       expect(session.audioFormat).toBe(v1.audioFormat);
       expect(session.audioMime).toBe(v1.audioMime);
@@ -192,6 +194,17 @@ describe("normalizeSession", () => {
       const result = normalizeSession(v2);
 
       expect(result).toBe(v2); // reference equality – no copy
+    });
+
+    it("fills in a default sample rate for older v2 sessions that do not have one", () => {
+      const legacyV2 = {
+        ...makeRiffSession(),
+        audioSampleRate: undefined,
+      } as unknown as RiffSession;
+      const result = normalizeSession(legacyV2);
+
+      expect(result).not.toBe(legacyV2);
+      expect(result.audioSampleRate).toBe(22050);
     });
 
     it("preserves all v2 fields including optional ones", () => {

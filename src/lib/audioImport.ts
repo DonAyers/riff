@@ -1,12 +1,13 @@
-const TARGET_SAMPLE_RATE = 22050;
+import { ANALYSIS_SAMPLE_RATE, type PreparedAudio } from "./audioData";
+
 const MAX_DURATION_S = 120; // 2 minutes
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
 /**
- * Decode an audio file (MP3, WAV, FLAC, etc.) to a mono Float32Array at 22,050 Hz.
+ * Decode an audio file (MP3, WAV, FLAC, etc.) to mono audio for storage and analysis.
  * Uses the browser's built-in decodeAudioData — no extra dependencies.
  */
-export async function decodeAudioFile(file: File): Promise<Float32Array> {
+export async function decodeAudioFile(file: File): Promise<PreparedAudio> {
   if (file.size > MAX_FILE_SIZE_BYTES) {
     throw new Error("Audio file is too large. Please choose a file under 25 MB.");
   }
@@ -28,8 +29,11 @@ export async function decodeAudioFile(file: File): Promise<Float32Array> {
   const maxSamples = MAX_DURATION_S * decoded.sampleRate;
   const trimmed = mono.length > maxSamples ? mono.slice(0, maxSamples) : mono;
 
-  // Resample to target
-  return resampleTo22050(trimmed, decoded.sampleRate);
+  return {
+    analysisAudio: await resampleTo22050(trimmed, decoded.sampleRate),
+    storedAudio: trimmed,
+    storedSampleRate: decoded.sampleRate,
+  };
 }
 
 function mixToMono(buffer: AudioBuffer): Float32Array {
@@ -59,14 +63,14 @@ async function resampleTo22050(
   pcm: Float32Array,
   inputSampleRate: number,
 ): Promise<Float32Array> {
-  if (inputSampleRate === TARGET_SAMPLE_RATE) {
-    return pcm;
+  if (inputSampleRate === ANALYSIS_SAMPLE_RATE) {
+    return pcm.slice();
   }
 
   const frameCount = Math.ceil(
-    (pcm.length * TARGET_SAMPLE_RATE) / inputSampleRate,
+    (pcm.length * ANALYSIS_SAMPLE_RATE) / inputSampleRate,
   );
-  const offlineContext = new OfflineAudioContext(1, frameCount, TARGET_SAMPLE_RATE);
+  const offlineContext = new OfflineAudioContext(1, frameCount, ANALYSIS_SAMPLE_RATE);
   const buffer = offlineContext.createBuffer(1, pcm.length, inputSampleRate);
   buffer.getChannelData(0).set(pcm);
 
