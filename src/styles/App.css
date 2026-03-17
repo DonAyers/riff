@@ -273,6 +273,37 @@
   gap: var(--space-lg);
 }
 
+.export-panel-fallback {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.export-panel--loading {
+  min-height: 5.5rem;
+}
+
+.export-btn--skeleton {
+  min-width: 7rem;
+  min-height: 2.35rem;
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0.12) 50%,
+      rgba(255, 255, 255, 0.05) 100%
+    )
+    0 0 / 200% 100%;
+  animation: deferredPulse 1.2s ease-in-out infinite;
+}
+
+.deferred-loading-copy {
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.55;
+}
+
 .chord-lane-panel__header {
   display: flex;
   flex-direction: column;
@@ -306,6 +337,11 @@
   border-radius: var(--radius-lg);
   border: 1px dashed rgba(255, 255, 255, 0.14);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
+}
+
+.lane-placeholder--loading {
+  min-height: 280px;
+  align-content: start;
 }
 
 .lane-placeholder__kicker {
@@ -353,9 +389,53 @@
   max-width: 32ch;
 }
 
+.deferred-dialog {
+  z-index: 106;
+}
+
+.deferred-dialog__sheet {
+  gap: var(--space-lg);
+}
+
+.deferred-dialog__body {
+  min-height: 280px;
+}
+
+.deferred-dialog__placeholder {
+  min-height: 280px;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
+  display: grid;
+  align-content: start;
+  gap: var(--space-sm);
+}
+
+.deferred-dialog__placeholder h3,
+.deferred-dialog__placeholder p {
+  margin: 0;
+}
+
+.deferred-dialog__placeholder p {
+  color: var(--fg-muted);
+  line-height: 1.6;
+  max-width: 32ch;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes deferredPulse {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ── Breakpoints ── */
@@ -461,6 +541,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .results {
+    animation: none;
+  }
+
+  .export-btn--skeleton {
     animation: none;
   }
 }

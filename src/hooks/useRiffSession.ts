@@ -132,14 +132,19 @@ export function useRiffSession() {
     setCompressedMime(null);
   }, []);
 
+  const resetPlaybackState = useCallback(() => {
+    audioPlayback.reset();
+    midiPlayback.stop();
+  }, [audioPlayback, midiPlayback]);
+
   const handleStart = useCallback(() => {
     resetAnalysisState();
     setHasRecording(false);
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
-    midiPlayback.stop();
+    resetPlaybackState();
     startRecording();
-  }, [midiPlayback, resetAnalysisState, startRecording]);
+  }, [resetAnalysisState, resetPlaybackState, startRecording]);
 
   const handleAnalyze = useCallback(async (providedAudio?: Float32Array) => {
     const sourceAudio = providedAudio ?? pendingAudioRef.current;
@@ -285,7 +290,7 @@ export function useRiffSession() {
     setHasPendingAnalysis(false);
     pendingAudioRef.current = null;
     importContextRef.current = { fileName: file.name };
-    midiPlayback.stop();
+    resetPlaybackState();
 
     try {
       const audio = await decodeAudioFile(file);
@@ -309,13 +314,14 @@ export function useRiffSession() {
       importContextRef.current = null;
       setIsImporting(false);
     }
-  }, [audioPlayback, autoProcess, handleAnalyze, midiPlayback, resetAnalysisState]);
+  }, [audioPlayback, autoProcess, handleAnalyze, resetAnalysisState, resetPlaybackState]);
 
   const handleLoadSavedRiff = useCallback(async (session: RiffSession) => {
     pendingAudioRef.current = null;
     setHasPendingAnalysis(false);
     setCompressedBlob(null);
     setCompressedMime(null);
+    resetPlaybackState();
 
     if (session.audioFileName) {
       const format = session.audioFormat ?? "pcm";
@@ -366,10 +372,10 @@ export function useRiffSession() {
     if (session.profileId !== profileId) {
       setProfileId(session.profileId);
     }
-  }, [audioPlayback, midiPlayback, profileId, setProfileId]);
+  }, [audioPlayback, midiPlayback, profileId, resetPlaybackState, setProfileId]);
 
   const handleLoadDemoAnalysis = useCallback(() => {
-    midiPlayback.stop();
+    resetPlaybackState();
     pendingAudioRef.current = null;
     setHasRecording(false);
     setHasPendingAnalysis(false);
@@ -384,7 +390,7 @@ export function useRiffSession() {
     const pitchClasses = getUniquePitchClasses(DEMO_NOTES);
     const detected = detectChord(pitchClasses);
     setChord(detected ? formatChordName(detected) : null);
-  }, [midiPlayback, profileId]);
+  }, [midiPlayback, profileId, resetPlaybackState]);
 
   const handleDeleteSession = useCallback(async (id: string) => {
     const session = savedRiffs.find((item) => item.id === id);

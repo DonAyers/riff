@@ -5,8 +5,14 @@ import type { MappedNote } from "../lib/noteMapper";
 import * as audioExport from "../lib/audioExport";
 
 vi.mock("../lib/audioExport", () => ({
-  encodeWav: vi.fn(() => new Blob(["wav"], { type: "audio/wav" })),
+  DEFAULT_WAV_EXPORT_OPTIONS: {
+    bitDepth: 16,
+    inputSampleRate: 22050,
+    normalizePeak: false,
+    sampleRate: 22050,
+  },
   exportToMidi: vi.fn(() => new Blob(["midi"], { type: "audio/midi" })),
+  exportToWav: vi.fn(() => Promise.resolve(new Blob(["wav"], { type: "audio/wav" }))),
   exportToMp3: vi.fn(() => Promise.resolve(new Blob(["mp3"], { type: "audio/mp3" }))),
   downloadBlob: vi.fn(),
 }));
@@ -47,6 +53,7 @@ describe("ExportPanel", () => {
     expect(screen.getByText("Export")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export as midi/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export as wav/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /show wav quality options/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export as mp3/i })).toBeInTheDocument();
   });
 
@@ -117,15 +124,78 @@ describe("ExportPanel", () => {
     );
   });
 
-  it("calls encodeWav and downloadBlob when WAV button is clicked", () => {
+  it("keeps WAV quality options hidden until requested", () => {
+    render(<ExportPanel {...defaultProps} />);
+    expect(screen.queryByRole("group", { name: /wav quality settings/i })).not.toBeInTheDocument();
+  });
+
+  it("reveals WAV quality options with current-safe defaults", () => {
+    render(<ExportPanel {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /show wav quality options/i }));
+
+    expect(screen.getByRole("group", { name: /wav quality settings/i })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /24-bit depth/i })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /normalize peak/i })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /44.1 khz compatibility/i })).not.toBeChecked();
+    expect(screen.getByText(/defaults stay the same: 16-bit, 22.05 khz, no normalization/i)).toBeInTheDocument();
+  });
+
+  it("calls exportToWav and downloadBlob when WAV button is clicked", async () => {
     render(<ExportPanel {...defaultProps} />);
     fireEvent.click(screen.getByRole("button", { name: /export as wav/i }));
 
-    expect(audioExport.encodeWav).toHaveBeenCalledWith(defaultProps.pcmAudio);
+    await waitFor(() => {
+      expect(audioExport.exportToWav).toHaveBeenCalledWith(defaultProps.pcmAudio, {
+        bitDepth: 16,
+        normalizePeak: false,
+        sampleRate: 22050,
+      });
+    });
     expect(audioExport.downloadBlob).toHaveBeenCalledWith(
       expect.any(Blob),
       "Test-Riff.wav",
     );
+  });
+
+  it("passes enabled WAV quality options to exportToWav", async () => {
+    render(<ExportPanel {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /show wav quality options/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /24-bit depth/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /normalize peak/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /44.1 khz compatibility/i }));
+    fireEvent.click(screen.getByRole("button", { name: /export as wav/i }));
+
+    await waitFor(() => {
+      expect(audioExport.exportToWav).toHaveBeenCalledWith(defaultProps.pcmAudio, {
+        bitDepth: 24,
+        normalizePeak: true,
+        sampleRate: 44100,
+      });
+    });
+  });
+
+  it("shows 'Preparing…' label and aria-busy while WAV export is in progress", async () => {
+    let resolveWav!: (blob: Blob) => void;
+    vi.mocked(audioExport.exportToWav).mockReturnValueOnce(
+      new Promise<Blob>((resolve) => {
+        resolveWav = resolve;
+      }),
+    );
+
+    render(<ExportPanel {...defaultProps} />);
+    fireEvent.click(screen.getByRole("button", { name: /export as wav/i }));
+
+    const preparingBtn = await screen.findByRole("button", { name: /preparing wav export/i });
+    expect(preparingBtn).toHaveAttribute("aria-busy", "true");
+    expect(preparingBtn).toBeDisabled();
+    expect(preparingBtn).toHaveTextContent("Preparing…");
+
+    resolveWav(new Blob(["wav"], { type: "audio/wav" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /export as wav/i })).toBeInTheDocument();
+    });
   });
 
   it("calls exportToMp3 and downloadBlob when MP3 button is clicked", async () => {

@@ -22,4 +22,13 @@ describe("OnboardingSheet", () => {
     expect(hasSeenOnboarding()).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("adds the export reminder when storage is more likely to clear out", () => {
+    render(<OnboardingSheet onClose={vi.fn()} showStorageHint />);
+
+    expect(
+      screen.getByText(/saved riffs can clear out when your device needs space/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/export the ones you want to keep/i)).toBeInTheDocument();
+  });
 });

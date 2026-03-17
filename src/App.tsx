@@ -1,25 +1,42 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { HelpCircle, FlaskConical } from "lucide-react";
 import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
 import { LaneToggle, type Lane } from "./components/LaneToggle";
 import { KeyDisplay } from "./components/KeyDisplay";
 import { ChordTimeline } from "./components/ChordTimeline";
-import { ChordFretboard } from "./components/ChordFretboard";
 import { NoteDisplay } from "./components/NoteDisplay";
 import { ChordDisplay } from "./components/ChordDisplay";
 import { PianoRoll } from "./components/PianoRoll";
 import { ProgressBar } from "./components/ProgressBar";
 import { Playback } from "./components/Playback";
 import { SessionPicker } from "./components/SessionPicker";
-import { ExportPanel } from "./components/ExportPanel";
+import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
-import { SelectedChordDialog } from "./components/SelectedChordDialog";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
+import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
+import "./components/ChordFretboard.css";
+import "./components/ExportPanel.css";
+import "./components/SelectedChordDialog.css";
 import "./styles/App.css";
+
+const LazyChordFretboard = lazy(async () => {
+  const module = await import("./components/ChordFretboard");
+  return { default: module.ChordFretboard };
+});
+
+const LazyExportPanel = lazy(async () => {
+  const module = await import("./components/ExportPanel");
+  return { default: module.ExportPanel };
+});
+
+const LazySelectedChordDialog = lazy(async () => {
+  const module = await import("./components/SelectedChordDialog");
+  return { default: module.SelectedChordDialog };
+});
 
 const APP_SUBTITLE = "Capture an idea, then review the notes or chords in one place.";
 
@@ -65,6 +82,122 @@ const ANALYSIS_LOADING_COPY = {
   },
 } as const;
 
+interface ExportPanelFallbackProps {
+  label?: string;
+}
+
+function ExportPanelFallback({ label = "Preparing export tools…" }: ExportPanelFallbackProps) {
+  return (
+    <div
+      className="export-panel-fallback"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading export options"
+    >
+      <div className="export-panel export-panel--loading" aria-hidden="true">
+        <span className="export-label">Export</span>
+        <div className="export-buttons">
+          <span className="export-btn export-btn--skeleton" />
+          <span className="export-btn export-btn--skeleton" />
+          <span className="export-btn export-btn--skeleton" />
+        </div>
+      </div>
+      <p className="deferred-loading-copy">{label}</p>
+    </div>
+  );
+}
+
+interface ChordFretboardFallbackProps {
+  chordName: string | null;
+}
+
+function ChordFretboardFallback({ chordName }: ChordFretboardFallbackProps) {
+  return (
+    <div className="lane-placeholder lane-placeholder--loading" role="status" aria-live="polite">
+      <span className="lane-placeholder__kicker">Guitar shape</span>
+      <h3>Loading shape…</h3>
+      <p>Preparing the guitar diagram for {chordName ?? "this chord"}.</p>
+    </div>
+  );
+}
+
+interface SelectedChordDialogFallbackProps {
+  chord: string;
+  context?: ChordEvent;
+  onClose: () => void;
+}
+
+function SelectedChordDialogFallback({
+  chord,
+  context,
+  onClose,
+}: SelectedChordDialogFallbackProps) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const handleBackdropClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      className="selected-chord-backdrop deferred-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Selected guitar chord"
+      onClick={handleBackdropClick}
+    >
+      <div className="selected-chord-sheet deferred-dialog__sheet">
+        <button
+          type="button"
+          className="selected-chord-close"
+          onClick={onClose}
+          aria-label="Close dialog"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+
+        <div className="selected-chord-sheet__header">
+          {context && (
+            <p className="selected-chord-sheet__context">
+              Timeline chord · {context.startTimeS.toFixed(2)}s
+            </p>
+          )}
+          <h2>{chord}</h2>
+          <p className="selected-chord-sheet__meta">Preparing guitar voicing details…</p>
+        </div>
+
+        <div className="selected-chord-sheet__body deferred-dialog__body">
+          <div className="deferred-dialog__placeholder" role="status" aria-live="polite">
+            <span className="lane-placeholder__kicker">Selected chord</span>
+            <h3>Loading chord details…</h3>
+            <p>Your guitar voicing options will appear here in a moment.</p>
+          </div>
+        </div>
+
+        <div className="selected-chord-sheet__actions">
+          <button type="button" className="analyze-btn analyze-btn--secondary" disabled>
+            Next phrase
+          </button>
+          <button type="button" className="analyze-btn analyze-btn--secondary" onClick={onClose}>
+            Close selected chord
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
   const [activeLane, setActiveLane] = useState<Lane>("song");
@@ -73,6 +206,7 @@ function App() {
   const [selectedChordContext, setSelectedChordContext] = useState<ChordEvent | null>(null);
   const [selectedChordVoicingIndex, setSelectedChordVoicingIndex] = useState(0);
   const [variateOverride, setVariateOverride] = useState<string | null>(null);
+  const [showStorageEvictionPrompt, setShowStorageEvictionPrompt] = useState(false);
   const {
     recorderState,
     handleStart,
@@ -118,6 +252,28 @@ function App() {
   const chordVoicings = lookupVoicings(displayedChord);
   const variateSuggestions = getVariateSuggestions(displayedChord);
   const activeVoicing = chordVoicings[activeVoicingIndex] ?? null;
+  const exportPanelProps = {
+    notes,
+    pcmAudio: pendingAudio,
+    compressedBlob,
+    compressedMime,
+    riffName: activeRiffName,
+    visible: hasResults,
+  } as const;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void detectStorageEvictionRisk().then((shouldWarn) => {
+      if (!cancelled) {
+        setShowStorageEvictionPrompt(shouldWarn);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setActiveVoicingIndex(0);
@@ -239,6 +395,9 @@ function App() {
               onLoad={handleLoadSavedRiff}
               onDelete={handleDeleteSession}
             />
+            {showStorageEvictionPrompt && savedRiffs.length > 0 && (
+              <StorageEvictionPrompt />
+            )}
           </section>
 
           <section className="workspace-pane workspace-pane--analysis" aria-label="Analysis">
@@ -295,14 +454,9 @@ function App() {
                         onPlay={midiPlayback.play}
                         onStop={midiPlayback.stop}
                       />
-                      <ExportPanel
-                        notes={notes}
-                        pcmAudio={pendingAudio}
-                        compressedBlob={compressedBlob}
-                        compressedMime={compressedMime}
-                        riffName={activeRiffName}
-                        visible={hasResults}
-                      />
+                      <Suspense fallback={<ExportPanelFallback />}>
+                        <LazyExportPanel {...exportPanelProps} />
+                      </Suspense>
                     </>
                   ) : (
                     <>
@@ -358,7 +512,14 @@ function App() {
                                   Next shape
                                 </button>
                               </div>
-                              <ChordFretboard chordName={displayedChord} voicing={activeVoicing} />
+                              <Suspense
+                                fallback={<ChordFretboardFallback chordName={displayedChord} />}
+                              >
+                                <LazyChordFretboard
+                                  chordName={displayedChord}
+                                  voicing={activeVoicing}
+                                />
+                              </Suspense>
                             </>
                           ) : (
                             <div className="lane-placeholder">
@@ -375,14 +536,9 @@ function App() {
                           void midiPlayback.previewNote(note);
                         }}
                       />
-                      <ExportPanel
-                        notes={notes}
-                        pcmAudio={pendingAudio}
-                        compressedBlob={compressedBlob}
-                        compressedMime={compressedMime}
-                        riffName={activeRiffName}
-                        visible={hasResults}
-                      />
+                      <Suspense fallback={<ExportPanelFallback />}>
+                        <LazyExportPanel {...exportPanelProps} />
+                      </Suspense>
                     </>
                   )}
                 </div>
@@ -403,17 +559,30 @@ function App() {
       </div>
 
       {showOnboarding && (
-        <OnboardingSheet onClose={() => setShowOnboarding(false)} />
+        <OnboardingSheet
+          onClose={() => setShowOnboarding(false)}
+          showStorageHint={showStorageEvictionPrompt}
+        />
       )}
 
       {selectedChordName && (
-        <SelectedChordDialog
-          chord={selectedChordName}
-          context={selectedChordContext ?? undefined}
-          voicingIndex={selectedChordVoicingIndex}
-          onVoicingChange={setSelectedChordVoicingIndex}
-          onClose={handleCloseSelectedChord}
-        />
+        <Suspense
+          fallback={
+            <SelectedChordDialogFallback
+              chord={selectedChordName}
+              context={selectedChordContext ?? undefined}
+              onClose={handleCloseSelectedChord}
+            />
+          }
+        >
+          <LazySelectedChordDialog
+            chord={selectedChordName}
+            context={selectedChordContext ?? undefined}
+            voicingIndex={selectedChordVoicingIndex}
+            onVoicingChange={setSelectedChordVoicingIndex}
+            onClose={handleCloseSelectedChord}
+          />
+        </Suspense>
       )}
     </div>
   );

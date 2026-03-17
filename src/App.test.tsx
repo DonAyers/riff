@@ -5,6 +5,7 @@ import { useRiffSession } from "./hooks/useRiffSession";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
+import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
 
 vi.mock("./hooks/useRiffSession", () => ({
   useRiffSession: vi.fn(),
@@ -79,10 +80,14 @@ vi.mock("./lib/chordVoicings", () => ({
 vi.mock("./lib/chordSubstitutions", () => ({
   getVariateSuggestions: vi.fn(),
 }));
+vi.mock("./lib/storageEvictionRisk", () => ({
+  detectStorageEvictionRisk: vi.fn(),
+}));
 
 const useRiffSessionMock = vi.mocked(useRiffSession);
 const lookupVoicingsMock = vi.mocked(lookupVoicings);
 const getVariateSuggestionsMock = vi.mocked(getVariateSuggestions);
+const detectStorageEvictionRiskMock = vi.mocked(detectStorageEvictionRisk);
 
 function createSessionState(overrides: Record<string, unknown> = {}) {
   return {
@@ -117,14 +122,15 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     compressedMime: null,
     profileId: "guitar",
     setProfileId: vi.fn(),
-    audioPlayback: {
-      isPlaying: false,
-      duration: 0,
-      load: vi.fn(),
-      loadBlob: vi.fn(),
-      play: vi.fn(),
-      pause: vi.fn(),
-    },
+     audioPlayback: {
+       isPlaying: false,
+       duration: 0,
+       load: vi.fn(),
+       loadBlob: vi.fn(),
+       reset: vi.fn(),
+       play: vi.fn(),
+       pause: vi.fn(),
+     },
     midiPlayback: {
       isPlaying: false,
       currentTimeS: 0,
@@ -185,6 +191,8 @@ describe("App mic permission fallback", () => {
           ]
         : []
     );
+    detectStorageEvictionRiskMock.mockReset();
+    detectStorageEvictionRiskMock.mockResolvedValue(false);
   });
 
   it("renders capture and analysis workspace regions", () => {
@@ -214,6 +222,48 @@ describe("App mic permission fallback", () => {
     expect(screen.getByRole("button", { name: /guitar/i })).toBeInTheDocument();
   });
 
+  it("shows the storage export reminder when risk is detected for saved riffs", async () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        savedRiffs: [
+          {
+            id: "saved-1",
+            name: "Take 1",
+            createdAt: 1,
+            updatedAt: 1,
+            source: "recording",
+            durationS: 4,
+            audioFileName: null,
+            profileId: "guitar",
+            notes: [],
+            chordTimeline: [],
+            keyDetection: null,
+            primaryChord: null,
+            uniqueNoteNames: [],
+          },
+        ],
+      }) as ReturnType<typeof useRiffSession>
+    );
+    detectStorageEvictionRiskMock.mockResolvedValue(true);
+
+    render(<App />);
+
+    expect(await screen.findByRole("note", { name: /export reminder/i })).toBeInTheDocument();
+    expect(screen.getByText(/saved riffs can clear out on this browser/i)).toBeInTheDocument();
+  });
+
+  it("keeps the storage export reminder hidden when there are no saved riffs", async () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState() as ReturnType<typeof useRiffSession>
+    );
+    detectStorageEvictionRiskMock.mockResolvedValue(true);
+
+    render(<App />);
+
+    expect(await screen.findByTestId("session-picker")).toBeInTheDocument();
+    expect(screen.queryByRole("note", { name: /export reminder/i })).not.toBeInTheDocument();
+  });
+
   it("shows calmer loading states in both shell panels while analysis is running", () => {
     useRiffSessionMock.mockReturnValue(
       createSessionState({
@@ -237,7 +287,7 @@ describe("App mic permission fallback", () => {
     expect(screen.queryByText("MIDI preview")).not.toBeInTheDocument();
   });
 
-  it("renders analysis widgets when notes are available", () => {
+  it("renders analysis widgets when notes are available", async () => {
     useRiffSessionMock.mockReturnValue(
       createSessionState({
         notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
@@ -254,10 +304,11 @@ describe("App mic permission fallback", () => {
     expect(screen.getByTestId("key-display")).toBeInTheDocument();
     expect(screen.getByTestId("note-display")).toBeInTheDocument();
     expect(screen.getByTestId("piano-roll")).toBeInTheDocument();
+    expect(await screen.findByTestId("export-panel")).toBeInTheDocument();
     expect(screen.getByText("MIDI preview")).toBeInTheDocument();
   });
 
-  it("switches to chord lane and shows the fretboard state", () => {
+  it("switches to chord lane and shows the fretboard state", async () => {
     useRiffSessionMock.mockReturnValue(
       createSessionState({
         notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
@@ -272,7 +323,7 @@ describe("App mic permission fallback", () => {
 
     expect(screen.getByText(/shape 1 of \d+/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /next shape/i })).toBeInTheDocument();
-    expect(screen.getByTestId("chord-fretboard")).toBeInTheDocument();
+    expect(await screen.findByTestId("chord-fretboard")).toBeInTheDocument();
     expect(screen.queryByTestId("piano-roll")).not.toBeInTheDocument();
   });
 

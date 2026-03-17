@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { encodeWav } from "../lib/audioExport";
 
 export interface UseAudioPlaybackReturn {
@@ -6,6 +6,8 @@ export interface UseAudioPlaybackReturn {
   load: (pcm: Float32Array) => void;
   /** Call with a pre-encoded audio Blob (MP3, WebM, etc.) to prepare playback */
   loadBlob: (blob: Blob) => void;
+  /** Dispose the current audio element and any associated object URL */
+  reset: () => void;
   play: () => void;
   pause: () => void;
   isPlaying: boolean;
@@ -19,37 +21,62 @@ export function useAudioPlayback(): UseAudioPlaybackReturn {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
 
-  const load = useCallback((pcm: Float32Array) => {
-    // Revoke old URL
+  const disposeAudioElement = useCallback((audio: HTMLAudioElement | null) => {
+    if (!audio) {
+      return;
+    }
+
+    audio.pause();
+    audio.onended = null;
+    audio.onloadedmetadata = null;
+    audio.removeAttribute("src");
+    audio.load();
+  }, []);
+
+  const disposeCurrentAudio = useCallback((shouldResetState: boolean) => {
+    disposeAudioElement(audioRef.current);
+
     if (urlRef.current) {
       URL.revokeObjectURL(urlRef.current);
     }
+
+    audioRef.current = null;
+    urlRef.current = null;
+    if (shouldResetState) {
+      setIsPlaying(false);
+      setDuration(0);
+    }
+  }, [disposeAudioElement]);
+
+  const reset = useCallback(() => {
+    disposeCurrentAudio(true);
+  }, [disposeCurrentAudio]);
+
+  const attachAudio = useCallback((url: string) => {
+    const audio = new Audio(url);
+    audio.onended = () => setIsPlaying(false);
+    audio.onloadedmetadata = () => setDuration(audio.duration);
+    audioRef.current = audio;
+    setIsPlaying(false);
+    setDuration(0);
+  }, []);
+
+  const load = useCallback((pcm: Float32Array) => {
+    reset();
 
     const blob = encodeWav(pcm);
     const url = URL.createObjectURL(blob);
     urlRef.current = url;
-
-    const audio = new Audio(url);
-    audio.onended = () => setIsPlaying(false);
-    audio.onloadedmetadata = () => setDuration(audio.duration);
-    audioRef.current = audio;
-    setIsPlaying(false);
-  }, []);
+    attachAudio(url);
+  }, [attachAudio, reset]);
 
   const loadBlob = useCallback((blob: Blob) => {
-    if (urlRef.current) {
-      URL.revokeObjectURL(urlRef.current);
-    }
+    reset();
 
     const url = URL.createObjectURL(blob);
     urlRef.current = url;
-
-    const audio = new Audio(url);
-    audio.onended = () => setIsPlaying(false);
-    audio.onloadedmetadata = () => setDuration(audio.duration);
-    audioRef.current = audio;
-    setIsPlaying(false);
-  }, []);
+    attachAudio(url);
+  }, [attachAudio, reset]);
 
   const play = useCallback(() => {
     const audio = audioRef.current;
@@ -66,5 +93,9 @@ export function useAudioPlayback(): UseAudioPlaybackReturn {
     setIsPlaying(false);
   }, []);
 
-  return { load, loadBlob, play, pause, isPlaying, duration };
+  useEffect(() => () => {
+    disposeCurrentAudio(false);
+  }, [disposeCurrentAudio]);
+
+  return { load, loadBlob, reset, play, pause, isPlaying, duration };
 }

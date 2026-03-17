@@ -1,0 +1,31 @@
+.storage-eviction-prompt {
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.012)),
+    rgba(7, 12, 22, 0.72);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
+.storage-eviction-prompt__kicker {
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.storage-eviction-prompt__body {
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.55;
+  max-width: 40ch;
+}
+
+.storage-eviction-prompt__body strong {
+  color: var(--fg);
+  font-weight: 600;
+}

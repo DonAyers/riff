@@ -19,22 +19,22 @@
 
 - [x] Add IndexedDB blob fallback when OPFS is unavailable (Firefox, Samsung Internet).
 - [x] Verify `AudioContext.resume()` on MIDI playback for iOS Safari gesture requirements.
-- [ ] Handle Web Worker termination under iOS memory pressure with a recoverable retry path.
-- [ ] Verify `Transferable` `Float32Array` behavior in both directions (main thread to worker and back).
+- [x] Handle Web Worker termination under iOS memory pressure with a recoverable retry path.
+- [x] Verify `Transferable` `Float32Array` behavior in both directions (main thread to worker and back).
 - [x] Surface saved audio format clearly on riff cards.
-- [ ] Prompt users to export important riffs on browsers where storage eviction is likely.
+- [x] Prompt users to export important riffs on browsers where storage eviction is likely.
 
 ## Audio quality and performance
 
 - [ ] Capture at native sample rate for storage while downsampling only for analysis.
-- [ ] Add optional 24-bit WAV export.
-- [ ] Add optional peak normalization on export.
-- [ ] Upsample WAV export to 44.1 kHz for better DAW compatibility.
+- [x] Add optional 24-bit WAV export.
+- [x] Add optional peak normalization on export.
+- [x] Upsample WAV export to 44.1 kHz for better DAW compatibility.
 - [ ] Evaluate ONNX Runtime Web as a future TF.js replacement.
-- [ ] Lazy-load heavier analysis surfaces where it improves time to interactive.
+- [x] Lazy-load heavier analysis surfaces where it improves time to interactive.
 - [x] Preload the model on idle to reduce first-analysis wait time.
 - [x] Throttle analysis progress updates to reduce UI churn.
-- [ ] Verify old audio elements are fully disposed when switching riffs.
+- [x] Verify old audio elements are fully disposed when switching riffs.
 
 ## Feature backlog
 

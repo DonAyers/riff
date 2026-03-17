@@ -4,11 +4,13 @@ import { useRiffSession } from "./useRiffSession";
 import { PROFILES } from "../lib/instrumentProfiles";
 
 const {
+  mockStartRecording,
   mockStopRecording,
   mockDetect,
   mockPreload,
   mockAudioLoad,
   mockAudioLoadBlob,
+  mockAudioReset,
   mockMidiLoad,
   mockMidiStop,
   mockListSessions,
@@ -27,11 +29,13 @@ const {
   mockDetectChord,
   mockFormatChordName,
 } = vi.hoisted(() => ({
+  mockStartRecording: vi.fn(),
   mockStopRecording: vi.fn(),
   mockDetect: vi.fn(),
   mockPreload: vi.fn(),
   mockAudioLoad: vi.fn(),
   mockAudioLoadBlob: vi.fn(),
+  mockAudioReset: vi.fn(),
   mockMidiLoad: vi.fn(),
   mockMidiStop: vi.fn(),
   mockListSessions: vi.fn(),
@@ -54,7 +58,7 @@ const {
 vi.mock("./useAudioRecorder", () => ({
   useAudioRecorder: () => ({
     state: "idle",
-    startRecording: vi.fn(),
+    startRecording: mockStartRecording,
     stopRecording: mockStopRecording,
     error: null,
   }),
@@ -76,6 +80,7 @@ vi.mock("./useAudioPlayback", () => ({
     duration: 0,
     load: mockAudioLoad,
     loadBlob: mockAudioLoadBlob,
+    reset: mockAudioReset,
     play: vi.fn(),
     pause: vi.fn(),
   }),
@@ -146,10 +151,12 @@ describe("useRiffSession", () => {
     stubLocalStorage();
 
     mockStopRecording.mockReset();
+    mockStartRecording.mockReset();
     mockDetect.mockReset();
     mockPreload.mockReset().mockResolvedValue(undefined);
     mockAudioLoad.mockReset();
     mockAudioLoadBlob.mockReset();
+    mockAudioReset.mockReset();
     mockMidiLoad.mockReset();
     mockMidiStop.mockReset();
     mockListSessions.mockReset().mockResolvedValue([]);
@@ -249,6 +256,44 @@ describe("useRiffSession", () => {
     });
 
     expect(mockDetectChordTimeline).toHaveBeenCalledWith(expect.any(Array), PROFILES.default.chordWindowS);
+  });
+
+  it("resets audio playback before starting a new recording", async () => {
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    act(() => {
+      result.current.handleStart();
+    });
+
+    expect(mockAudioReset).toHaveBeenCalledTimes(1);
+    expect(mockMidiStop).toHaveBeenCalledTimes(1);
+    expect(mockStartRecording).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets audio playback before importing replacement audio", async () => {
+    const importedAudio = new Float32Array([0.1, -0.1]);
+    mockDecodeAudioFile.mockResolvedValue(importedAudio);
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.handleImport(new File(["audio"], "take.wav", { type: "audio/wav" }));
+    });
+
+    expect(mockAudioReset).toHaveBeenCalledTimes(1);
+    expect(mockMidiStop).toHaveBeenCalledTimes(1);
+    expect(mockAudioReset.mock.invocationCallOrder[0]).toBeLessThan(
+      mockAudioLoad.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
+    expect(mockAudioLoad).toHaveBeenCalledWith(importedAudio);
   });
 
   it("defaults to guitar when no stored profile exists", async () => {
@@ -386,5 +431,61 @@ describe("useRiffSession", () => {
     expect(mockDeleteStoredAudio).toHaveBeenCalledWith("saved-1.f32");
     expect(result.current.savedRiffs).toEqual([]);
     expect(result.current.activeSessionId).toBeNull();
+  });
+
+  it("resets audio playback before loading a saved riff", async () => {
+    const restoredAudio = new Float32Array([0.1, -0.1]);
+    const session = {
+      id: "saved-2",
+      name: "Take 2",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      source: "recording" as const,
+      durationS: 2,
+      notes: [{ midi: 60, name: "C4", pitchClass: "C", octave: 4, startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+      chordTimeline: [],
+      keyDetection: null,
+      primaryChord: null,
+      uniqueNoteNames: ["C"],
+      audioFileName: "saved-2.f32",
+      audioFormat: "pcm" as const,
+      audioMime: undefined,
+      profileId: "guitar" as const,
+    };
+    mockReadPcmFromOpfs.mockResolvedValue(restoredAudio);
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.handleLoadSavedRiff(session);
+    });
+
+    expect(mockAudioReset).toHaveBeenCalledTimes(1);
+    expect(mockMidiStop).toHaveBeenCalledTimes(1);
+    expect(mockAudioReset.mock.invocationCallOrder[0]).toBeLessThan(
+      mockAudioLoad.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
+    expect(mockAudioLoad).toHaveBeenCalledWith(restoredAudio);
+  });
+
+  it("resets audio playback when switching to demo analysis", async () => {
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    act(() => {
+      result.current.handleLoadDemoAnalysis();
+    });
+
+    expect(mockAudioReset).toHaveBeenCalledTimes(1);
+    expect(mockMidiStop).toHaveBeenCalledTimes(1);
+    expect(mockAudioLoad).not.toHaveBeenCalled();
+    expect(mockAudioLoadBlob).not.toHaveBeenCalled();
   });
 });

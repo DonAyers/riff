@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { encodeWav, exportToMidi, downloadBlob, exportToMp3 } from "./audioExport";
+import { encodeWav, exportToMidi, downloadBlob, exportToMp3, exportToWav } from "./audioExport";
 import type { MappedNote } from "./noteMapper";
 
 // ---------------------------------------------------------------------------
@@ -34,6 +34,14 @@ function makeNote(overrides: Partial<MappedNote> = {}): MappedNote {
 async function blobToDataView(blob: Blob): Promise<DataView> {
   const buf = await blob.arrayBuffer();
   return new DataView(buf);
+}
+
+function readInt24(view: DataView, offset: number): number {
+  const byte0 = view.getUint8(offset);
+  const byte1 = view.getUint8(offset + 1);
+  const byte2 = view.getUint8(offset + 2);
+  const value = byte0 | (byte1 << 8) | (byte2 << 16);
+  return (value & 0x800000) !== 0 ? value | ~0xffffff : value;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,6 +112,78 @@ describe("encodeWav", () => {
   it("uses default sample rate of 22050", async () => {
     const view = await blobToDataView(encodeWav(makeSamples(1)));
     expect(view.getUint32(24, true)).toBe(22050);
+  });
+
+  it("supports 24-bit PCM encoding", async () => {
+    const samples = new Float32Array([1, -1]);
+    const view = await blobToDataView(encodeWav(samples, { bitDepth: 24, sampleRate: 44100 }));
+
+    expect(view.getUint32(24, true)).toBe(44100);
+    expect(view.getUint32(28, true)).toBe(44100 * 3);
+    expect(view.getUint16(32, true)).toBe(3);
+    expect(view.getUint16(34, true)).toBe(24);
+    expect(view.getUint32(40, true)).toBe(samples.length * 3);
+    expect(readInt24(view, 44)).toBe(0x7fffff);
+    expect(readInt24(view, 47)).toBe(-0x800000);
+  });
+});
+
+describe("exportToWav", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps existing defaults when no options are provided", async () => {
+    const view = await blobToDataView(await exportToWav(makeSamples(4, 0.25)));
+
+    expect(view.getUint32(24, true)).toBe(22050);
+    expect(view.getUint16(34, true)).toBe(16);
+    expect(view.getInt16(44, true)).toBe(0x1fff);
+  });
+
+  it("peak-normalizes exported samples when requested", async () => {
+    const view = await blobToDataView(
+      await exportToWav(new Float32Array([0.25, -0.5]), { normalizePeak: true }),
+    );
+
+    expect(view.getInt16(44, true)).toBeGreaterThan(16000);
+    expect(view.getInt16(46, true)).toBe(-0x8000);
+  });
+
+  it("resamples to 44.1 kHz when requested", async () => {
+    const renderedSamples = new Float32Array([0.1, 0.2, 0.3, 0.4]);
+    const mockStart = vi.fn();
+    const mockConnect = vi.fn();
+
+    vi.stubGlobal(
+      "OfflineAudioContext",
+      function MockOfflineAudioContext(this: Record<string, unknown>) {
+        this.createBuffer = vi.fn().mockImplementation((_channels: number, length: number, sampleRate: number) => {
+          const channelData = new Float32Array(length);
+          return {
+            getChannelData: () => channelData,
+            length,
+            sampleRate,
+          } as unknown as AudioBuffer;
+        });
+        this.createBufferSource = vi.fn().mockReturnValue({
+          buffer: null,
+          connect: mockConnect,
+          start: mockStart,
+        });
+        this.destination = {};
+        this.startRendering = vi.fn().mockResolvedValue({
+          getChannelData: () => renderedSamples,
+        } as unknown as AudioBuffer);
+      },
+    );
+
+    const view = await blobToDataView(await exportToWav(makeSamples(2, 0.25), { sampleRate: 44100 }));
+
+    expect(mockConnect).toHaveBeenCalledTimes(1);
+    expect(mockStart).toHaveBeenCalledTimes(1);
+    expect(view.getUint32(24, true)).toBe(44100);
+    expect(view.getUint32(40, true)).toBe(renderedSamples.length * 2);
   });
 });
 

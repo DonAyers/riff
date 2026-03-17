@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const PROGRESS_UPDATE_INTERVAL_MS = 100;
+const MAX_WORKER_RECOVERY_ATTEMPTS = 1;
+const WORKER_RECOVERY_ERROR_MESSAGE = "Pitch detection was interrupted. Please try again.";
 
 interface WorkerProgressMessage {
   type: "progress";
@@ -81,25 +83,30 @@ export function usePitchDetection(): UsePitchDetectionReturn {
 
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
+  const isUnmountingRef = useRef(false);
   const progressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const displayedProgressRef = useRef(0);
   const pendingProgressRef = useRef<number | null>(null);
   const lastProgressCommitAtRef = useRef(0);
-  const pendingRef = useRef<
-    Map<
-      number,
-      | {
-          type: "detect";
-          resolve: (result: DetectResult) => void;
-          reject: (reason?: unknown) => void;
-        }
-      | {
-          type: "preload";
-          resolve: () => void;
-          reject: (reason?: unknown) => void;
-        }
-    >
-  >(new Map());
+
+  interface PendingDetectRequest {
+    type: "detect";
+    resolve: (result: DetectResult) => void;
+    reject: (reason?: unknown) => void;
+    options?: DetectOptions;
+    sourceAudio: Float32Array;
+    recoveryAttempts: number;
+  }
+
+  interface PendingPreloadRequest {
+    type: "preload";
+    resolve: () => void;
+    reject: (reason?: unknown) => void;
+  }
+
+  type PendingRequest = PendingDetectRequest | PendingPreloadRequest;
+
+  const pendingRef = useRef<Map<number, PendingRequest>>(new Map());
 
   const clearProgressTimer = useCallback(() => {
     if (progressTimeoutRef.current !== null) {
@@ -164,78 +171,167 @@ export function usePitchDetection(): UsePitchDetectionReturn {
     [clearProgressTimer, commitProgress]
   );
 
+  const hasPendingDetectRequests = useCallback(() => {
+    for (const pending of pendingRef.current.values()) {
+      if (pending.type === "detect") {
+        return true;
+      }
+    }
+    return false;
+  }, []);
+
   useEffect(() => {
-    const worker = new Worker(
-      new URL("../workers/pitchDetection.worker.ts", import.meta.url),
-      { type: "module" }
-    );
-
-    worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
-      const message = event.data;
-      const pending = pendingRef.current.get(message.requestId);
-      if (!pending) {
-        return;
-      }
-
-      if (message.type === "progress") {
-        if (pending.type === "detect") {
-          queueProgressUpdate(message.progress);
-        }
-        return;
-      }
-
-      if (message.type === "preloadComplete") {
-        pendingRef.current.delete(message.requestId);
-        if (pending.type === "preload") {
-          pending.resolve();
-        }
-        return;
-      }
-
-      pendingRef.current.delete(message.requestId);
-
-      if (message.type === "error") {
-        if (pending.type === "detect") {
-          clearProgressTimer();
-          setIsLoading(false);
-          setError(message.error);
-        }
-        const restoredAudio = message.audioBuffer ? new Float32Array(message.audioBuffer) : null;
-        pending.reject(new PitchDetectionError(message.error, restoredAudio));
-        return;
-      }
-
-      if (pending.type !== "detect") {
-        pending.reject(new Error("Received detect result for non-detect request"));
-        return;
-      }
-
-      commitProgress(100);
-      setIsLoading(false);
-      const mapped: DetectedNote[] = message.notes.map((n) => ({
-        pitchMidi: n.pitchMidi,
-        startTimeS: n.startTimeSeconds,
-        durationS: n.durationSeconds,
-        amplitude: n.amplitude,
-      }));
-      pending.resolve({
-        notes: mapped,
-        audio: new Float32Array(message.audioBuffer),
-      });
+    const postDetectRequest = (
+      worker: Worker,
+      requestId: number,
+      pending: PendingDetectRequest,
+      audio: Float32Array
+    ) => {
+      worker.postMessage(
+        {
+          type: "detect",
+          requestId,
+          audio,
+          confidenceThreshold: pending.options?.confidenceThreshold,
+          onsetThreshold: pending.options?.onsetThreshold,
+          maxPolyphony: pending.options?.maxPolyphony,
+        },
+        [audio.buffer]
+      );
     };
 
-    workerRef.current = worker;
+    const createWorker = (): Worker => {
+      const worker = new Worker(
+        new URL("../workers/pitchDetection.worker.ts", import.meta.url),
+        { type: "module" }
+      );
+
+      worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+        const message = event.data;
+        const pending = pendingRef.current.get(message.requestId);
+        if (!pending) {
+          return;
+        }
+
+        if (message.type === "progress") {
+          if (pending.type === "detect") {
+            queueProgressUpdate(message.progress);
+          }
+          return;
+        }
+
+        if (message.type === "preloadComplete") {
+          pendingRef.current.delete(message.requestId);
+          if (pending.type === "preload") {
+            pending.resolve();
+          }
+          return;
+        }
+
+        pendingRef.current.delete(message.requestId);
+
+        if (message.type === "error") {
+          if (pending.type === "detect") {
+            clearProgressTimer();
+            setIsLoading(hasPendingDetectRequests());
+            setError(message.error);
+          }
+          const restoredAudio = message.audioBuffer ? new Float32Array(message.audioBuffer) : null;
+          pending.reject(new PitchDetectionError(message.error, restoredAudio));
+          return;
+        }
+
+        if (pending.type !== "detect") {
+          pending.reject(new Error("Received detect result for non-detect request"));
+          return;
+        }
+
+        commitProgress(100);
+        setIsLoading(hasPendingDetectRequests());
+        const mapped: DetectedNote[] = message.notes.map((n) => ({
+          pitchMidi: n.pitchMidi,
+          startTimeS: n.startTimeSeconds,
+          durationS: n.durationSeconds,
+          amplitude: n.amplitude,
+        }));
+        pending.resolve({
+          notes: mapped,
+          audio: new Float32Array(message.audioBuffer),
+        });
+      };
+
+      worker.onerror = (event: ErrorEvent) => {
+        event.preventDefault?.();
+        if (isUnmountingRef.current) {
+          return;
+        }
+
+        clearProgressTimer();
+
+        const nextWorker = createWorker();
+        const previousWorker = workerRef.current;
+        previousWorker?.terminate();
+        workerRef.current = nextWorker;
+
+        let retriedDetectRequest = false;
+
+        for (const [requestId, pending] of pendingRef.current.entries()) {
+          if (pending.type === "preload") {
+            pendingRef.current.delete(requestId);
+            pending.reject(new Error(WORKER_RECOVERY_ERROR_MESSAGE));
+            continue;
+          }
+
+          if (pending.recoveryAttempts >= MAX_WORKER_RECOVERY_ATTEMPTS) {
+            pendingRef.current.delete(requestId);
+            pending.reject(
+              new PitchDetectionError(WORKER_RECOVERY_ERROR_MESSAGE, pending.sourceAudio.slice())
+            );
+            continue;
+          }
+
+          pending.recoveryAttempts += 1;
+          retriedDetectRequest = true;
+          const retryAudio = pending.sourceAudio.slice();
+
+          try {
+            postDetectRequest(nextWorker, requestId, pending, retryAudio);
+          } catch {
+            pendingRef.current.delete(requestId);
+            pending.reject(
+              new PitchDetectionError(WORKER_RECOVERY_ERROR_MESSAGE, pending.sourceAudio.slice())
+            );
+          }
+        }
+
+        if (retriedDetectRequest) {
+          resetProgress();
+          setIsLoading(true);
+          setError(null);
+          return;
+        }
+
+        setIsLoading(false);
+        setError(WORKER_RECOVERY_ERROR_MESSAGE);
+      };
+
+      return worker;
+    };
+
+    isUnmountingRef.current = false;
+    workerRef.current = createWorker();
 
     return () => {
+      isUnmountingRef.current = true;
       clearProgressTimer();
       for (const pending of pendingRef.current.values()) {
         pending.reject(new Error("Pitch detection worker terminated"));
       }
       pendingRef.current.clear();
-      worker.terminate();
+      workerRef.current?.terminate();
       workerRef.current = null;
     };
-  }, [clearProgressTimer, commitProgress, queueProgressUpdate]);
+  }, [clearProgressTimer, commitProgress, hasPendingDetectRequests, queueProgressUpdate, resetProgress]);
 
   const detect = useCallback(
     async (audio: Float32Array, options?: DetectOptions): Promise<DetectResult> => {
@@ -250,21 +346,51 @@ export function usePitchDetection(): UsePitchDetectionReturn {
       setError(null);
 
       const requestId = ++requestIdRef.current;
+      const sourceAudio = audio.slice();
 
       return new Promise<DetectResult>((resolve, reject) => {
-        pendingRef.current.set(requestId, { type: "detect", resolve, reject });
+        pendingRef.current.set(requestId, {
+          type: "detect",
+          resolve,
+          reject,
+          options,
+          sourceAudio,
+          recoveryAttempts: 0,
+        });
 
-        workerRef.current?.postMessage(
-          {
-            type: "detect",
-            requestId,
-            audio,
-            confidenceThreshold: options?.confidenceThreshold,
-            onsetThreshold: options?.onsetThreshold,
-            maxPolyphony: options?.maxPolyphony,
-          },
-          [audio.buffer]
-        );
+        const worker = workerRef.current;
+        if (!worker) {
+          pendingRef.current.delete(requestId);
+          const unavailableError = new PitchDetectionError(
+            "Pitch detection worker is unavailable",
+            sourceAudio
+          );
+          setIsLoading(false);
+          setError(unavailableError.message);
+          reject(unavailableError);
+          return;
+        }
+
+        try {
+          worker.postMessage(
+            {
+              type: "detect",
+              requestId,
+              audio,
+              confidenceThreshold: options?.confidenceThreshold,
+              onsetThreshold: options?.onsetThreshold,
+              maxPolyphony: options?.maxPolyphony,
+            },
+            [audio.buffer]
+          );
+        } catch (postError) {
+          pendingRef.current.delete(requestId);
+          const workerError =
+            postError instanceof Error ? postError.message : WORKER_RECOVERY_ERROR_MESSAGE;
+          setIsLoading(false);
+          setError(workerError);
+          reject(new PitchDetectionError(workerError, sourceAudio));
+        }
       });
     },
     [resetProgress]

@@ -1,17 +1,42 @@
 import type { MappedNote } from "./noteMapper";
 
 const DEFAULT_SAMPLE_RATE = 22050;
+const DEFAULT_WAV_BIT_DEPTH = 16;
 
-/** Encode a Float32Array (mono) into a WAV Blob (16-bit PCM). */
+export type WavBitDepth = 16 | 24;
+export type WavSampleRate = 22050 | 44100;
+
+export interface EncodeWavOptions {
+  sampleRate?: number;
+  bitDepth?: WavBitDepth;
+}
+
+export interface WavExportOptions {
+  bitDepth?: WavBitDepth;
+  normalizePeak?: boolean;
+  sampleRate?: WavSampleRate;
+  inputSampleRate?: number;
+}
+
+export const DEFAULT_WAV_EXPORT_OPTIONS = {
+  bitDepth: DEFAULT_WAV_BIT_DEPTH,
+  inputSampleRate: DEFAULT_SAMPLE_RATE,
+  normalizePeak: false,
+  sampleRate: DEFAULT_SAMPLE_RATE,
+} as const satisfies Required<WavExportOptions>;
+
+/** Encode a Float32Array (mono) into a WAV Blob. */
 export function encodeWav(
   samples: Float32Array,
-  sampleRate: number = DEFAULT_SAMPLE_RATE,
+  sampleRateOrOptions: number | EncodeWavOptions = DEFAULT_SAMPLE_RATE,
 ): Blob {
+  const { bitDepth, sampleRate } = resolveEncodeWavOptions(sampleRateOrOptions);
   const numChannels = 1;
-  const bitsPerSample = 16;
-  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-  const blockAlign = numChannels * (bitsPerSample / 8);
-  const dataSize = samples.length * (bitsPerSample / 8);
+  const bytesPerSample = bitDepth / 8;
+  const bitsPerSample = bitDepth;
+  const byteRate = sampleRate * numChannels * bytesPerSample;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataSize = samples.length * bytesPerSample;
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
 
@@ -34,14 +59,118 @@ export function encodeWav(
   writeString(view, 36, "data");
   view.setUint32(40, dataSize, true);
 
-  // Convert float samples to 16-bit PCM
-  let offset = 44;
-  for (let i = 0; i < samples.length; i++, offset += 2) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-  }
+  writePcmSamples(view, samples, 44, bitDepth);
 
   return new Blob([buffer], { type: "audio/wav" });
+}
+
+export async function exportToWav(
+  samples: Float32Array,
+  options: WavExportOptions = {},
+): Promise<Blob> {
+  const resolvedOptions = resolveWavExportOptions(options);
+  const resampledSamples = resolvedOptions.sampleRate === resolvedOptions.inputSampleRate
+    ? samples
+    : await resamplePcm(samples, resolvedOptions.inputSampleRate, resolvedOptions.sampleRate);
+  const outputSamples = resolvedOptions.normalizePeak
+    ? normalizeSamplesToPeak(resampledSamples)
+    : resampledSamples;
+
+  return encodeWav(outputSamples, {
+    bitDepth: resolvedOptions.bitDepth,
+    sampleRate: resolvedOptions.sampleRate,
+  });
+}
+
+function resolveEncodeWavOptions(
+  sampleRateOrOptions: number | EncodeWavOptions,
+): Required<EncodeWavOptions> {
+  if (typeof sampleRateOrOptions === "number") {
+    return {
+      bitDepth: DEFAULT_WAV_BIT_DEPTH,
+      sampleRate: sampleRateOrOptions,
+    };
+  }
+
+  return {
+    bitDepth: sampleRateOrOptions.bitDepth ?? DEFAULT_WAV_BIT_DEPTH,
+    sampleRate: sampleRateOrOptions.sampleRate ?? DEFAULT_SAMPLE_RATE,
+  };
+}
+
+function resolveWavExportOptions(options: WavExportOptions): Required<WavExportOptions> {
+  return {
+    bitDepth: options.bitDepth ?? DEFAULT_WAV_EXPORT_OPTIONS.bitDepth,
+    inputSampleRate: options.inputSampleRate ?? DEFAULT_WAV_EXPORT_OPTIONS.inputSampleRate,
+    normalizePeak: options.normalizePeak ?? DEFAULT_WAV_EXPORT_OPTIONS.normalizePeak,
+    sampleRate: options.sampleRate ?? DEFAULT_WAV_EXPORT_OPTIONS.sampleRate,
+  };
+}
+
+function writePcmSamples(
+  view: DataView,
+  samples: Float32Array,
+  startOffset: number,
+  bitDepth: WavBitDepth,
+): void {
+  let offset = startOffset;
+
+  if (bitDepth === 24) {
+    for (let i = 0; i < samples.length; i++, offset += 3) {
+      const sample = Math.max(-1, Math.min(1, samples[i]));
+      const intSample = Math.round(sample < 0 ? sample * 0x800000 : sample * 0x7fffff);
+      view.setUint8(offset, intSample & 0xff);
+      view.setUint8(offset + 1, (intSample >> 8) & 0xff);
+      view.setUint8(offset + 2, (intSample >> 16) & 0xff);
+    }
+    return;
+  }
+
+  for (let i = 0; i < samples.length; i++, offset += 2) {
+    const sample = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+  }
+}
+
+function normalizeSamplesToPeak(samples: Float32Array): Float32Array {
+  let peak = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const magnitude = Math.abs(samples[i]);
+    if (magnitude > peak) {
+      peak = magnitude;
+    }
+  }
+
+  if (peak === 0) {
+    return samples.slice();
+  }
+
+  const gain = 1 / peak;
+  const normalized = new Float32Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    normalized[i] = samples[i] * gain;
+  }
+
+  return normalized;
+}
+
+async function resamplePcm(
+  samples: Float32Array,
+  inputSampleRate: number,
+  targetSampleRate: number,
+): Promise<Float32Array> {
+  const frameCount = Math.ceil((samples.length * targetSampleRate) / inputSampleRate);
+  const offlineContext = new OfflineAudioContext(1, frameCount, targetSampleRate);
+  const buffer = offlineContext.createBuffer(1, samples.length, inputSampleRate);
+  buffer.getChannelData(0).set(samples);
+
+  const source = offlineContext.createBufferSource();
+  source.buffer = buffer;
+  source.connect(offlineContext.destination);
+  source.start();
+
+  const rendered = await offlineContext.startRendering();
+  return rendered.getChannelData(0).slice();
 }
 
 function writeString(view: DataView, offset: number, str: string) {

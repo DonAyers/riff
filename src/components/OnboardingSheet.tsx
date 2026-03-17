@@ -40,9 +40,10 @@ const STEPS = [
 
 interface OnboardingSheetProps {
   onClose: () => void;
+  showStorageHint?: boolean;
 }
 
-export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
+export function OnboardingSheet({ onClose, showStorageHint = false }: OnboardingSheetProps) {
   const handleClose = useCallback(() => {
     markOnboardingSeen();
     onClose();
@@ -96,7 +97,12 @@ export function OnboardingSheet({ onClose }: OnboardingSheetProps) {
               <span className="onboarding-step-icon">{step.icon}</span>
               <div className="onboarding-step-body">
                 <strong>{step.label}</strong>
-                <span>{step.desc}</span>
+                <span>
+                  {step.desc}
+                  {step.label === "Export" && showStorageHint
+                    ? " On this browser, saved riffs can clear out when your device needs space, so export the ones you want to keep."
+                    : ""}
+                </span>
               </div>
             </li>
           ))}
