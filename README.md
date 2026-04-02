@@ -83,6 +83,7 @@ Useful commands:
 
 ```bash
 npm run build
+npm run readme:image
 npm run test
 npm run test:watch
 npm run test:coverage
@@ -112,6 +113,8 @@ npm version patch
 npm run release:check
 git push origin main --follow-tags
 ```
+
+Pushes to `main` also run a dedicated workflow that refreshes `image.png` so the README screenshot stays aligned with the current landing page.
 
 ## Deploying to Vercel
 

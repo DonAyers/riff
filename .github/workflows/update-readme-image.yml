@@ -1,0 +1,50 @@
+name: Update README image
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-readme-image-main
+  cancel-in-progress: true
+
+jobs:
+  refresh-readme-image:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Refresh README image
+        run: npm run readme:image
+
+      - name: Commit refreshed image
+        run: |
+          if git diff --quiet -- image.png; then
+            echo "README image is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add image.png
+          git commit -m "chore: refresh README image [skip ci]"
+          git push
