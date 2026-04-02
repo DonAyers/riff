@@ -4,6 +4,20 @@ Riff is a browser-based polyphonic music transcription app for capturing a music
 
 It records from the microphone or imports audio files, runs Spotify's [Basic Pitch](https://github.com/spotify/basic-pitch) entirely client-side in a Web Worker, and keeps storage local with no backend or account system.
 
+## App preview
+
+<p align="center">
+  <img src="./image.png" alt="Riff app screenshot showing capture and review workflow" width="430" />
+</p>
+
+## At a glance
+
+- Status: experimental prototype
+- Runtime: browser-only, no backend
+- Privacy: audio stays on-device unless exported
+- Inputs: microphone recording or file import
+- Outputs: notes/chords review plus MIDI/WAV/MP3 export
+
 ## What the app does today
 
 - Record live audio or import an existing audio file
