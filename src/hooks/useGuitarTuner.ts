@@ -22,7 +22,7 @@ export function useGuitarTuner(): UseGuitarTunerReturn {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const frameRef = useRef<number | null>(null);
-  const samplesRef = useRef<Float32Array | null>(null);
+  const samplesRef = useRef<Float32Array<ArrayBuffer> | null>(null);
 
   const stop = useCallback(() => {
     if (frameRef.current !== null) {

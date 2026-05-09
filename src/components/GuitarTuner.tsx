@@ -90,7 +90,7 @@ export function GuitarTuner({ disabled = false }: GuitarTunerProps) {
             void start();
           }}
           disabled={disabled}
-          aria-label={isListening ? "Stop guitar tuner" : "Start guitar tuner"}
+          aria-label={isListening ? "Stop tuner" : "Start tuner"}
         >
           {isListening ? (
             <Power size={15} strokeWidth={2} aria-hidden="true" />

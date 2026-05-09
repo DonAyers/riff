@@ -29,7 +29,7 @@ describe("GuitarTuner", () => {
     expect(screen.getByRole("region", { name: /guitar tuner/i })).toBeInTheDocument();
     expect(screen.getByText("Tune before you record")).toBeInTheDocument();
     expect(screen.getByText("Ready to listen")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /start guitar tuner/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start tuner/i })).toBeInTheDocument();
   });
 
   it("starts the tuner when requested", () => {
@@ -37,7 +37,7 @@ describe("GuitarTuner", () => {
     useGuitarTunerMock.mockReturnValue({ ...defaultHookReturn, start });
 
     render(<GuitarTuner />);
-    fireEvent.click(screen.getByRole("button", { name: /start guitar tuner/i }));
+    fireEvent.click(screen.getByRole("button", { name: /start tuner/i }));
 
     expect(start).toHaveBeenCalledTimes(1);
   });
@@ -69,7 +69,7 @@ describe("GuitarTuner", () => {
     useGuitarTunerMock.mockReturnValue({ ...defaultHookReturn, state: "listening", stop });
 
     render(<GuitarTuner />);
-    fireEvent.click(screen.getByRole("button", { name: /stop guitar tuner/i }));
+    fireEvent.click(screen.getByRole("button", { name: /stop tuner/i }));
 
     expect(stop).toHaveBeenCalledTimes(1);
   });
@@ -80,7 +80,7 @@ describe("GuitarTuner", () => {
 
     render(<GuitarTuner disabled={true} />);
 
-    expect(screen.getByRole("button", { name: /stop guitar tuner/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /stop tuner/i })).toBeDisabled();
     expect(stop).toHaveBeenCalled();
   });
 });

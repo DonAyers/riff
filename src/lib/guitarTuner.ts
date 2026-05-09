@@ -132,14 +132,17 @@ export function detectPitchYin(
       continue;
     }
 
-    let value = (difference[tau] * tau) / runningSum;
+    const value = (difference[tau] * tau) / runningSum;
     difference[tau] = value;
 
     if (tau >= tauMin && value < bestValue) {
       bestTau = tau;
       bestValue = value;
     }
+  }
 
+  for (let tau = tauMin; tau <= tauMax; tau += 1) {
+    let value = difference[tau];
     if (tau >= tauMin && value < threshold) {
       while (tau + 1 <= tauMax && difference[tau + 1] < value) {
         tau += 1;

@@ -9,11 +9,11 @@ test("guitar tuner can listen from the capture panel", async ({ page }) => {
   await expect(tuner.getByText("Tune before you record")).toBeVisible();
   await expect(tuner.getByText(/eadgbe/i)).toBeVisible();
 
-  await tuner.getByRole("button", { name: /start guitar tuner/i }).click();
-  await expect(tuner.getByRole("button", { name: /stop guitar tuner/i })).toBeVisible();
+  await tuner.getByRole("button", { name: /start tuner/i }).click();
+  await expect(tuner.getByRole("button", { name: /stop tuner/i })).toBeVisible();
   await expect(tuner.getByText(/play one string at a time|hz/i)).toBeVisible();
   await expect(tuner.getByRole("meter", { name: /tuning cents/i })).toBeVisible();
 
-  await tuner.getByRole("button", { name: /stop guitar tuner/i }).click();
-  await expect(tuner.getByRole("button", { name: /start guitar tuner/i })).toBeVisible();
+  await tuner.getByRole("button", { name: /stop tuner/i }).click();
+  await expect(tuner.getByRole("button", { name: /start tuner/i })).toBeVisible();
 });
