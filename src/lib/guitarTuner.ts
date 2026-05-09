@@ -143,7 +143,7 @@ export function detectPitchYin(
 
   for (let tau = tauMin; tau <= tauMax; tau += 1) {
     let value = difference[tau];
-    if (tau >= tauMin && value < threshold) {
+    if (value < threshold) {
       while (tau + 1 <= tauMax && difference[tau + 1] < value) {
         tau += 1;
         value = difference[tau];

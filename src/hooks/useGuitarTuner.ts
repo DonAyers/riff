@@ -12,6 +12,7 @@ export interface UseGuitarTunerReturn {
 }
 
 const ANALYSER_FFT_SIZE = 4096;
+type AudioFloatBuffer = Parameters<AnalyserNode["getFloatTimeDomainData"]>[0];
 
 export function useGuitarTuner(): UseGuitarTunerReturn {
   const [state, setState] = useState<GuitarTunerState>("idle");
@@ -22,7 +23,7 @@ export function useGuitarTuner(): UseGuitarTunerReturn {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const frameRef = useRef<number | null>(null);
-  const samplesRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+  const samplesRef = useRef<AudioFloatBuffer | null>(null);
 
   const stop = useCallback(() => {
     if (frameRef.current !== null) {
