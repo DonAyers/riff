@@ -1,0 +1,178 @@
+.guitar-tuner {
+  width: min(100%, 26rem);
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(circle at top, rgba(130, 98, 255, 0.14), transparent 55%),
+    rgba(255, 255, 255, 0.018);
+}
+
+.guitar-tuner__copy {
+  display: grid;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.guitar-tuner__eyebrow {
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.guitar-tuner__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.guitar-tuner__description {
+  margin: 0 auto;
+  max-width: 32ch;
+  color: var(--fg-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.guitar-tuner__display {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+}
+
+.guitar-tuner__note {
+  min-width: 4rem;
+  min-height: 3.3rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--fg);
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.guitar-tuner__note.in-tune {
+  color: #bbf7d0;
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.4), 0 0 22px rgba(34, 197, 94, 0.16);
+}
+
+.guitar-tuner__meta {
+  min-height: 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: center;
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guitar-tuner__meter {
+  position: relative;
+  height: 2.1rem;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(90deg, rgba(248, 113, 113, 0.2), rgba(250, 204, 21, 0.14) 40%, rgba(34, 197, 94, 0.2) 50%, rgba(250, 204, 21, 0.14) 60%, rgba(248, 113, 113, 0.2)),
+    rgba(0, 0, 0, 0.18);
+}
+
+.guitar-tuner__meter-center {
+  position: absolute;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.guitar-tuner__meter-mark {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.guitar-tuner__meter-mark--flat {
+  left: 0.8rem;
+}
+
+.guitar-tuner__meter-mark--sharp {
+  right: 0.8rem;
+}
+
+.guitar-tuner__needle {
+  position: absolute;
+  top: 0.28rem;
+  bottom: 0.28rem;
+  left: 50%;
+  width: 3px;
+  border-radius: var(--radius-full);
+  background: var(--fg);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.48);
+  transition: transform 0.08s linear;
+}
+
+.guitar-tuner__actions {
+  display: flex;
+  justify-content: center;
+}
+
+.tuner-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 42px;
+  padding: 0.62rem 1rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-soft);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.tuner-toggle:hover:not(:disabled),
+.tuner-toggle.listening {
+  border-color: rgba(130, 98, 255, 0.45);
+  background: var(--accent-dim);
+}
+
+.tuner-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tuner-toggle:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.guitar-tuner__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guitar-tuner__needle,
+  .tuner-toggle {
+    transition: none;
+  }
+}

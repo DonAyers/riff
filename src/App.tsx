@@ -21,6 +21,7 @@ import { Playback } from "./components/Playback";
 import { SessionPicker } from "./components/SessionPicker";
 import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
+import { GuitarTuner } from "./components/GuitarTuner";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
@@ -418,6 +419,7 @@ function App() {
                 profileId={profileId}
                 onProfileChange={setProfileId}
               />
+              <GuitarTuner disabled={recorderState !== "idle" || isLoading || isImporting} />
               {error && !hasResults && (
                 <button
                   className="analyze-btn analyze-btn--secondary analyze-btn--demo"
