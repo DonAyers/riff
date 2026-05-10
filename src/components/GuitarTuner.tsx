@@ -73,7 +73,7 @@ export function GuitarTuner({ disabled = false }: GuitarTunerProps) {
         <span className="guitar-tuner__meter-mark guitar-tuner__meter-mark--sharp">♯</span>
         <span
           className="guitar-tuner__needle"
-          style={{ transform: `translateX(${clampedCents}%)` }}
+          style={{ left: `calc(50% + ${clampedCents}%)` }}
         />
       </div>
 

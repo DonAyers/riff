@@ -56,12 +56,17 @@ describe("GuitarTuner", () => {
       },
     });
 
-    render(<GuitarTuner />);
+    const { container } = render(<GuitarTuner />);
 
     expect(screen.getByText("A2")).toBeInTheDocument();
     expect(screen.getByText("110.1 Hz")).toBeInTheDocument();
     expect(screen.getByText("+2 cents")).toBeInTheDocument();
     expect(screen.getByRole("meter", { name: /tuning cents/i })).toHaveAttribute("aria-valuetext", "+2 cents sharp");
+    // Needle must move relative to meter width via `left`, not via `transform`
+    // (translateX % is relative to the element's 3px width, which is imperceptible).
+    const needle = container.querySelector(".guitar-tuner__needle") as HTMLElement;
+    expect(needle.style.left).toMatch(/calc\(\d/);
+    expect(needle.style.transform).toBeFalsy();
   });
 
   it("stops the tuner when requested", () => {

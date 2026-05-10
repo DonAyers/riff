@@ -121,7 +121,7 @@
   border-radius: var(--radius-full);
   background: var(--fg);
   box-shadow: 0 0 14px rgba(255, 255, 255, 0.48);
-  transition: transform 0.08s linear;
+  transition: left 0.08s linear;
 }
 
 .guitar-tuner__actions {
