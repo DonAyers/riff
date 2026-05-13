@@ -1,18 +1,12 @@
 import { useEffect } from "react";
 
-interface WakeLockNavigator extends Navigator {
-  wakeLock?: {
-    request: (type: "screen") => Promise<WakeLockSentinel>;
-  };
-}
-
 export function useScreenWakeLock(enabled = true): void {
   useEffect(() => {
     if (!enabled || typeof document === "undefined") {
       return;
     }
 
-    const wakeLockApi = (navigator as WakeLockNavigator).wakeLock;
+    const wakeLockApi = (navigator as Navigator & { wakeLock?: WakeLock }).wakeLock;
     if (!wakeLockApi) {
       return;
     }
