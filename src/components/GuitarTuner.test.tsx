@@ -72,7 +72,7 @@ describe("GuitarTuner", () => {
         frequencyHz: 120,
         detectedNote: "B2",
         target: { id: "a2", label: "A", note: "A2", frequencyHz: 110 },
-        cents: 50,
+        cents: 15,
         inTune: false,
         clarity: 0.98,
       },
@@ -82,7 +82,7 @@ describe("GuitarTuner", () => {
     const needle = container.querySelector(".guitar-tuner__needle");
 
     expect(needle).not.toBeNull();
-    expect(needle).toHaveStyle({ left: "calc(50% + 50%)" });
+    expect(needle).toHaveStyle({ left: "calc(50% + 15%)" });
   });
 
   it("stops the tuner when requested", () => {
