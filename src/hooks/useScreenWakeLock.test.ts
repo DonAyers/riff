@@ -2,7 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useScreenWakeLock } from "./useScreenWakeLock";
 
-type MockWakeLockSentinel = Pick<WakeLockSentinel, "release" | "addEventListener">;
+type TestWakeLockSentinel = Pick<WakeLockSentinel, "release" | "addEventListener">;
 
 describe("useScreenWakeLock", () => {
   afterEach(() => {
@@ -43,7 +43,7 @@ describe("useScreenWakeLock", () => {
 
   it("releases the wake lock on unmount", async () => {
     const release = vi.fn(async () => undefined);
-    const sentinel: MockWakeLockSentinel = {
+    const sentinel: TestWakeLockSentinel = {
       release,
       addEventListener: vi.fn(),
     };

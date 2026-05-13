@@ -4,7 +4,7 @@ import { gotoApp } from "./helpers";
 test("guitar tuner can listen from the capture panel", async ({ page }) => {
   await page.addInitScript(() => {
     const sampleRate = 44100;
-    const frequencyHz = 120;
+    const testFrequency = 120;
     let sampleOffset = 0;
 
     const fakeStream = {
@@ -29,7 +29,7 @@ test("guitar tuner can listen from the capture panel", async ({ page }) => {
       getFloatTimeDomainData(buffer: Float32Array) {
         for (let i = 0; i < buffer.length; i += 1) {
           const sampleIndex = sampleOffset + i;
-          buffer[i] = Math.sin((2 * Math.PI * frequencyHz * sampleIndex) / sampleRate) * 0.8;
+          buffer[i] = Math.sin((2 * Math.PI * testFrequency * sampleIndex) / sampleRate) * 0.8;
         }
         sampleOffset += buffer.length;
       }
