@@ -116,12 +116,11 @@
   position: absolute;
   top: 0.28rem;
   bottom: 0.28rem;
-  left: 50%;
   width: 3px;
   border-radius: var(--radius-full);
   background: var(--fg);
   box-shadow: 0 0 14px rgba(255, 255, 255, 0.48);
-  transition: transform 0.08s linear;
+  transition: left 0.08s linear;
 }
 
 .guitar-tuner__actions {

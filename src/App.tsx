@@ -28,6 +28,7 @@ import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
 import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
 import { useGlobalKeyboardShortcuts } from "./hooks/useGlobalKeyboardShortcuts";
+import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import "./components/ChordFretboard.css";
 import "./components/ExportPanel.css";
 import "./components/SelectedChordDialog.css";
@@ -209,6 +210,8 @@ function SelectedChordDialogFallback({
 }
 
 function App() {
+  useScreenWakeLock();
+
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
   const [activeLane, setActiveLane] = useState<Lane>("song");
   const [activeVoicingIndex, setActiveVoicingIndex] = useState(0);

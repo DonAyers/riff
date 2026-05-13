@@ -64,6 +64,27 @@ describe("GuitarTuner", () => {
     expect(screen.getByRole("meter", { name: /tuning cents/i })).toHaveAttribute("aria-valuetext", "+2 cents sharp");
   });
 
+  it("positions the tuning needle based on cents offset", () => {
+    useGuitarTunerMock.mockReturnValue({
+      ...defaultHookReturn,
+      state: "listening",
+      reading: {
+        frequencyHz: 120,
+        detectedNote: "B2",
+        target: { id: "a2", label: "A", note: "A2", frequencyHz: 110 },
+        cents: 50,
+        inTune: false,
+        clarity: 0.98,
+      },
+    });
+
+    const { container } = render(<GuitarTuner />);
+    const needle = container.querySelector(".guitar-tuner__needle");
+
+    expect(needle).not.toBeNull();
+    expect(needle).toHaveStyle({ left: "calc(50% + 50%)" });
+  });
+
   it("stops the tuner when requested", () => {
     const stop = vi.fn();
     useGuitarTunerMock.mockReturnValue({ ...defaultHookReturn, state: "listening", stop });
