@@ -147,6 +147,9 @@ function mockAppModules(options: MockAppModulesOptions = {}) {
     OnboardingSheet: () => null,
     hasSeenOnboarding: () => true,
   }));
+  vi.doMock("./components/GuitarTuner", () => ({
+    GuitarTuner: () => <div data-testid="guitar-tuner" />,
+  }));
   vi.doMock("./lib/chordVoicings", () => ({
     lookupVoicings: lookupVoicingsMock,
   }));
@@ -190,6 +193,7 @@ async function renderApp() {
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  window.history.replaceState(null, "", "/");
 
   lookupVoicingsMock.mockReturnValue([
     {

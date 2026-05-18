@@ -1,5 +1,11 @@
 import { useCallback, useRef, useState } from "react";
-import { detectPitchYin, getTuningReading, type TuningReading } from "../lib/guitarTuner";
+import {
+  createTuningStabilizer,
+  detectPitchYin,
+  getTuningReading,
+  type TuningReading,
+  type TuningStabilizer,
+} from "../lib/guitarTuner";
 
 export type GuitarTunerState = "idle" | "listening";
 
@@ -11,7 +17,14 @@ export interface UseGuitarTunerReturn {
   stop: () => void;
 }
 
-const ANALYSER_FFT_SIZE = 4096;
+const ANALYSER_FFT_SIZE = 8192;
+const TUNER_MAX_FREQUENCY_HZ = 720;
+const TUNER_MIC_CONSTRAINTS = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+  channelCount: { ideal: 1 },
+} satisfies MediaTrackConstraints;
 type AudioFloatBuffer = Parameters<AnalyserNode["getFloatTimeDomainData"]>[0];
 
 export function useGuitarTuner(): UseGuitarTunerReturn {
@@ -24,6 +37,11 @@ export function useGuitarTuner(): UseGuitarTunerReturn {
   const streamRef = useRef<MediaStream | null>(null);
   const frameRef = useRef<number | null>(null);
   const samplesRef = useRef<AudioFloatBuffer | null>(null);
+  const stabilizerRef = useRef<TuningStabilizer | null>(null);
+
+  if (!stabilizerRef.current) {
+    stabilizerRef.current = createTuningStabilizer();
+  }
 
   const stop = useCallback(() => {
     if (frameRef.current !== null) {
@@ -45,10 +63,11 @@ export function useGuitarTuner(): UseGuitarTunerReturn {
     }
 
     samplesRef.current = null;
+    stabilizerRef.current?.reset();
     setState("idle");
   }, []);
 
-  const analyzeFrame = useCallback(() => {
+  const analyzeFrame = useCallback((timestampMs: DOMHighResTimeStamp) => {
     const analyser = analyserRef.current;
     const audioContext = audioContextRef.current;
 
@@ -63,8 +82,11 @@ export function useGuitarTuner(): UseGuitarTunerReturn {
     }
 
     analyser.getFloatTimeDomainData(samples);
-    const estimate = detectPitchYin(samples, audioContext.sampleRate);
-    setReading(estimate ? getTuningReading(estimate) : null);
+    const estimate = detectPitchYin(samples, audioContext.sampleRate, {
+      maxFrequencyHz: TUNER_MAX_FREQUENCY_HZ,
+    });
+    const rawReading = estimate ? getTuningReading(estimate) : null;
+    setReading(stabilizerRef.current?.update(rawReading, timestampMs) ?? null);
 
     frameRef.current = requestAnimationFrame(analyzeFrame);
   }, []);
@@ -77,13 +99,10 @@ export function useGuitarTuner(): UseGuitarTunerReturn {
     try {
       setError(null);
       setReading(null);
+      stabilizerRef.current?.reset();
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-        },
+        audio: TUNER_MIC_CONSTRAINTS,
       });
       const audioContext = new AudioContext();
       if (audioContext.state === "suspended") {

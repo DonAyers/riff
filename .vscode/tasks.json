@@ -19,8 +19,8 @@
     },
     {
       "label": "kill dev server",
-      "type": "shell",
-      "command": "powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Write-Host 'Dev server stopped.'\"",
+      "type": "npm",
+      "script": "dev:stop",
       "problemMatcher": [],
       "presentation": {
         "reveal": "silent",

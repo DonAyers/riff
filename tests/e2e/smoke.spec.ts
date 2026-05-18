@@ -6,9 +6,11 @@ test("landing page shows simplified recorder defaults and lane controls", async 
 
   await expect(page.getByRole("heading", { level: 1, name: /riff/i })).toBeVisible();
   await expect(page.getByLabel(/^Build /)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Tuner" })).toBeVisible();
   await expect(page.getByRole("button", { name: /help and about/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /start recording/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /import audio file/i })).toBeVisible();
+  await expect(page.getByRole("region", { name: /guitar tuner/i })).toHaveCount(0);
   await expect(
     page.getByText("Capture an idea, then review the notes or chords in one place.")
   ).toBeVisible();
@@ -53,6 +55,58 @@ test("landing page shows simplified recorder defaults and lane controls", async 
       /record or import something on the left, then come back here for the key, chord changes, and guitar shapes\./i
     )
   ).toBeVisible();
+});
+
+test("guitar tuner lives on its own route", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("riff_onboarded", "1");
+  });
+
+  await page.goto("/tuner");
+
+  await expect(page.getByRole("heading", { level: 1, name: /riff/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /guitar tuner/i })).toBeVisible();
+  await expect(page.getByRole("region", { name: /guitar tuner/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /start tuner/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /start recording/i })).toHaveCount(0);
+  await expect(page.locator(".guitar-tuner__bar")).toHaveCount(25);
+
+  await page.getByRole("button", { name: "Fine" }).click();
+  await expect(page.getByRole("button", { name: "Fine" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".guitar-tuner__bar")).toHaveCount(49);
+
+  await page.getByRole("button", { name: "Fluid" }).click();
+  await expect(page.getByRole("button", { name: "Fluid" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".guitar-tuner__bar")).toHaveCount(0);
+  await expect(page.locator(".guitar-tuner__fluid-track")).toBeVisible();
+
+  await page.getByRole("link", { name: /back to riff/i }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { level: 2, name: "Capture" })).toBeVisible();
+});
+
+test("pending recording survives visiting the tuner route", async ({ page }) => {
+  await gotoApp(page, { autoProcess: false });
+
+  const analyzeNow = page.getByRole("button", { name: /analyze now/i });
+  await expect(analyzeNow).toBeDisabled();
+
+  await page.getByRole("button", { name: /start recording/i }).click();
+  await expect(page.getByRole("button", { name: /stop recording/i })).toHaveClass(/recording/);
+  await expect(page.getByRole("status")).toHaveText("Recording live");
+  await page.getByRole("button", { name: /stop recording/i }).click();
+
+  await expect(analyzeNow).toBeEnabled({ timeout: 15000 });
+
+  await page.getByRole("link", { name: "Tuner" }).click();
+  await expect(page.getByRole("region", { name: /guitar tuner/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /start recording/i })).toHaveCount(0);
+
+  await page.getByRole("link", { name: /back to riff/i }).click();
+
+  await expect(page.getByRole("heading", { level: 2, name: "Capture" })).toBeVisible();
+  await expect(analyzeNow).toBeEnabled();
 });
 
 test("first visit shows onboarding and help reopens it later", async ({ page }) => {

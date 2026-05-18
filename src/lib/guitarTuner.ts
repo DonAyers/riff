@@ -20,6 +20,19 @@ export interface TuningReading {
   clarity: number;
 }
 
+export interface TuningStabilizerOptions {
+  minCutoffHz?: number;
+  beta?: number;
+  derivativeCutoffHz?: number;
+  holdMissingMs?: number;
+  inTuneThresholdCents?: number;
+}
+
+export interface TuningStabilizer {
+  update: (reading: TuningReading | null, timestampMs: number) => TuningReading | null;
+  reset: () => void;
+}
+
 export const STANDARD_GUITAR_STRINGS: readonly GuitarStringTarget[] = [
   { id: "e2", label: "Low E", note: "E2", frequencyHz: 82.4069 },
   { id: "a2", label: "A", note: "A2", frequencyHz: 110 },
@@ -32,6 +45,16 @@ export const STANDARD_GUITAR_STRINGS: readonly GuitarStringTarget[] = [
 const NOTE_NAMES = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"] as const;
 const A4_MIDI = 69;
 const A4_FREQUENCY_HZ = 440;
+const OCTAVE_HARMONIC_RATIOS = [1, 2] as const;
+const OCTAVE_HARMONIC_PENALTY_CENTS = 12;
+const DEFAULT_IN_TUNE_THRESHOLD_CENTS = 5;
+const DEFAULT_TUNING_STABILIZER_OPTIONS = {
+  minCutoffHz: 2.8,
+  beta: 0.012,
+  derivativeCutoffHz: 1,
+  holdMissingMs: 160,
+  inTuneThresholdCents: DEFAULT_IN_TUNE_THRESHOLD_CENTS,
+} satisfies Required<TuningStabilizerOptions>;
 
 export function frequencyToMidi(frequencyHz: number): number {
   return A4_MIDI + 12 * Math.log2(frequencyHz / A4_FREQUENCY_HZ);
@@ -50,26 +73,102 @@ export function centsBetween(frequencyHz: number, targetFrequencyHz: number): nu
 
 export function getTuningReading(
   estimate: PitchEstimate,
-  inTuneThresholdCents = 5
+  inTuneThresholdCents = DEFAULT_IN_TUNE_THRESHOLD_CENTS
 ): TuningReading {
   let target = STANDARD_GUITAR_STRINGS[0];
-  let cents = centsBetween(estimate.frequencyHz, target.frequencyHz);
+  let frequencyHz = estimate.frequencyHz;
+  let cents = centsBetween(frequencyHz, target.frequencyHz);
+  let score = Math.abs(cents);
 
-  for (const candidate of STANDARD_GUITAR_STRINGS.slice(1)) {
-    const candidateCents = centsBetween(estimate.frequencyHz, candidate.frequencyHz);
-    if (Math.abs(candidateCents) < Math.abs(cents)) {
+  function considerCandidate(
+    candidate: GuitarStringTarget,
+    candidateFrequencyHz: number,
+    penaltyCents: number
+  ) {
+    const candidateCents = centsBetween(candidateFrequencyHz, candidate.frequencyHz);
+    const candidateScore = Math.abs(candidateCents) + penaltyCents;
+
+    if (candidateScore < score) {
       target = candidate;
+      frequencyHz = candidateFrequencyHz;
       cents = candidateCents;
+      score = candidateScore;
+    }
+  }
+
+  for (const candidate of STANDARD_GUITAR_STRINGS) {
+    for (const harmonicRatio of OCTAVE_HARMONIC_RATIOS) {
+      considerCandidate(
+        candidate,
+        estimate.frequencyHz / harmonicRatio,
+        harmonicRatio === 1 ? 0 : OCTAVE_HARMONIC_PENALTY_CENTS
+      );
     }
   }
 
   return {
-    frequencyHz: estimate.frequencyHz,
-    detectedNote: frequencyToNoteName(estimate.frequencyHz),
+    frequencyHz,
+    detectedNote: frequencyToNoteName(frequencyHz),
     target,
     cents,
     inTune: Math.abs(cents) <= inTuneThresholdCents,
     clarity: estimate.clarity,
+  };
+}
+
+export function createTuningStabilizer(options: TuningStabilizerOptions = {}): TuningStabilizer {
+  const resolvedOptions = {
+    ...DEFAULT_TUNING_STABILIZER_OPTIONS,
+    ...options,
+  };
+  const centsFilter = new OneEuroFilter(
+    resolvedOptions.minCutoffHz,
+    resolvedOptions.beta,
+    resolvedOptions.derivativeCutoffHz
+  );
+  let lastReading: TuningReading | null = null;
+  let lastReadingTimestampMs = 0;
+  let lastTargetId: string | null = null;
+
+  return {
+    update(reading, timestampMs) {
+      if (!reading) {
+        if (
+          lastReading &&
+          timestampMs - lastReadingTimestampMs <= resolvedOptions.holdMissingMs
+        ) {
+          return lastReading;
+        }
+
+        this.reset();
+        return null;
+      }
+
+      if (reading.target.id !== lastTargetId) {
+        centsFilter.reset();
+      }
+
+      const smoothedCents = centsFilter.filter(reading.cents, timestampMs);
+      const frequencyHz = reading.target.frequencyHz * 2 ** (smoothedCents / 1200);
+      const smoothedReading: TuningReading = {
+        ...reading,
+        frequencyHz,
+        detectedNote: frequencyToNoteName(frequencyHz),
+        cents: smoothedCents,
+        inTune: Math.abs(smoothedCents) <= resolvedOptions.inTuneThresholdCents,
+      };
+
+      lastReading = smoothedReading;
+      lastReadingTimestampMs = timestampMs;
+      lastTargetId = reading.target.id;
+      return smoothedReading;
+    },
+    reset() {
+      centsFilter.reset();
+      lastReading = null;
+      lastReadingTimestampMs = 0;
+      lastTargetId = null;
+    },
   };
 }
 
@@ -181,4 +280,72 @@ function refineTauWithParabolicInterpolation(values: Float32Array, tau: number):
   }
 
   return tau + (previous - next) / (2 * denominator);
+}
+
+class OneEuroFilter {
+  private readonly valueFilter = new LowPassFilter();
+  private readonly derivativeFilter = new LowPassFilter();
+  private previousRawValue: number | null = null;
+  private previousTimestampMs: number | null = null;
+
+  constructor(
+    private readonly minCutoffHz: number,
+    private readonly beta: number,
+    private readonly derivativeCutoffHz: number
+  ) {}
+
+  filter(value: number, timestampMs: number): number {
+    const previousRawValue = this.previousRawValue;
+    const previousTimestampMs = this.previousTimestampMs;
+    this.previousRawValue = value;
+    this.previousTimestampMs = timestampMs;
+
+    if (previousRawValue === null || previousTimestampMs === null) {
+      this.valueFilter.reset(value);
+      this.derivativeFilter.reset(0);
+      return value;
+    }
+
+    const elapsedSeconds = Math.max((timestampMs - previousTimestampMs) / 1000, 1 / 120);
+    const derivative = (value - previousRawValue) / elapsedSeconds;
+    const smoothedDerivative = this.derivativeFilter.filter(
+      derivative,
+      smoothingFactor(this.derivativeCutoffHz, elapsedSeconds)
+    );
+    const cutoffHz = this.minCutoffHz + this.beta * Math.abs(smoothedDerivative);
+
+    return this.valueFilter.filter(value, smoothingFactor(cutoffHz, elapsedSeconds));
+  }
+
+  reset() {
+    this.valueFilter.reset();
+    this.derivativeFilter.reset();
+    this.previousRawValue = null;
+    this.previousTimestampMs = null;
+  }
+}
+
+class LowPassFilter {
+  private initialized = false;
+  private previousValue = 0;
+
+  filter(value: number, alpha: number): number {
+    if (!this.initialized) {
+      this.reset(value);
+      return value;
+    }
+
+    this.previousValue = alpha * value + (1 - alpha) * this.previousValue;
+    return this.previousValue;
+  }
+
+  reset(value?: number) {
+    this.initialized = value !== undefined;
+    this.previousValue = value ?? 0;
+  }
+}
+
+function smoothingFactor(cutoffHz: number, elapsedSeconds: number): number {
+  const rate = 2 * Math.PI * Math.max(0, cutoffHz) * elapsedSeconds;
+  return rate / (rate + 1);
 }

@@ -91,6 +91,9 @@ vi.mock("./components/OnboardingSheet", () => ({
   ),
   hasSeenOnboarding: hasSeenOnboardingMock,
 }));
+vi.mock("./components/GuitarTuner", () => ({
+  GuitarTuner: () => <div data-testid="guitar-tuner" />,
+}));
 vi.mock("./lib/chordVoicings", () => ({
   lookupVoicings: vi.fn(),
 }));
@@ -164,6 +167,7 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
 
 describe("App mic permission fallback", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/");
     useRiffSessionMock.mockReset();
     lookupVoicingsMock.mockReset();
     lookupVoicingsMock.mockImplementation((chordName) => {
@@ -240,6 +244,51 @@ describe("App mic permission fallback", () => {
     expect(screen.getByText(/nothing to review yet/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /melody/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /guitar/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /tuner/i })).toHaveAttribute("href", "/tuner");
+    expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
+  });
+
+  it("renders the guitar tuner only on its dedicated route", () => {
+    window.history.replaceState(null, "", "/tuner");
+    useRiffSessionMock.mockReturnValue(
+      createSessionState() as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByRole("heading", { level: 2, name: /guitar tuner/i })).toBeInTheDocument();
+    expect(screen.getByTestId("guitar-tuner")).toBeInTheDocument();
+    expect(screen.queryByTestId("recorder")).not.toBeInTheDocument();
+    expect(useRiffSessionMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("link", { name: /back to riff/i }));
+
+    expect(screen.getByTestId("recorder")).toBeInTheDocument();
+    expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
+  });
+
+  it("keeps the recording workspace mounted while visiting the tuner route", () => {
+    const handleStart = vi.fn();
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({ handleStart }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+    const workspace = screen.getByTestId("riff-workspace");
+
+    fireEvent.click(screen.getByRole("link", { name: /tuner/i }));
+
+    expect(screen.getByRole("heading", { level: 2, name: /guitar tuner/i })).toBeInTheDocument();
+    expect(workspace).toHaveAttribute("hidden");
+    expect(screen.getByTestId("recorder")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "r" });
+    expect(handleStart).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("link", { name: /back to riff/i }));
+
+    expect(workspace).not.toHaveAttribute("hidden");
+    expect(screen.getByRole("region", { name: /capture/i })).toBeInTheDocument();
   });
 
   it("shows the storage export reminder when risk is detected for saved riffs", async () => {

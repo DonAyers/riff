@@ -5,7 +5,9 @@ import {
   useEffect,
   useRef,
   useState,
+  type AnchorHTMLAttributes,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from "react";
 import { HelpCircle, FlaskConical } from "lucide-react";
 import { useRiffSession } from "./hooks/useRiffSession";
@@ -49,6 +51,11 @@ const LazySelectedChordDialog = lazy(async () => {
 });
 
 const APP_SUBTITLE = "Capture an idea, then review the notes or chords in one place.";
+const HOME_PATH = "/";
+const TUNER_PATH = "/tuner";
+
+type AppRoute = "home" | "tuner";
+type NavigateToRoute = (pathname: string) => void;
 
 const CAPTURE_PANEL_COPY = {
   eyebrow: "Step 1",
@@ -91,6 +98,109 @@ const ANALYSIS_LOADING_COPY = {
     description: "Riff is checking the key, chord changes, and playable guitar shapes. This panel will fill in here as soon as it is ready.",
   },
 } as const;
+
+function normalizePathname(pathname: string): string {
+  const trimmedPathname = pathname.replace(/\/+$/, "");
+  return trimmedPathname === "" ? HOME_PATH : trimmedPathname;
+}
+
+function resolveAppRoute(pathname: string): AppRoute {
+  return normalizePathname(pathname) === TUNER_PATH ? "tuner" : "home";
+}
+
+function getRoutePathname(route: AppRoute): string {
+  return route === "tuner" ? TUNER_PATH : HOME_PATH;
+}
+
+function getBrowserPathname(): string {
+  return typeof window === "undefined" ? HOME_PATH : window.location.pathname;
+}
+
+function useAppRoute() {
+  const [route, setRoute] = useState<AppRoute>(() => resolveAppRoute(getBrowserPathname()));
+
+  useEffect(() => {
+    const handlePopState = () => setRoute(resolveAppRoute(getBrowserPathname()));
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const navigate = useCallback<NavigateToRoute>((pathname) => {
+    const nextRoute = resolveAppRoute(pathname);
+    const nextPathname = getRoutePathname(nextRoute);
+
+    if (window.location.pathname !== nextPathname) {
+      window.history.pushState(null, "", nextPathname);
+    }
+
+    setRoute(nextRoute);
+  }, []);
+
+  return { route, navigate };
+}
+
+interface AppRouteLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  children: ReactNode;
+  navigate: NavigateToRoute;
+  to: string;
+}
+
+function AppRouteLink({
+  children,
+  navigate,
+  onClick,
+  target,
+  to,
+  ...props
+}: AppRouteLinkProps) {
+  const handleClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event);
+
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      (target && target !== "_self")
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    navigate(to);
+  };
+
+  return (
+    <a {...props} href={to} target={target} onClick={handleClick}>
+      {children}
+    </a>
+  );
+}
+
+interface AppTitleProps {
+  navigate: NavigateToRoute;
+}
+
+function AppTitle({ navigate }: AppTitleProps) {
+  return (
+    <h1>
+      <AppRouteLink className="app-title-link" to={HOME_PATH} navigate={navigate}>
+        <i className="note-icon">♪</i> Riff
+      </AppRouteLink>
+    </h1>
+  );
+}
+
+function BuildBadge() {
+  return (
+    <div className="build-badge" aria-label={`Build ${buildLabel}`} title={`Build ${buildLabel}`}>
+      {buildLabel}
+    </div>
+  );
+}
 
 interface ExportPanelFallbackProps {
   label?: string;
@@ -208,7 +318,12 @@ function SelectedChordDialogFallback({
   );
 }
 
-function App() {
+interface RiffWorkspaceProps {
+  isActive: boolean;
+  navigate: NavigateToRoute;
+}
+
+function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
   const [activeLane, setActiveLane] = useState<Lane>("song");
   const [activeVoicingIndex, setActiveVoicingIndex] = useState(0);
@@ -344,7 +459,7 @@ function App() {
   }, []);
 
   useGlobalKeyboardShortcuts({
-    disabled: showOnboarding || selectedChordName !== null,
+    disabled: !isActive || showOnboarding || selectedChordName !== null,
     handlers: {
       record: {
         enabled: recorderState === "recording" || (!isLoading && !isImporting && recorderState === "idle"),
@@ -377,18 +492,23 @@ function App() {
   });
 
   return (
-    <div className="app">
+    <div className="app" data-testid="riff-workspace" hidden={!isActive}>
       <div className="app-shell">
         <header className="app-header">
           <div className="app-header-main">
-            <h1><i className="note-icon">♪</i> Riff</h1>
-            <button
-              className="help-btn"
-              onClick={() => setShowOnboarding(true)}
-              aria-label="Help and about"
-            >
-              <HelpCircle size={18} strokeWidth={1.8} />
-            </button>
+            <AppTitle navigate={navigate} />
+            <nav className="app-header-actions" aria-label="Primary">
+              <AppRouteLink className="app-nav-link" to={TUNER_PATH} navigate={navigate}>
+                Tuner
+              </AppRouteLink>
+              <button
+                className="help-btn"
+                onClick={() => setShowOnboarding(true)}
+                aria-label="Help and about"
+              >
+                <HelpCircle size={18} strokeWidth={1.8} />
+              </button>
+            </nav>
           </div>
           <p className="tagline">{APP_SUBTITLE}</p>
         </header>
@@ -419,7 +539,6 @@ function App() {
                 profileId={profileId}
                 onProfileChange={setProfileId}
               />
-              <GuitarTuner disabled={recorderState !== "idle" || isLoading || isImporting} />
               {error && !hasResults && (
                 <button
                   className="analyze-btn analyze-btn--secondary analyze-btn--demo"
@@ -626,9 +745,7 @@ function App() {
           </section>
         </main>
 
-        <div className="build-badge" aria-label={`Build ${buildLabel}`} title={`Build ${buildLabel}`}>
-          {buildLabel}
-        </div>
+        <BuildBadge />
       </div>
 
       {showOnboarding && (
@@ -658,6 +775,64 @@ function App() {
         </Suspense>
       )}
     </div>
+  );
+}
+
+interface TunerRouteProps {
+  navigate: NavigateToRoute;
+}
+
+function TunerRoute({ navigate }: TunerRouteProps) {
+  return (
+    <div className="app">
+      <div className="app-shell app-shell--single">
+        <header className="app-header">
+          <div className="app-header-main">
+            <AppTitle navigate={navigate} />
+            <nav className="app-header-actions" aria-label="Primary">
+              <AppRouteLink className="app-nav-link" to={HOME_PATH} navigate={navigate}>
+                Back to Riff
+              </AppRouteLink>
+            </nav>
+          </div>
+          <p className="tagline">Tune up quickly without loading the recording workspace.</p>
+        </header>
+
+        <main className="tuner-page">
+          <div className="workspace-pane__intro tuner-page__intro">
+            <span className="workspace-pane__kicker">Utility</span>
+            <h2 className="workspace-pane__title">Guitar tuner</h2>
+            <p className="workspace-pane__description">
+              A focused page for checking standard EADGBE tuning before capture.
+            </p>
+          </div>
+          <GuitarTuner />
+        </main>
+
+        <BuildBadge />
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const { route, navigate } = useAppRoute();
+  const [hasMountedWorkspace, setHasMountedWorkspace] = useState(() => route === "home");
+
+  useEffect(() => {
+    if (route === "home") {
+      setHasMountedWorkspace(true);
+    }
+  }, [route]);
+
+  const isWorkspaceActive = route === "home";
+  const shouldMountWorkspace = hasMountedWorkspace || isWorkspaceActive;
+
+  return (
+    <>
+      {shouldMountWorkspace && <RiffWorkspace isActive={isWorkspaceActive} navigate={navigate} />}
+      {route === "tuner" && <TunerRoute navigate={navigate} />}
+    </>
   );
 }
 

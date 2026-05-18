@@ -79,8 +79,10 @@ describe("useGuitarTuner", () => {
         echoCancellation: false,
         noiseSuppression: false,
         autoGainControl: false,
+        channelCount: { ideal: 1 },
       },
     });
+    expect(analyser.fftSize).toBe(8192);
     expect(source.connect).toHaveBeenCalledWith(analyser);
 
     await act(async () => {
@@ -91,6 +93,106 @@ describe("useGuitarTuner", () => {
       expect(result.current.reading?.target.note).toBe("A2");
     });
     expect(result.current.reading?.frequencyHz).toBeCloseTo(110, 1);
+  });
+
+  it("smooths jumpy cents readings between analysis frames", async () => {
+    const stream: MockStream = {
+      getTracks: () => [{ stop: vi.fn() }],
+    };
+    getUserMedia.mockResolvedValue(stream);
+
+    let inputFrequencyHz = 112;
+    const source = {
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    const analyser = {
+      fftSize: 0,
+      smoothingTimeConstant: 0,
+      disconnect: vi.fn(),
+      getFloatTimeDomainData: vi.fn((buffer: Float32Array) => {
+        fillSineWave(buffer, inputFrequencyHz, 44100);
+      }),
+    };
+    const audioContext = {
+      sampleRate: 44100,
+      state: "running",
+      close: vi.fn().mockResolvedValue(undefined),
+      resume: vi.fn().mockResolvedValue(undefined),
+      createAnalyser: vi.fn(() => analyser),
+      createMediaStreamSource: vi.fn(() => source),
+    };
+
+    vi.stubGlobal("AudioContext", function MockAudioContext() {
+      return audioContext;
+    });
+
+    const { result } = renderHook(() => useGuitarTuner());
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      rafCallback?.(0);
+    });
+
+    const firstCents = result.current.reading?.cents ?? 0;
+    expect(firstCents).toBeGreaterThan(20);
+
+    inputFrequencyHz = 108;
+    await act(async () => {
+      rafCallback?.(16);
+    });
+
+    const secondCents = result.current.reading?.cents ?? 0;
+    expect(secondCents).toBeLessThan(firstCents);
+    expect(secondCents).toBeGreaterThan(-15);
+  });
+
+  it("folds high E harmonic readings from live analyzer frames", async () => {
+    const stream: MockStream = {
+      getTracks: () => [{ stop: vi.fn() }],
+    };
+    getUserMedia.mockResolvedValue(stream);
+
+    const source = {
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+    };
+    const analyser = {
+      fftSize: 0,
+      smoothingTimeConstant: 0,
+      disconnect: vi.fn(),
+      getFloatTimeDomainData: vi.fn((buffer: Float32Array) => {
+        fillSineWave(buffer, 659.2552, 44100);
+      }),
+    };
+    const audioContext = {
+      sampleRate: 44100,
+      state: "running",
+      close: vi.fn().mockResolvedValue(undefined),
+      resume: vi.fn().mockResolvedValue(undefined),
+      createAnalyser: vi.fn(() => analyser),
+      createMediaStreamSource: vi.fn(() => source),
+    };
+
+    vi.stubGlobal("AudioContext", function MockAudioContext() {
+      return audioContext;
+    });
+
+    const { result } = renderHook(() => useGuitarTuner());
+
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      rafCallback?.(0);
+    });
+
+    await waitFor(() => {
+      expect(result.current.reading?.target.note).toBe("E4");
+    });
+    expect(result.current.reading?.frequencyHz).toBeCloseTo(329.6276, 1);
   });
 
   it("stops microphone resources", async () => {

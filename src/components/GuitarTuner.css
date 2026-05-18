@@ -1,127 +1,389 @@
 .guitar-tuner {
-  width: min(100%, 26rem);
+  width: min(100%, 30rem);
   display: grid;
-  gap: var(--space-md);
-  padding: var(--space-md);
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   background:
-    radial-gradient(circle at top, rgba(130, 98, 255, 0.14), transparent 55%),
-    rgba(255, 255, 255, 0.018);
+    radial-gradient(circle at 50% 4%, rgba(130, 98, 255, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(12, 14, 30, 0.96), rgba(5, 6, 17, 0.98));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.guitar-tuner__topline {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-lg);
 }
 
 .guitar-tuner__copy {
   display: grid;
   gap: 0.25rem;
-  text-align: center;
 }
 
 .guitar-tuner__eyebrow {
   color: var(--accent);
   font-size: 0.62rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .guitar-tuner__title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
 }
 
-.guitar-tuner__description {
-  margin: 0 auto;
-  max-width: 32ch;
-  color: var(--fg-muted);
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
-.guitar-tuner__display {
-  display: grid;
-  gap: 0.25rem;
-  justify-items: center;
-}
-
-.guitar-tuner__note {
-  min-width: 4rem;
-  min-height: 3.3rem;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-md);
-  background: rgba(0, 0, 0, 0.2);
-  color: var(--fg);
-  font-size: 2.3rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-}
-
-.guitar-tuner__note.in-tune {
-  color: #bbf7d0;
-  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.4), 0 0 22px rgba(34, 197, 94, 0.16);
-}
-
-.guitar-tuner__meta {
-  min-height: 1.1rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
+.guitar-tuner__status {
+  min-height: 1.7rem;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
   color: var(--fg-muted);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.guitar-tuner__meter {
-  position: relative;
-  height: 2.1rem;
-  overflow: hidden;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(90deg, rgba(248, 113, 113, 0.2), rgba(250, 204, 21, 0.14) 40%, rgba(34, 197, 94, 0.2) 50%, rgba(250, 204, 21, 0.14) 60%, rgba(248, 113, 113, 0.2)),
-    rgba(0, 0, 0, 0.18);
+.guitar-tuner__status--listening {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.1);
+  color: #bbf7d0;
 }
 
-.guitar-tuner__meter-center {
+.guitar-tuner__console {
+  min-height: 21rem;
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--space-lg);
+}
+
+.guitar-tuner__strings {
+  min-width: 0;
+}
+
+.guitar-tuner__strings-track {
+  height: 100%;
+  min-height: 21rem;
+  display: grid;
+  grid-template-rows: repeat(6, 1fr);
+  justify-items: center;
+  align-items: center;
+  padding: 0.35rem 0.2rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.guitar-tuner__string-dot-row {
+  position: relative;
+  width: 2.9rem;
+  height: 2.9rem;
+  display: grid;
+  place-items: center;
+  color: rgba(244, 245, 251, 0.52);
+}
+
+.guitar-tuner__string-dot-row::before {
+  content: "";
   position: absolute;
-  top: 0.35rem;
-  bottom: 0.35rem;
+  top: calc(50% + var(--string-thickness));
+  bottom: -1.55rem;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.guitar-tuner__string-dot-row:last-child::before {
+  display: none;
+}
+
+.guitar-tuner__string-dot {
+  position: absolute;
+  width: calc(0.92rem + var(--string-thickness));
+  height: calc(0.92rem + var(--string-thickness));
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #8b94a9;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.26);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.guitar-tuner__string-label {
+  position: relative;
+  z-index: 1;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.guitar-tuner__string-dot-row--active {
+  color: #050611;
+}
+
+.guitar-tuner__string-dot-row--active .guitar-tuner__string-dot {
+  transform: scale(1.24);
+  border-color: rgba(253, 230, 138, 0.84);
+  background: #f59e0b;
+  box-shadow: 0 0 0 0.38rem rgba(245, 158, 11, 0.16), 0 0 26px rgba(245, 158, 11, 0.38);
+}
+
+.guitar-tuner__display {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 214, 102, 0.08), transparent 34%),
+    rgba(0, 0, 0, 0.22);
+}
+
+.guitar-tuner__readout {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.2rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-lg);
+  color: var(--fg-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.guitar-tuner__readout-item:last-child {
+  text-align: right;
+}
+
+.guitar-tuner__in-tune-slot {
+  width: 2.2rem;
+  height: 2.2rem;
+  display: grid;
+  place-items: center;
+}
+
+.guitar-tuner__bar-meter {
+  position: relative;
+  width: 100%;
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.guitar-tuner__in-tune-burst {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.14);
+  filter: drop-shadow(0 0 18px rgba(34, 197, 94, 0.45));
+  font-size: 1.28rem;
+  animation: tunerThumbsUpPop 0.56s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.guitar-tuner__bar-row {
+  min-height: 5.4rem;
+  display: grid;
+  grid-template-columns: repeat(25, minmax(3px, 1fr));
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.guitar-tuner__bar-row--fine {
+  gap: 0.13rem;
+}
+
+.guitar-tuner__bar {
+  height: var(--bar-height);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.guitar-tuner__bar--center {
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.guitar-tuner__bar--active {
+  transform: scaleY(1.05);
+  background: linear-gradient(180deg, #fff7ad, #facc15 48%, #f97316);
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.3);
+}
+
+.guitar-tuner__bar-meter--in-tune .guitar-tuner__bar--active {
+  background: linear-gradient(180deg, #dcfce7, #22c55e 52%, #16a34a);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.42);
+}
+
+.guitar-tuner__fluid-row {
+  min-height: 5.4rem;
+  display: grid;
+  align-items: center;
+}
+
+.guitar-tuner__fluid-track {
+  position: relative;
+  height: 1.12rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(90deg, rgba(96, 165, 250, 0.2), rgba(255, 255, 255, 0.18), rgba(249, 115, 22, 0.24));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.guitar-tuner__fluid-track::before {
+  content: "";
+  position: absolute;
+  top: -1rem;
+  bottom: -1rem;
   left: 50%;
   width: 2px;
   transform: translateX(-50%);
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.22);
 }
 
-.guitar-tuner__meter-mark {
+.guitar-tuner__fluid-fill {
+  position: absolute;
+  top: 0.18rem;
+  bottom: 0.18rem;
+  left: var(--fluid-start);
+  width: var(--fluid-width);
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #fff7ad, #facc15 48%, #f97316);
+  box-shadow: 0 0 20px rgba(250, 204, 21, 0.32);
+  opacity: 0;
+  transition: left 0.16s ease, width 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+}
+
+.guitar-tuner__fluid-track--active .guitar-tuner__fluid-fill {
+  opacity: 1;
+}
+
+.guitar-tuner__fluid-marker {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.8rem;
-  font-weight: 700;
+  left: var(--fluid-marker);
+  width: 1.1rem;
+  height: 1.1rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.86);
+  background: #f8fafc;
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.28);
+  opacity: 0.42;
+  transition: left 0.16s ease, opacity 0.16s ease, box-shadow 0.16s ease;
 }
 
-.guitar-tuner__meter-mark--flat {
-  left: 0.8rem;
+.guitar-tuner__fluid-track--active .guitar-tuner__fluid-marker {
+  opacity: 1;
 }
 
-.guitar-tuner__meter-mark--sharp {
-  right: 0.8rem;
+.guitar-tuner__bar-meter--in-tune .guitar-tuner__fluid-fill {
+  background: linear-gradient(90deg, #dcfce7, #22c55e 56%, #16a34a);
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.42);
 }
 
-.guitar-tuner__needle {
-  position: absolute;
-  top: 0.28rem;
-  bottom: 0.28rem;
-  left: 50%;
-  width: 3px;
+.guitar-tuner__bar-meter--in-tune .guitar-tuner__fluid-marker {
+  border-color: #dcfce7;
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.5);
+}
+
+.guitar-tuner__meter-scale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(244, 245, 251, 0.42);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.guitar-tuner__note {
+  min-width: 5.7rem;
+  min-height: 4.8rem;
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+  font-size: 3.4rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-shadow: 0 0 24px rgba(255, 255, 255, 0.18);
+}
+
+.guitar-tuner__note--empty {
+  color: rgba(244, 245, 251, 0.36);
+  font-size: 2.25rem;
+  text-shadow: none;
+}
+
+.guitar-tuner__feedback-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  padding: 0.18rem;
   border-radius: var(--radius-full);
-  background: var(--fg);
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.48);
-  transition: left 0.08s linear;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.guitar-tuner__feedback-option {
+  min-height: 1.75rem;
+  padding: 0.34rem 0.58rem;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: rgba(244, 245, 251, 0.62);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.guitar-tuner__feedback-option:hover,
+.guitar-tuner__feedback-option--active {
+  background: rgba(130, 98, 255, 0.22);
+  color: var(--fg);
+}
+
+.guitar-tuner__feedback-option--active {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.guitar-tuner__feedback-option:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 2px;
+}
+
+.guitar-tuner__note.in-tune {
+  color: #f7fee7;
+  text-shadow: 0 0 12px rgba(187, 247, 208, 0.58), 0 0 28px rgba(34, 197, 94, 0.34);
+}
+
+.guitar-tuner__meta {
+  min-height: 1.1rem;
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .guitar-tuner__actions {
@@ -141,7 +403,7 @@
   color: var(--fg);
   cursor: pointer;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
@@ -170,9 +432,55 @@
   text-align: center;
 }
 
+@keyframes tunerThumbsUpPop {
+  0% {
+    opacity: 0;
+    transform: translateY(0.9rem) scale(0.42) rotate(-10deg);
+  }
+
+  58% {
+    opacity: 1;
+    transform: translateY(-0.22rem) scale(1.14) rotate(5deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@media (max-width: 420px) {
+  .guitar-tuner {
+    padding: var(--space-md);
+  }
+
+  .guitar-tuner__console {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    gap: var(--space-md);
+  }
+
+  .guitar-tuner__display {
+    padding: var(--space-md);
+  }
+
+  .guitar-tuner__bar-row {
+    gap: 0.18rem;
+  }
+
+  .guitar-tuner__bar-row--fine {
+    gap: 0.08rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .guitar-tuner__needle,
+  .guitar-tuner__bar,
+  .guitar-tuner__feedback-option,
+  .guitar-tuner__fluid-fill,
+  .guitar-tuner__fluid-marker,
+  .guitar-tuner__in-tune-burst,
+  .guitar-tuner__string-dot,
   .tuner-toggle {
+    animation: none;
     transition: none;
   }
 }
