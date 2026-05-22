@@ -96,8 +96,9 @@ export async function importAndAnalyzeFixture(
   page: Page,
   fileName = "known-c-major.wav"
 ): Promise<void> {
-  await setSettingToggle(page, "Auto-detect", true);
   await importFixture(page, fileName);
+  await expect(page.getByTestId("stage-approve")).toBeVisible({ timeout: 15000 });
+  await page.getByRole("button", { name: /^analyze$/i }).click();
   await waitForAnalysisResults(page);
 }
 
@@ -110,16 +111,6 @@ export async function openAdvancedOptions(page: Page): Promise<void> {
   }
 
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
-}
-
-export async function selectInstrumentMode(
-  page: Page,
-  profileLabel: "Full range" | "Guitar"
-): Promise<void> {
-  await openAdvancedOptions(page);
-  const profile = page.getByRole("radio", { name: profileLabel });
-  await profile.check();
-  await expect(profile).toBeChecked();
 }
 
 export async function switchLane(page: Page, lane: "Melody" | "Guitar"): Promise<void> {

@@ -1,8 +1,12 @@
 .recorder {
+  --record-button-size: clamp(128px, 44vw, 174px);
+  --record-import-gap: 0.8rem;
+  --import-button-size: 46px;
+
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.1rem;
+  gap: 0.95rem;
   width: 100%;
 }
 
@@ -10,15 +14,19 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-height: 2.4rem;
 }
 
 .recorder-timer {
-  font-size: clamp(2rem, 4vw, 2.6rem);
-  font-weight: 250;
-  font-family: "SF Mono", "Fira Code", "Courier New", monospace;
-  letter-spacing: 0.12em;
-  color: var(--fg);
-  opacity: 0.92;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.75rem;
+  font-size: clamp(1.65rem, 11vw, 2.55rem);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: rgba(0, 0, 0, 0.24);
+  text-shadow: 0 0 18px rgba(225, 252, 110, 0.22);
   font-variant-numeric: tabular-nums;
 }
 
@@ -28,9 +36,9 @@
   gap: 0.45rem;
   padding: 0.26rem 0.7rem;
   border-radius: var(--radius-full);
-  background: rgba(239, 68, 68, 0.16);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
+  background: rgba(255, 104, 77, 0.16);
+  border: 1px solid rgba(255, 104, 77, 0.38);
+  color: #ffd4c9;
   flex-shrink: 0;
 }
 
@@ -38,7 +46,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ef4444;
+  background: var(--danger);
   animation: blink 1.2s ease-in-out infinite;
   box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
 }
@@ -55,32 +63,39 @@
   50% { opacity: 0.3; }
 }
 
-/* Main row: record button + import icon button side by side */
+/* Keep the primary record button centered; import orbits it without affecting layout. */
 .recorder-main-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-lg);
+  display: grid;
+  place-items: center;
+  position: relative;
+  width: 100%;
+  min-height: var(--record-button-size);
 }
 
 .record-btn {
-  width: 96px;
-  height: 96px;
+  width: var(--record-button-size);
+  height: var(--record-button-size);
   border-radius: 50%;
-  border: none;
-  background: radial-gradient(circle at 35% 35%, rgba(130, 98, 255, 0.16), rgba(255, 255, 255, 0.02)), #171a32;
+  border: 5px solid rgba(255, 245, 209, 0.16);
+  background: #f04438;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent);
-  transition: box-shadow 0.25s ease, transform 0.25s ease, opacity 0.2s ease;
-  box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.08);
+  color: #fff5d1;
+  transition: box-shadow 0.25s ease, transform 0.25s ease, opacity 0.2s ease, filter 0.2s ease;
+  box-shadow:
+    0 0 0 1px rgba(255, 104, 77, 0.34),
+    0 12px 24px rgba(0, 0, 0, 0.24);
   touch-action: manipulation;
 }
 
 .record-btn:hover:not(:disabled) {
-  box-shadow: 0 0 0 10px rgba(130, 98, 255, 0.18);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.01);
+  filter: saturate(1.08);
+  box-shadow:
+    0 0 0 1px rgba(255, 104, 77, 0.48),
+    0 14px 28px rgba(0, 0, 0, 0.28);
 }
 
 .record-btn:disabled {
@@ -94,25 +109,27 @@
 }
 
 .record-btn.recording {
-  background:
-    radial-gradient(circle at 35% 35%, rgba(252, 165, 165, 0.22), rgba(255, 255, 255, 0.02)),
-    linear-gradient(180deg, rgba(127, 29, 29, 0.95), rgba(69, 10, 10, 0.98));
-  color: #fecaca;
-  box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.2);
+  background: var(--accent);
+  color: #111308;
+  box-shadow:
+    0 0 0 1px rgba(225, 252, 110, 0.5),
+    0 12px 24px rgba(0, 0, 0, 0.22);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.24); }
-  50%       { box-shadow: 0 0 0 22px rgba(239, 68, 68, 0); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(225, 252, 110, 0.5), 0 12px 24px rgba(0, 0, 0, 0.22); }
+  50%       { box-shadow: 0 0 0 10px rgba(225, 252, 110, 0), 0 12px 24px rgba(0, 0, 0, 0.22); }
 }
 
 .recorder-label {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--fg-muted);
+  color: #d0c69d;
   margin: 0;
+  font-family: var(--font-mono);
+  text-align: center;
 }
 
 .recorder-error {
@@ -127,12 +144,19 @@
 }
 
 .import-btn {
-  width: 38px;
-  height: 38px;
+  position: absolute;
+  top: 50%;
+  left: min(
+    calc(50% + (var(--record-button-size) / 2) + var(--record-import-gap)),
+    calc(100% - var(--import-button-size))
+  );
+  transform: translateY(-50%);
+  width: var(--import-button-size);
+  height: var(--import-button-size);
   border-radius: 50%;
-  border: 1px solid var(--surface-border);
-  background: var(--surface-soft);
-  color: var(--fg-muted);
+  border: 1px solid rgba(255, 245, 209, 0.16);
+  background: rgba(0, 0, 0, 0.26);
+  color: #d0c69d;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -143,8 +167,8 @@
 }
 
 .import-btn:hover:not(:disabled) {
-  color: var(--fg);
-  border-color: var(--accent);
+  color: var(--accent);
+  border-color: rgba(225, 252, 110, 0.4);
   background: var(--accent-dim);
 }
 

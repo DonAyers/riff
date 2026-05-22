@@ -451,16 +451,73 @@
 
 @media (max-width: 420px) {
   .guitar-tuner {
-    padding: var(--space-md);
+    gap: 0.85rem;
+    padding: 0.95rem;
+    border-color: rgba(225, 252, 110, 0.2);
+    border-radius: 1.75rem;
+    background:
+      radial-gradient(circle at 72% 0%, rgba(225, 252, 110, 0.12), transparent 35%),
+      radial-gradient(circle at 12% 100%, rgba(77, 225, 255, 0.1), transparent 38%),
+      linear-gradient(180deg, rgba(33, 37, 26, 0.96), rgba(7, 8, 5, 0.98));
+  }
+
+  .guitar-tuner__topline {
+    gap: 0.75rem;
+  }
+
+  .guitar-tuner__eyebrow {
+    color: var(--accent);
+  }
+
+  .guitar-tuner__title {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 9vw, 2.35rem);
+    line-height: 0.88;
+    letter-spacing: -0.04em;
+  }
+
+  .guitar-tuner__status {
+    min-height: 1.45rem;
+    padding: 0.2rem 0.5rem;
+    background: rgba(255, 245, 209, 0.06);
+    font-size: 0.58rem;
   }
 
   .guitar-tuner__console {
-    grid-template-columns: 3rem minmax(0, 1fr);
-    gap: var(--space-md);
+    min-height: 18rem;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .guitar-tuner__strings-track {
+    min-height: 18rem;
+    border-color: rgba(255, 245, 209, 0.08);
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .guitar-tuner__string-dot-row {
+    width: 2.55rem;
+    height: 2.55rem;
   }
 
   .guitar-tuner__display {
-    padding: var(--space-md);
+    gap: 0.8rem;
+    padding: 0.85rem;
+    border-color: rgba(255, 245, 209, 0.1);
+    border-radius: 1.35rem;
+    background:
+      radial-gradient(circle at 50% 45%, rgba(225, 252, 110, 0.08), transparent 36%),
+      rgba(0, 0, 0, 0.24);
+  }
+
+  .guitar-tuner__readout {
+    gap: 0.55rem;
+    font-size: 0.62rem;
+  }
+
+  .guitar-tuner__bar-row,
+  .guitar-tuner__fluid-row {
+    min-height: 4rem;
   }
 
   .guitar-tuner__bar-row {
@@ -469,6 +526,32 @@
 
   .guitar-tuner__bar-row--fine {
     gap: 0.08rem;
+  }
+
+  .guitar-tuner__feedback-control {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .guitar-tuner__feedback-option {
+    flex: 1;
+    min-height: 1.55rem;
+    padding-inline: 0.35rem;
+  }
+
+  .guitar-tuner__note {
+    min-height: 3.6rem;
+    font-family: var(--font-display);
+    font-size: 3.25rem;
+    line-height: 0.9;
+  }
+
+  .tuner-toggle {
+    width: 100%;
+    justify-content: center;
+    min-height: 2.9rem;
+    border-color: rgba(225, 252, 110, 0.22);
+    background: rgba(225, 252, 110, 0.08);
   }
 }
 

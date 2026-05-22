@@ -15,6 +15,9 @@ vi.mock("../lib/audioExport", () => ({
   exportToMidi: vi.fn(() => new Blob(["midi"], { type: "audio/midi" })),
   exportToWav: vi.fn(() => Promise.resolve(new Blob(["wav"], { type: "audio/wav" }))),
   exportToMp3: vi.fn(() => Promise.resolve(new Blob(["mp3"], { type: "audio/mp3" }))),
+  sanitizeExportFilename: vi.fn((name: string, fallback = "riff") => (
+    name.replace(/[^a-zA-Z0-9 _-]/g, "").replace(/\s+/g, "-") || fallback
+  )),
   downloadBlob: vi.fn(),
 }));
 

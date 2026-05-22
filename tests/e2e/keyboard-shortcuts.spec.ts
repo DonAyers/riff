@@ -17,11 +17,18 @@ test("analyze, playback, and export shortcuts work after importing audio", async
   await gotoApp(page, { autoProcess: false, onboardingSeen: true });
 
   await getImportFileInput(page).setInputFiles(fixturePath("known-c-major.wav"));
-  await expect(page.getByRole("button", { name: /analyze now/i })).toBeEnabled({ timeout: 15000 });
+  await expect(page.getByRole("heading", { level: 2, name: /take check/i })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole("button", { name: /^analyze$/i })).toBeEnabled();
 
   await page.keyboard.press("a");
   await waitForAnalysisResults(page);
 
+  await page.getByRole("button", { name: "Timeline" }).click();
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  });
   const playMidiPreviewButton = page.locator(".piano-roll").getByRole("button", {
     name: /play midi preview/i,
   });
@@ -49,5 +56,5 @@ test("record shortcut toggles recording from the landing view", async ({ page })
   await expect(page.getByRole("status")).toHaveText("Recording live");
 
   await page.keyboard.press("r");
-  await expect(page.getByRole("button", { name: /start recording/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: /take check/i })).toBeVisible({ timeout: 15000 });
 });

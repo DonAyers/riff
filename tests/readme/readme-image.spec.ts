@@ -13,8 +13,8 @@ test("captures the README landing-page image", async ({ page }) => {
   await page.addStyleTag({ content: README_IMAGE_STYLES });
 
   await expect(page.getByRole("heading", { level: 1, name: /riff/i })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Capture" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Review notes" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Record" })).toBeVisible();
+  await expect(page.getByRole("list", { name: /recording flow/i })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /start recording/i })).toBeVisible();
 
   await page.screenshot({

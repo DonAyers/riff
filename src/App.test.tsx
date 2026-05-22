@@ -1,8 +1,9 @@
 import type { Ref } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import App from "./App";
 import { useRiffSession } from "./hooks/useRiffSession";
+import { THEME_STORAGE_KEY } from "./hooks/useThemePreference";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
@@ -94,6 +95,9 @@ vi.mock("./components/OnboardingSheet", () => ({
 vi.mock("./components/GuitarTuner", () => ({
   GuitarTuner: () => <div data-testid="guitar-tuner" />,
 }));
+vi.mock("./components/SongBuilder", () => ({
+  SongBuilder: () => <div data-testid="song-builder" />,
+}));
 vi.mock("./lib/chordVoicings", () => ({
   lookupVoicings: vi.fn(),
 }));
@@ -108,6 +112,45 @@ const useRiffSessionMock = vi.mocked(useRiffSession);
 const lookupVoicingsMock = vi.mocked(lookupVoicings);
 const getVariateSuggestionsMock = vi.mocked(getVariateSuggestions);
 const detectStorageEvictionRiskMock = vi.mocked(detectStorageEvictionRisk);
+
+function installMatchMedia(initialLightMode: boolean) {
+  let isLightMode = initialLightMode;
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  const mediaQueryList = {
+    media: "(prefers-color-scheme: light)",
+    onchange: null,
+    get matches() {
+      return isLightMode;
+    },
+    addEventListener: vi.fn((type: string, listener: EventListener) => {
+      if (type === "change") {
+        listeners.add(listener as (event: MediaQueryListEvent) => void);
+      }
+    }),
+    removeEventListener: vi.fn((type: string, listener: EventListener) => {
+      if (type === "change") {
+        listeners.delete(listener as (event: MediaQueryListEvent) => void);
+      }
+    }),
+    addListener: vi.fn((listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener);
+    }),
+    removeListener: vi.fn((listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener);
+    }),
+    dispatchEvent: vi.fn(),
+  } as unknown as MediaQueryList;
+
+  vi.stubGlobal("matchMedia", vi.fn(() => mediaQueryList));
+
+  return {
+    setLightMode(nextIsLightMode: boolean) {
+      isLightMode = nextIsLightMode;
+      const event = { matches: isLightMode, media: "(prefers-color-scheme: light)" } as MediaQueryListEvent;
+      listeners.forEach((listener) => listener(event));
+    },
+  };
+}
 
 function createSessionState(overrides: Record<string, unknown> = {}) {
   return {
@@ -128,6 +171,7 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     hasRecording: false,
     hasPendingAnalysis: false,
     handleLoadDemoAnalysis: vi.fn(),
+    handleDiscardRecording: vi.fn(),
     handleImport: vi.fn(),
     isImporting: false,
     storageFormat: "pcm",
@@ -154,11 +198,13 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
      },
     midiPlayback: {
       isPlaying: false,
+      isLooping: false,
       currentTimeS: 0,
       duration: 0,
       load: vi.fn(),
       play: vi.fn(),
       stop: vi.fn(),
+      setLooping: vi.fn(),
       previewNote: vi.fn(),
     },
     ...overrides,
@@ -167,7 +213,10 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
 
 describe("App mic permission fallback", () => {
   beforeEach(() => {
+    installMatchMedia(false);
     window.history.replaceState(null, "", "/");
+    localStorage.removeItem("riff:skip-discard-confirmation");
+    localStorage.removeItem(THEME_STORAGE_KEY);
     useRiffSessionMock.mockReset();
     lookupVoicingsMock.mockReset();
     lookupVoicingsMock.mockImplementation((chordName) => {
@@ -219,7 +268,7 @@ describe("App mic permission fallback", () => {
     hasSeenOnboardingMock.mockReturnValue(true);
   });
 
-  it("renders capture and analysis workspace regions", () => {
+  it("renders the mobile-first record screen", () => {
     useRiffSessionMock.mockReturnValue(
       createSessionState() as ReturnType<typeof useRiffSession>
     );
@@ -230,21 +279,122 @@ describe("App mic permission fallback", () => {
     expect(
       screen.getByRole("region", { name: /capture/i })
     ).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /analysis/i })).not.toBeInTheDocument();
     expect(
-      screen.getByRole("region", {
-        name: /analysis/i,
-      })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Capture an idea, then review the notes or chords in one place.")
-    ).toBeInTheDocument();
-    expect(screen.getByText(/step 1/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: /capture/i })).toBeInTheDocument();
-    expect(screen.getByText(/step 2/i)).toBeInTheDocument();
-    expect(screen.getByText(/nothing to review yet/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /melody/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /guitar/i })).toBeInTheDocument();
+      screen.queryByText("A pocket studio for turning one take into playable chords.")
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /record/i })).toBeInTheDocument();
+    expect(screen.getByText(/screen 01/i)).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: /recording flow/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /builder/i })).toHaveAttribute("href", "/builder");
     expect(screen.getByRole("link", { name: /tuner/i })).toHaveAttribute("href", "/tuner");
+    expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
+  });
+
+  it("shows a theme button that persists the selected light mode override", async () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState() as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    fireEvent.click(screen.getByRole("button", { name: /switch to light mode/i }));
+
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("light"));
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    expect(screen.getByRole("button", { name: /switch to dark mode/i })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+  });
+
+  it("follows OS theme changes until the user chooses an override", async () => {
+    const matchMedia = installMatchMedia(true);
+    useRiffSessionMock.mockReturnValue(
+      createSessionState() as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(document.documentElement.dataset.theme).toBe("light");
+
+    act(() => matchMedia.setLightMode(false));
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    fireEvent.click(screen.getByRole("button", { name: /switch to light mode/i }));
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("light"));
+    act(() => matchMedia.setLightMode(false));
+
+    expect(document.documentElement.dataset.theme).toBe("light");
+  });
+
+  it("shows approval controls for a pending take and analyzes on thumbs up", () => {
+    const handleAnalyze = vi.fn();
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        hasRecording: true,
+        hasPendingAnalysis: true,
+        audioPlayback: {
+          isPlaying: false,
+          duration: 3,
+          load: vi.fn(),
+          loadBlob: vi.fn(),
+          reset: vi.fn(),
+          play: vi.fn(),
+          pause: vi.fn(),
+        },
+        handleAnalyze,
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByTestId("stage-approve")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /take check/i })).toBeInTheDocument();
+    expect(screen.getByText(/keep this take/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /analyze/i }));
+
+    expect(handleAnalyze).toHaveBeenCalledTimes(1);
+  });
+
+  it("confirms before discarding a pending take and can remember the choice", () => {
+    const handleDiscardRecording = vi.fn();
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        hasRecording: true,
+        hasPendingAnalysis: true,
+        handleDiscardRecording,
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /retake/i }));
+
+    expect(screen.getByRole("alertdialog", { name: /delete this take/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /next time, retake immediately/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    expect(handleDiscardRecording).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem("riff:skip-discard-confirmation")).toBe("true");
+  });
+
+  it("renders the song builder route with the shared workspace session", () => {
+    window.history.replaceState(null, "", "/builder");
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        chordTimeline: [{ chord: "CM", label: "C Major", startTimeS: 0, endTimeS: 0.7 }],
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByTestId("song-builder")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /analysis/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
   });
 
@@ -333,7 +483,7 @@ describe("App mic permission fallback", () => {
     expect(screen.queryByRole("note", { name: /export reminder/i })).not.toBeInTheDocument();
   });
 
-  it("shows calmer loading states in both shell panels while analysis is running", () => {
+  it("shows the app analysis screen while analysis is running", () => {
     useRiffSessionMock.mockReturnValue(
       createSessionState({
         isLoading: true,
@@ -344,14 +494,11 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    expect(screen.getByTestId("progress-bar-inline")).toHaveTextContent(
-      "Working on your audio"
-    );
     expect(screen.getByTestId("progress-bar-panel")).toHaveTextContent(
       "Listening for notes"
     );
     expect(
-      screen.getByText(/this panel updates on its own when the pass finishes/i)
+      screen.getByText(/the chord map drops in as soon as the pass finishes/i)
     ).toBeInTheDocument();
     expect(screen.queryByText("MIDI preview")).not.toBeInTheDocument();
   });
@@ -369,12 +516,19 @@ describe("App mic permission fallback", () => {
 
     expect(screen.queryByText(/ready for a take/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("chord-display")).toBeInTheDocument();
-    expect(screen.getByTestId("chord-timeline")).toBeInTheDocument();
     expect(screen.getByTestId("key-display")).toBeInTheDocument();
     expect(screen.getByTestId("note-display")).toBeInTheDocument();
+    expect(screen.queryByTestId("chord-timeline")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("piano-roll")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /timeline/i }));
+
+    expect(screen.getByTestId("chord-timeline")).toBeInTheDocument();
     expect(screen.getByTestId("piano-roll")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
+
     expect(await screen.findByTestId("export-panel")).toBeInTheDocument();
-    expect(screen.getByText("MIDI preview")).toBeInTheDocument();
   });
 
   it("switches to chord lane and shows the fretboard state", async () => {
@@ -389,6 +543,7 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: /guitar/i }));
+    fireEvent.click(screen.getByRole("button", { name: /shape/i }));
 
     expect(screen.getByText(/shape 1 of \d+/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /next shape/i })).toBeInTheDocument();
@@ -430,6 +585,7 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: /guitar/i }));
+    fireEvent.click(screen.getByRole("button", { name: /shape/i }));
 
     expect(screen.getByText(/no guitar shape yet/i)).toBeInTheDocument();
     expect(screen.getByText(/does not have a saved guitar shape yet/i)).toBeInTheDocument();
@@ -489,11 +645,13 @@ describe("App mic permission fallback", () => {
         },
         midiPlayback: {
           isPlaying: false,
+          isLooping: false,
           currentTimeS: 0,
           duration: 1,
           load: vi.fn(),
           play: midiPlay,
           stop: midiStop,
+          setLooping: vi.fn(),
           previewNote: vi.fn(),
         },
       }) as ReturnType<typeof useRiffSession>
@@ -517,11 +675,13 @@ describe("App mic permission fallback", () => {
         uniqueNotes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
         midiPlayback: {
           isPlaying: false,
+          isLooping: false,
           currentTimeS: 0,
           duration: 1,
           load: vi.fn(),
           play: midiPlay,
           stop: vi.fn(),
+          setLooping: vi.fn(),
           previewNote: vi.fn(),
         },
       }) as ReturnType<typeof useRiffSession>
@@ -561,9 +721,10 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    const exportButton = await screen.findByRole("button", { name: "Export as MIDI" });
+    expect(screen.queryByRole("button", { name: "Export as MIDI" })).not.toBeInTheDocument();
     fireEvent.keyDown(window, { key: "e" });
 
+    const exportButton = await screen.findByRole("button", { name: "Export as MIDI" });
     expect(exportButton).toHaveFocus();
   });
 

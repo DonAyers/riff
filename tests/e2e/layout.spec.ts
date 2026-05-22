@@ -1,37 +1,71 @@
 import { expect, test } from "@playwright/test";
 import { gotoApp } from "./helpers";
 
-test("desktop layout keeps capture and analysis panes side by side", async ({ page }) => {
+test("desktop layout keeps the mobile app frame centered instead of split panes", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await gotoApp(page);
 
-  const capturePane = page.getByRole("region", { name: /capture/i });
-  const analysisPane = page.getByRole("region", {
-    name: /analysis/i,
-  });
+  const appFrame = page.getByRole("region", { name: /riff recorder/i });
+  const captureScreen = page.getByRole("region", { name: /capture/i });
 
-  await expect(capturePane).toBeVisible();
-  await expect(analysisPane).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Capture" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Review notes" })).toBeVisible();
-  await expect(page.getByText(/nothing to review yet/i)).toBeVisible();
+  await expect(appFrame).toBeVisible();
+  await expect(captureScreen).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Record" })).toBeVisible();
+  await expect(page.getByRole("list", { name: /recording flow/i })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: /analysis/i })).toHaveCount(0);
 
-  const captureBox = await capturePane.boundingBox();
-  const analysisBox = await analysisPane.boundingBox();
+  const frameBox = await appFrame.boundingBox();
 
-  expect(captureBox).not.toBeNull();
-  expect(analysisBox).not.toBeNull();
+  expect(frameBox).not.toBeNull();
 
-  if (!captureBox || !analysisBox) {
-    throw new Error("Expected capture and analysis panes to have bounding boxes");
+  if (!frameBox) {
+    throw new Error("Expected app frame to have a bounding box");
   }
 
-  expect(analysisBox.x).toBeGreaterThan(captureBox.x + 120);
-  expect(Math.abs(captureBox.y - analysisBox.y)).toBeLessThan(80);
+  expect(frameBox.width).toBeLessThan(470);
+  expect(Math.abs(frameBox.x + frameBox.width / 2 - 640)).toBeLessThan(80);
 
-  const gridTemplateColumns = await page.locator(".app-main").evaluate((element) => {
+  const gridTemplateColumns = await page.locator(".app-main--flow").evaluate((element) => {
     return window.getComputedStyle(element).gridTemplateColumns;
   });
 
-  expect(gridTemplateColumns.split(" ").length).toBeGreaterThan(1);
+  expect(gridTemplateColumns.split(" ").length).toBe(1);
+});
+
+test("home record button stays centered in the recorder card", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoApp(page);
+
+  const recorderCard = page.getByTestId("stage-record").locator(".recorder-card");
+  const recordButton = recorderCard.getByRole("button", { name: "Start recording" });
+  const importButton = recorderCard.getByRole("button", { name: "Import audio file" });
+
+  await expect(recorderCard).toBeVisible();
+  await expect(recordButton).toBeVisible();
+  await expect(importButton).toBeVisible();
+
+  const cardBox = await recorderCard.boundingBox();
+  const recordBox = await recordButton.boundingBox();
+  const importBox = await importButton.boundingBox();
+
+  expect(cardBox).not.toBeNull();
+  expect(recordBox).not.toBeNull();
+  expect(importBox).not.toBeNull();
+
+  if (!cardBox || !recordBox || !importBox) {
+    throw new Error("Expected recorder controls to have bounding boxes");
+  }
+
+  const cardCenterX = cardBox.x + cardBox.width / 2;
+  const recordCenterX = recordBox.x + recordBox.width / 2;
+
+  expect(Math.abs(recordCenterX - cardCenterX)).toBeLessThan(2);
+  expect(importBox.x).toBeGreaterThan(recordBox.x + recordBox.width / 2);
+  expect(importBox.x + importBox.width).toBeLessThanOrEqual(cardBox.x + cardBox.width);
+
+  const buttonShadow = await recordButton.evaluate((element) => {
+    return window.getComputedStyle(element).boxShadow;
+  });
+
+  expect(buttonShadow).not.toContain("inset");
 });

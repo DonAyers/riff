@@ -280,6 +280,90 @@ describe("useMidiPlayback", () => {
     expect(result.current.currentTimeS).toBe(0);
   });
 
+  it("keeps scheduling new cycles while looping is enabled", async () => {
+    const { result } = renderHook(() => useMidiPlayback());
+
+    act(() => {
+      result.current.load([note({ midi: 52, name: "E3", pitchClass: "E" })]);
+      result.current.setLooping(true);
+    });
+
+    await act(async () => {
+      await result.current.play();
+    });
+
+    expect(result.current.isPlaying).toBe(true);
+    expect(result.current.isLooping).toBe(true);
+    expect(smplrMocks.start).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+
+    expect(result.current.isPlaying).toBe(true);
+    expect(smplrMocks.start).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads edited notes for the next loop cycle without stopping playback", async () => {
+    const { result } = renderHook(() => useMidiPlayback());
+
+    act(() => {
+      result.current.load([note({ midi: 52, name: "E3", pitchClass: "E" })]);
+      result.current.setLooping(true);
+    });
+
+    await act(async () => {
+      await result.current.play();
+    });
+
+    smplrMocks.stop.mockClear();
+
+    act(() => {
+      result.current.load([note({ midi: 55, name: "G3", pitchClass: "G" })]);
+    });
+
+    expect(result.current.isPlaying).toBe(true);
+    expect(smplrMocks.stop).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+
+    const lastStartCall = smplrMocks.start.mock.calls[smplrMocks.start.mock.calls.length - 1];
+    expect(lastStartCall?.[0]).toEqual(
+      expect.objectContaining({ note: 55 })
+    );
+  });
+
+  it("stops an active loop immediately while preserving the loop setting", async () => {
+    const { result } = renderHook(() => useMidiPlayback());
+
+    act(() => {
+      result.current.load([note()]);
+      result.current.setLooping(true);
+    });
+
+    await act(async () => {
+      await result.current.play();
+    });
+
+    expect(smplrMocks.start).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.stop();
+    });
+
+    expect(result.current.isPlaying).toBe(false);
+    expect(result.current.isLooping).toBe(true);
+    expect(smplrMocks.stop).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+
+    expect(smplrMocks.start).toHaveBeenCalledTimes(1);
+  });
+
   it("extends all notes in a guitar strum cluster to share the latest release", async () => {
     const { result } = renderHook(() => useMidiPlayback("guitar"));
 

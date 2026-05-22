@@ -7,9 +7,10 @@ import {
   useState,
   type AnchorHTMLAttributes,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { HelpCircle, FlaskConical } from "lucide-react";
+import { FlaskConical, HelpCircle, Moon, RotateCcw, Sun, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
 import { LaneToggle, type Lane } from "./components/LaneToggle";
@@ -24,12 +25,14 @@ import { SessionPicker } from "./components/SessionPicker";
 import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { GuitarTuner } from "./components/GuitarTuner";
+import { SongBuilder } from "./components/SongBuilder";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
 import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
 import { useGlobalKeyboardShortcuts } from "./hooks/useGlobalKeyboardShortcuts";
+import { useThemePreference, type ThemeMode, type ThemeSource } from "./hooks/useThemePreference";
 import "./components/ChordFretboard.css";
 import "./components/ExportPanel.css";
 import "./components/SelectedChordDialog.css";
@@ -50,40 +53,39 @@ const LazySelectedChordDialog = lazy(async () => {
   return { default: module.SelectedChordDialog };
 });
 
-const APP_SUBTITLE = "Capture an idea, then review the notes or chords in one place.";
+const APP_SUBTITLE = "A pocket studio for turning one take into playable chords.";
 const HOME_PATH = "/";
 const TUNER_PATH = "/tuner";
+const BUILDER_PATH = "/builder";
+const SKIP_DISCARD_CONFIRMATION_KEY = "riff:skip-discard-confirmation";
 
-type AppRoute = "home" | "tuner";
+type WorkspaceRoute = "home" | "builder";
+type AppRoute = WorkspaceRoute | "tuner";
 type NavigateToRoute = (pathname: string) => void;
+type HomeStage = "record" | "approve" | "analyze";
+type AnalysisScreen = "summary" | "timeline" | "shape" | "export";
 
 const CAPTURE_PANEL_COPY = {
-  eyebrow: "Step 1",
-  title: "Capture",
-  description: "Use the controls below to record or bring in a file. The review panel fills in as soon as analysis finishes.",
+  eyebrow: "Screen 01",
+  title: "Record",
+  description: "Catch a riff, play it back, then decide if it deserves analysis.",
 } as const;
 
 const WORKFLOW_COPY = {
   song: {
-    eyebrow: "Step 2",
-    title: "Review notes",
-    description: "Notes, timing, and playback show up here together after analysis.",
-    emptyKicker: "Nothing to review yet",
-    emptyBody: "Record or import something on the left, then come back here for notes, timing, and playback.",
+    eyebrow: "Screen 03",
+    title: "Analyze notes",
+    description: "Notes, timing, and playback show up here together after approval.",
+    emptyKicker: "No notes yet",
+    emptyBody: "Approve a take from the record screen and Riff will map the notes here.",
   },
   chord: {
-    eyebrow: "Step 2",
-    title: "Review chords",
-    description: "Key, chord changes, and playable guitar shapes show up here after analysis.",
-    emptyKicker: "Nothing to review yet",
-    emptyBody: "Record or import something on the left, then come back here for the key, chord changes, and guitar shapes.",
+    eyebrow: "Screen 03",
+    title: "Analyze chords",
+    description: "Key, chord changes, and playable guitar shapes show up here after approval.",
+    emptyKicker: "No chords yet",
+    emptyBody: "Approve a take from the record screen and Riff will listen for the harmony here.",
   },
-} as const;
-
-const CAPTURE_LOADING_COPY = {
-  eyebrow: "Analysis in progress",
-  label: "Working on your audio",
-  description: "Stay here or switch to review. Results will appear automatically when they are ready.",
 } as const;
 
 const ANALYSIS_LOADING_COPY = {
@@ -99,16 +101,22 @@ const ANALYSIS_LOADING_COPY = {
   },
 } as const;
 
+const SWIPE_THRESHOLD_PX = 48;
+
 function normalizePathname(pathname: string): string {
   const trimmedPathname = pathname.replace(/\/+$/, "");
   return trimmedPathname === "" ? HOME_PATH : trimmedPathname;
 }
 
 function resolveAppRoute(pathname: string): AppRoute {
-  return normalizePathname(pathname) === TUNER_PATH ? "tuner" : "home";
+  const normalized = normalizePathname(pathname);
+  if (normalized === TUNER_PATH) return "tuner";
+  if (normalized === BUILDER_PATH) return "builder";
+  return "home";
 }
 
 function getRoutePathname(route: AppRoute): string {
+  if (route === "builder") return BUILDER_PATH;
   return route === "tuner" ? TUNER_PATH : HOME_PATH;
 }
 
@@ -144,6 +152,34 @@ interface AppRouteLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   children: ReactNode;
   navigate: NavigateToRoute;
   to: string;
+}
+
+interface ThemeControls {
+  nextTheme: ThemeMode;
+  onToggle: () => void;
+  source: ThemeSource;
+  theme: ThemeMode;
+}
+
+function ThemeToggleButton({ nextTheme, onToggle, source, theme }: ThemeControls) {
+  const Icon = nextTheme === "light" ? Sun : Moon;
+  const nextThemeLabel = nextTheme === "light" ? "Light" : "Dark";
+  const currentSource =
+    source === "system" ? `following system ${theme} mode` : `using saved ${theme} mode`;
+
+  return (
+    <button
+      type="button"
+      className={`theme-toggle theme-toggle--${theme}`}
+      onClick={onToggle}
+      aria-label={`Switch to ${nextTheme} mode, currently ${currentSource}`}
+      aria-pressed={theme === "light"}
+      title={`Switch to ${nextTheme} mode (${currentSource})`}
+    >
+      <Icon size={15} strokeWidth={2} aria-hidden="true" />
+      <span className="theme-toggle__label">{nextThemeLabel}</span>
+    </button>
+  );
 }
 
 function AppRouteLink({
@@ -319,13 +355,23 @@ function SelectedChordDialogFallback({
 }
 
 interface RiffWorkspaceProps {
+  activeRoute: WorkspaceRoute;
   isActive: boolean;
   navigate: NavigateToRoute;
+  themeControls: ThemeControls;
 }
 
-function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
+function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffWorkspaceProps) {
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
+  const [homeStage, setHomeStage] = useState<HomeStage>("record");
+  const [showDiscardConfirmation, setShowDiscardConfirmation] = useState(false);
+  const [skipDiscardConfirmation, setSkipDiscardConfirmation] = useState(
+    () => localStorage.getItem(SKIP_DISCARD_CONFIRMATION_KEY) === "true"
+  );
+  const [skipDiscardConfirmationDraft, setSkipDiscardConfirmationDraft] = useState(false);
   const [activeLane, setActiveLane] = useState<Lane>("song");
+  const [analysisScreen, setAnalysisScreen] = useState<AnalysisScreen>("summary");
+  const [shouldFocusExport, setShouldFocusExport] = useState(false);
   const [activeVoicingIndex, setActiveVoicingIndex] = useState(0);
   const [selectedChordName, setSelectedChordName] = useState<string | null>(null);
   const [selectedChordContext, setSelectedChordContext] = useState<ChordEvent | null>(null);
@@ -350,6 +396,7 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
     hasRecording,
     hasPendingAnalysis,
     handleLoadDemoAnalysis,
+    handleDiscardRecording,
     handleImport,
     isImporting,
     storageFormat,
@@ -379,6 +426,16 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
   const variateSuggestions = getVariateSuggestions(displayedChord);
   const activeVoicing = chordVoicings[activeVoicingIndex] ?? null;
   const exportShortcutTargetRef = useRef<HTMLButtonElement>(null);
+  const swipeStartXRef = useRef<number | null>(null);
+  const swipeStartYRef = useRef<number | null>(null);
+  const setExportShortcutTarget = useCallback((element: HTMLButtonElement | null) => {
+    exportShortcutTargetRef.current = element;
+
+    if (element && shouldFocusExport && analysisScreen === "export") {
+      element.focus();
+      setShouldFocusExport(false);
+    }
+  }, [analysisScreen, shouldFocusExport]);
   const exportPanelProps = {
     notes,
     pcmAudio: pendingAudio,
@@ -387,7 +444,86 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
     compressedMime,
     riffName: activeRiffName,
     visible: hasResults,
-    shortcutTargetRef: exportShortcutTargetRef,
+    shortcutTargetRef: setExportShortcutTarget,
+  } as const;
+
+  const stopRecordingForHomeReview = useCallback(() => {
+    void handleStop({ analyze: false });
+  }, [handleStop]);
+
+  const handleStartHomeTake = useCallback(() => {
+    setShowDiscardConfirmation(false);
+    setHomeStage("record");
+    handleStart();
+  }, [handleStart]);
+
+  const handleApproveTake = useCallback(() => {
+    setShowDiscardConfirmation(false);
+    setHomeStage("analyze");
+    setAnalysisScreen("summary");
+    void handleAnalyze();
+  }, [handleAnalyze]);
+
+  const performDiscardTake = useCallback((rememberPreference: boolean) => {
+    if (rememberPreference) {
+      localStorage.setItem(SKIP_DISCARD_CONFIRMATION_KEY, "true");
+      setSkipDiscardConfirmation(true);
+    }
+
+    handleDiscardRecording();
+    setSkipDiscardConfirmationDraft(false);
+    setShowDiscardConfirmation(false);
+    setHomeStage("record");
+  }, [handleDiscardRecording]);
+
+  const handleRejectTake = useCallback(() => {
+    if (skipDiscardConfirmation) {
+      performDiscardTake(false);
+      return;
+    }
+
+    setSkipDiscardConfirmationDraft(false);
+    setShowDiscardConfirmation(true);
+  }, [performDiscardTake, skipDiscardConfirmation]);
+
+  const handleLoadSavedRiffForFlow = useCallback((session: Parameters<typeof handleLoadSavedRiff>[0]) => {
+    void handleLoadSavedRiff(session);
+    setShowDiscardConfirmation(false);
+    setHomeStage("analyze");
+    setAnalysisScreen("summary");
+  }, [handleLoadSavedRiff]);
+
+  const handleLaneChange = useCallback((lane: Lane) => {
+    setActiveLane(lane);
+    setAnalysisScreen("summary");
+  }, []);
+
+  const baseRecorderProps = {
+    state: isLoading ? "processing" : recorderState,
+    onStart: handleStart,
+    onStop: () => void handleStop(),
+    onImport: (file: File) => void handleImport(file),
+    isImporting,
+    error,
+    autoProcess,
+    onAutoProcessChange: setAutoProcess,
+    storageFormat,
+    onStorageFormatChange: (v: "pcm" | "compressed") => setStorageFormat(v),
+    recorderState,
+    isLoading,
+    hasPendingAnalysis,
+    onAnalyze: () => void handleAnalyze(),
+    profileId,
+    onProfileChange: setProfileId,
+  } as const;
+
+  const homeRecorderProps = {
+    ...baseRecorderProps,
+    onStart: handleStartHomeTake,
+    onStop: stopRecordingForHomeReview,
+    onAnalyze: handleApproveTake,
+    showSettings: false,
+    showAnalyzeAction: false,
   } as const;
 
   useEffect(() => {
@@ -405,11 +541,36 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
   }, []);
 
   useEffect(() => {
+    if (activeRoute !== "home") return;
+
+    const hasResults = notes.length > 0;
+    if (isLoading || hasResults) {
+      setHomeStage("analyze");
+      setShowDiscardConfirmation(false);
+      if (isLoading) {
+        setAnalysisScreen("summary");
+      }
+      return;
+    }
+
+    if (hasRecording && hasPendingAnalysis) {
+      setHomeStage("approve");
+      return;
+    }
+
+    if (!hasRecording && !hasPendingAnalysis && recorderState === "idle") {
+      setHomeStage("record");
+      setShowDiscardConfirmation(false);
+    }
+  }, [activeRoute, hasPendingAnalysis, hasRecording, isLoading, notes.length, recorderState]);
+
+  useEffect(() => {
     setActiveVoicingIndex(0);
     setVariateOverride(null);
     setSelectedChordName(null);
     setSelectedChordContext(null);
     setSelectedChordVoicingIndex(0);
+    setAnalysisScreen("summary");
   }, [chord]);
 
   useEffect(() => {
@@ -431,6 +592,63 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
     setSelectedChordName(null);
     setSelectedChordContext(null);
     setSelectedChordVoicingIndex(0);
+  };
+
+  const analysisScreens: Array<{ id: AnalysisScreen; label: string }> = isSongLane
+    ? [
+        { id: "summary", label: "Summary" },
+        { id: "timeline", label: "Timeline" },
+        { id: "export", label: "Export" },
+      ]
+    : [
+        { id: "summary", label: "Chord" },
+        { id: "shape", label: "Shape" },
+        { id: "export", label: "Export" },
+      ];
+
+  const moveAnalysisScreen = useCallback((direction: 1 | -1) => {
+    setAnalysisScreen((current) => {
+      const screens = activeLane === "song"
+        ? ["summary", "timeline", "export"]
+        : ["summary", "shape", "export"];
+      const currentIndex = screens.indexOf(current);
+      const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+      const nextIndex = Math.min(Math.max(safeIndex + direction, 0), screens.length - 1);
+      return screens[nextIndex] as AnalysisScreen;
+    });
+  }, [activeLane]);
+
+  const handleFlowPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    swipeStartXRef.current = event.clientX;
+    swipeStartYRef.current = event.clientY;
+  };
+
+  const handleFlowPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
+    const startX = swipeStartXRef.current;
+    const startY = swipeStartYRef.current;
+    swipeStartXRef.current = null;
+    swipeStartYRef.current = null;
+
+    if (startX === null || startY === null) return;
+
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) {
+      return;
+    }
+
+    if (homeStage === "analyze" && hasResults) {
+      moveAnalysisScreen(deltaX < 0 ? 1 : -1);
+      return;
+    }
+
+    if (homeStage === "approve") {
+      if (deltaX < 0) {
+        handleApproveTake();
+      } else {
+        handleRejectTake();
+      }
+    }
   };
 
   const handlePlaybackShortcut = useCallback(() => {
@@ -455,8 +673,21 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
   }, [audioPlayback, hasRecording, hasResults, midiPlayback]);
 
   const handleExportShortcut = useCallback(() => {
+    if (activeRoute === "home") {
+      setAnalysisScreen("export");
+      setShouldFocusExport(true);
+      return;
+    }
+
     exportShortcutTargetRef.current?.focus();
-  }, []);
+  }, [activeRoute]);
+
+  useEffect(() => {
+    if (!shouldFocusExport || analysisScreen !== "export") return;
+    if (!exportShortcutTargetRef.current) return;
+    exportShortcutTargetRef.current.focus();
+    setShouldFocusExport(false);
+  }, [analysisScreen, shouldFocusExport]);
 
   useGlobalKeyboardShortcuts({
     disabled: !isActive || showOnboarding || selectedChordName !== null,
@@ -465,11 +696,16 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
         enabled: recorderState === "recording" || (!isLoading && !isImporting && recorderState === "idle"),
         run: () => {
           if (recorderState === "recording") {
-            void handleStop();
+            void handleStop({ analyze: activeRoute === "home" ? false : undefined });
             return;
           }
 
           if (recorderState === "idle") {
+            if (activeRoute === "home") {
+              handleStartHomeTake();
+              return;
+            }
+
             handleStart();
           }
         },
@@ -481,6 +717,11 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
       analyze: {
         enabled: !autoProcess && hasPendingAnalysis && !isLoading && recorderState === "idle",
         run: () => {
+          if (activeRoute === "home") {
+            handleApproveTake();
+            return;
+          }
+
           void handleAnalyze();
         },
       },
@@ -492,257 +733,421 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
   });
 
   return (
-    <div className="app" data-testid="riff-workspace" hidden={!isActive}>
-      <div className="app-shell">
-        <header className="app-header">
-          <div className="app-header-main">
-            <AppTitle navigate={navigate} />
-            <nav className="app-header-actions" aria-label="Primary">
-              <AppRouteLink className="app-nav-link" to={TUNER_PATH} navigate={navigate}>
-                Tuner
-              </AppRouteLink>
-              <button
-                className="help-btn"
-                onClick={() => setShowOnboarding(true)}
-                aria-label="Help and about"
-              >
-                <HelpCircle size={18} strokeWidth={1.8} />
-              </button>
-            </nav>
-          </div>
-          <p className="tagline">{APP_SUBTITLE}</p>
-        </header>
-
-        <main className="app-main">
-          <section className="workspace-pane workspace-pane--capture" aria-label="Capture">
-            <div className="workspace-pane__intro">
-              <span className="workspace-pane__kicker">{CAPTURE_PANEL_COPY.eyebrow}</span>
-              <h2 className="workspace-pane__title">{CAPTURE_PANEL_COPY.title}</h2>
-              <p className="workspace-pane__description">{CAPTURE_PANEL_COPY.description}</p>
-            </div>
-            <div className="recorder-card">
-              <Recorder
-                state={isLoading ? "processing" : recorderState}
-                onStart={handleStart}
-                onStop={() => void handleStop()}
-                onImport={(file) => void handleImport(file)}
-                isImporting={isImporting}
-                error={error}
-                autoProcess={autoProcess}
-                onAutoProcessChange={setAutoProcess}
-                storageFormat={storageFormat}
-                onStorageFormatChange={(v) => setStorageFormat(v)}
-                recorderState={recorderState}
-                isLoading={isLoading}
-                hasPendingAnalysis={hasPendingAnalysis}
-                onAnalyze={() => void handleAnalyze()}
-                profileId={profileId}
-                onProfileChange={setProfileId}
-              />
-              {error && !hasResults && (
+    <div
+      className={[
+        "app",
+        activeRoute === "home" ? "app--flow" : "",
+        activeRoute === "builder" ? "app--builder" : "",
+      ].filter(Boolean).join(" ")}
+      data-testid="riff-workspace"
+      hidden={!isActive}
+    >
+      <div className={`app-shell ${activeRoute === "builder" ? "app-shell--builder" : ""}`}>
+        {activeRoute === "builder" && (
+          <header className="app-header">
+            <div className="app-header-main">
+              <AppTitle navigate={navigate} />
+              <nav className="app-header-actions" aria-label="Primary">
+                <AppRouteLink className="app-nav-link" to={HOME_PATH} navigate={navigate}>
+                  Back to Riff
+                </AppRouteLink>
+                <AppRouteLink className="app-nav-link" to={TUNER_PATH} navigate={navigate}>
+                  Tuner
+                </AppRouteLink>
+                <ThemeToggleButton {...themeControls} />
                 <button
-                  className="analyze-btn analyze-btn--secondary analyze-btn--demo"
-                  onClick={handleLoadDemoAnalysis}
-                  disabled={isLoading || recorderState !== "idle"}
-                  aria-label="Try demo take"
+                  className="help-btn"
+                  onClick={() => setShowOnboarding(true)}
+                  aria-label="Help and about"
                 >
-                  <FlaskConical size={14} strokeWidth={2} aria-hidden="true" />
-                  Try demo
+                  <HelpCircle size={18} strokeWidth={1.8} />
                 </button>
-              )}
-              <ProgressBar
-                progress={progress}
-                visible={isLoading}
-                eyebrow={CAPTURE_LOADING_COPY.eyebrow}
-                label={CAPTURE_LOADING_COPY.label}
-                description={CAPTURE_LOADING_COPY.description}
-                ariaLabel="Audio processing progress"
-              />
+              </nav>
             </div>
+            <p className="tagline">{APP_SUBTITLE}</p>
+          </header>
+        )}
 
-            {showPlaybackStack && (
-              <div className="playback-stack" aria-label="Playback controls">
-                <Playback
-                  label="Recording"
-                  isPlaying={audioPlayback.isPlaying}
-                  duration={audioPlayback.duration}
-                  onPlay={audioPlayback.play}
-                  onPause={audioPlayback.pause}
-                  visible={hasRecording}
-                />
-                <Playback
-                  label="MIDI preview"
-                  isPlaying={midiPlayback.isPlaying}
-                  duration={midiPlayback.duration}
-                  onPlay={midiPlayback.play}
-                  onPause={midiPlayback.stop}
-                  visible={hasResults}
-                />
-              </div>
-            )}
-
-            <SessionPicker
-              sessions={savedRiffs}
-              activeSessionId={activeSessionId}
-              onLoad={handleLoadSavedRiff}
-              onDelete={handleDeleteSession}
+        <main className={`app-main ${activeRoute === "builder" ? "app-main--builder" : "app-main--flow"}`}>
+          {activeRoute === "builder" ? (
+            <SongBuilder
+              chordTimeline={chordTimeline}
+              recorderProps={baseRecorderProps}
+              isLoading={isLoading}
+              progress={progress}
+              onLoadDemo={handleLoadDemoAnalysis}
+              showDemoFallback={Boolean(error && !hasResults)}
             />
-            {showStorageEvictionPrompt && savedRiffs.length > 0 && (
-              <StorageEvictionPrompt />
-            )}
-          </section>
-
-          <section className="workspace-pane workspace-pane--analysis" aria-label="Analysis">
-            <div className="analysis-panel">
-              <div className="analysis-panel__topline">
-                <span className="analysis-panel__eyebrow">{activeWorkflow.eyebrow}</span>
+          ) : (
+            <section
+              className={`riff-device riff-device--${homeStage}`}
+              aria-label="Riff recorder"
+              onPointerDown={handleFlowPointerDown}
+              onPointerUp={handleFlowPointerUp}
+            >
+              <div className="riff-device__glow" aria-hidden="true" />
+              <div className="riff-device__topbar">
+                <div className="riff-device__heading">
+                  <div className="riff-device__brandline">
+                    <AppTitle navigate={navigate} />
+                  </div>
+                </div>
+                <div className="riff-device__controls">
+                  <div className="riff-device__meter" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <nav className="app-header-actions riff-device__actions" aria-label="Primary">
+                    <AppRouteLink className="app-nav-link" to={BUILDER_PATH} navigate={navigate}>
+                      Builder
+                    </AppRouteLink>
+                    <AppRouteLink className="app-nav-link" to={TUNER_PATH} navigate={navigate}>
+                      Tuner
+                    </AppRouteLink>
+                    <ThemeToggleButton {...themeControls} />
+                    <button
+                      className="help-btn"
+                      onClick={() => setShowOnboarding(true)}
+                      aria-label="Help and about"
+                    >
+                      <HelpCircle size={16} strokeWidth={1.8} />
+                    </button>
+                  </nav>
+                </div>
               </div>
 
-              <div className="analysis-panel__header">
-                <div className="analysis-panel__intro">
-                  <h2 className="analysis-panel__title">{activeWorkflow.title}</h2>
-                  <p className="analysis-panel__description">{activeWorkflow.description}</p>
-                </div>
-                <LaneToggle activeLane={activeLane} onChange={setActiveLane} />
-              </div>
+              <h2 className="riff-device__stage-title">
+                {homeStage === "record" && CAPTURE_PANEL_COPY.title}
+                {homeStage === "approve" && "Take check"}
+                {homeStage === "analyze" && activeWorkflow.title}
+              </h2>
 
-              {isLoading ? (
-                <div className="analysis-loading">
-                  <ProgressBar
-                    progress={progress}
-                    visible={isLoading}
-                    eyebrow={activeLoadingCopy.eyebrow}
-                    label={activeLoadingCopy.label}
-                    description={activeLoadingCopy.description}
-                    variant="panel"
-                    ariaLabel="Analysis progress"
-                  />
-                  <p className="analysis-loading__hint">
-                    Keep the recording controls handy. This panel updates on its own when the pass finishes.
-                  </p>
-                </div>
-              ) : hasResults ? (
-                <div className="results">
-                  {isSongLane ? (
-                    <>
-                      <div className="results-song-stack">
-                        <KeyDisplay result={keyDetection} />
+              {homeStage === "record" && (
+                <section className="app-screen app-screen--record" aria-label="Capture" data-testid="stage-record">
+                  <div className="workspace-pane__intro">
+                    <span className="workspace-pane__kicker">{CAPTURE_PANEL_COPY.eyebrow}</span>
+                    <p className="workspace-pane__description">{CAPTURE_PANEL_COPY.description}</p>
+                  </div>
+                  <div className="recorder-card">
+                    <Recorder {...homeRecorderProps} />
+                    {error && !hasResults && (
+                      <button
+                        className="analyze-btn analyze-btn--secondary analyze-btn--demo"
+                        onClick={handleLoadDemoAnalysis}
+                        disabled={isLoading || recorderState !== "idle"}
+                        aria-label="Try demo take"
+                      >
+                        <FlaskConical size={14} strokeWidth={2} aria-hidden="true" />
+                        Try demo
+                      </button>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {homeStage === "approve" && (
+                <section className="app-screen app-screen--approve" aria-label="Approve take" data-testid="stage-approve">
+                  <div className="take-card">
+                    <span className="workspace-pane__kicker">Screen 02</span>
+                    <h2>Keep this take?</h2>
+                    <p>Listen once. If the idea is there, send it to chord analysis. If not, toss it and record again.</p>
+                    <Playback
+                      label="Recording"
+                      isPlaying={audioPlayback.isPlaying}
+                      duration={audioPlayback.duration}
+                      onPlay={audioPlayback.play}
+                      onPause={audioPlayback.pause}
+                      visible={hasRecording}
+                    />
+                    <div className="take-actions" aria-label="Take approval">
+                      <button type="button" className="take-action take-action--reject" onClick={handleRejectTake}>
+                        <ThumbsDown size={20} strokeWidth={2.2} aria-hidden="true" />
+                        Retake
+                      </button>
+                      <button type="button" className="take-action take-action--approve" onClick={handleApproveTake}>
+                        <ThumbsUp size={20} strokeWidth={2.2} aria-hidden="true" />
+                        Analyze
+                      </button>
+                    </div>
+                  </div>
+
+                  {showDiscardConfirmation && (
+                    <div className="discard-callout" role="alertdialog" aria-label="Delete this take">
+                      <div>
+                        <h3>Delete this take?</h3>
+                        <p>This only clears the current recording. Saved riffs stay in your library.</p>
                       </div>
-                      <div className="results-summary">
-                        <ChordDisplay chordName={chord} onChordSelect={handleChordSelect} />
-                        <NoteDisplay
-                          notes={uniqueNotes}
-                          onNoteClick={(note) => {
-                            void midiPlayback.previewNote(note);
-                          }}
+                      <label className="discard-callout__checkbox">
+                        <input
+                          type="checkbox"
+                          checked={skipDiscardConfirmationDraft}
+                          onChange={(event) => setSkipDiscardConfirmationDraft(event.target.checked)}
                         />
+                        <span>Next time, retake immediately</span>
+                      </label>
+                      <div className="discard-callout__actions">
+                        <button
+                          type="button"
+                          className="analyze-btn analyze-btn--secondary"
+                          onClick={() => setShowDiscardConfirmation(false)}
+                        >
+                          Keep take
+                        </button>
+                        <button
+                          type="button"
+                          className="analyze-btn analyze-btn--danger"
+                          onClick={() => performDiscardTake(skipDiscardConfirmationDraft)}
+                        >
+                          <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+                          Delete
+                        </button>
                       </div>
-                      <ChordTimeline events={chordTimeline} onChordSelect={handleChordSelect} />
-                      <PianoRoll
-                        notes={notes}
-                        isPlaying={midiPlayback.isPlaying}
-                        currentTimeS={midiPlayback.currentTimeS}
-                        durationS={midiPlayback.duration}
-                        onPlay={midiPlayback.play}
-                        onStop={midiPlayback.stop}
-                      />
-                      <Suspense fallback={<ExportPanelFallback />}>
-                        <LazyExportPanel {...exportPanelProps} />
-                      </Suspense>
-                    </>
-                  ) : (
-                    <>
-                      <div className="results-summary results-summary--chord-lane">
-                        <div className="chord-lane-visualization">
-                          <ChordDisplay chordName={displayedChord} onChordSelect={handleChordSelect} />
-                          {variateSuggestions.length > 0 && (
-                            <div className="variate-suggestions">
-                              <span className="variate-suggestions__label">Try substituting:</span>
-                              <div className="variate-suggestions__list">
-                                {variateSuggestions.map((suggestion) => (
-                                  <button
-                                    key={suggestion.name}
-                                    type="button"
-                                    className={`variate-btn ${variateOverride === suggestion.name ? "active" : ""}`}
-                                    onClick={() => setVariateOverride(suggestion.name)}
-                                    title={`${suggestion.type}: ${suggestion.description}`}
-                                  >
-                                    {suggestion.name}
-                                  </button>
-                                ))}
-                                {variateOverride && (
-                                  <button
-                                    type="button"
-                                    className="variate-btn variate-btn--clear"
-                                    onClick={() => setVariateOverride(null)}
-                                    title="Clear substitution"
-                                  >
-                                    Clear
-                                  </button>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {homeStage === "analyze" && (
+                <section className="app-screen app-screen--analysis" aria-label="Analysis" data-testid="stage-analyze">
+                  <div className="analysis-panel">
+                    <div className="analysis-panel__header">
+                      <div className="analysis-panel__intro">
+                        <span className="analysis-panel__eyebrow">{activeWorkflow.eyebrow}</span>
+                        <p className="analysis-panel__description">{activeWorkflow.description}</p>
+                      </div>
+                      <LaneToggle activeLane={activeLane} onChange={handleLaneChange} />
+                    </div>
+
+                    {isLoading ? (
+                      <div className="analysis-loading">
+                        <ProgressBar
+                          progress={progress}
+                          visible={isLoading}
+                          eyebrow={activeLoadingCopy.eyebrow}
+                          label={activeLoadingCopy.label}
+                          description={activeLoadingCopy.description}
+                          variant="panel"
+                          ariaLabel="Analysis progress"
+                        />
+                        <p className="analysis-loading__hint">
+                          Keep this screen open. The chord map drops in as soon as the pass finishes.
+                        </p>
+                      </div>
+                    ) : hasResults ? (
+                      <div className="results">
+                        <nav className="analysis-screen-nav" aria-label="Analysis screens">
+                          {analysisScreens.map((screen) => (
+                            <button
+                              key={screen.id}
+                              type="button"
+                              className={`analysis-screen-nav__button ${analysisScreen === screen.id ? "active" : ""}`}
+                              aria-current={analysisScreen === screen.id ? "step" : undefined}
+                              onClick={() => setAnalysisScreen(screen.id)}
+                            >
+                              {screen.label}
+                            </button>
+                          ))}
+                        </nav>
+
+                        {isSongLane ? (
+                          <div className={`analysis-screen analysis-screen--${analysisScreen}`}>
+                            {analysisScreen === "summary" && (
+                              <>
+                                {showPlaybackStack && (
+                                  <div className="playback-stack" aria-label="Playback controls">
+                                    <Playback
+                                      label="Recording"
+                                      isPlaying={audioPlayback.isPlaying}
+                                      duration={audioPlayback.duration}
+                                      onPlay={audioPlayback.play}
+                                      onPause={audioPlayback.pause}
+                                      visible={hasRecording}
+                                    />
+                                    <Playback
+                                      label="MIDI preview"
+                                      isPlaying={midiPlayback.isPlaying}
+                                      duration={midiPlayback.duration}
+                                      onPlay={midiPlayback.play}
+                                      onPause={midiPlayback.stop}
+                                      visible={hasResults}
+                                    />
+                                  </div>
+                                )}
+                                <div className="results-song-stack">
+                                  <KeyDisplay result={keyDetection} />
+                                </div>
+                                <div className="results-summary">
+                                  <ChordDisplay chordName={chord} onChordSelect={handleChordSelect} />
+                                  <NoteDisplay
+                                    notes={uniqueNotes}
+                                    onNoteClick={(note) => {
+                                      void midiPlayback.previewNote(note);
+                                    }}
+                                  />
+                                </div>
+                              </>
+                            )}
+
+                            {analysisScreen === "timeline" && (
+                              <>
+                                <ChordTimeline events={chordTimeline} onChordSelect={handleChordSelect} />
+                                <PianoRoll
+                                  notes={notes}
+                                  isPlaying={midiPlayback.isPlaying}
+                                  currentTimeS={midiPlayback.currentTimeS}
+                                  durationS={midiPlayback.duration}
+                                  onPlay={midiPlayback.play}
+                                  onStop={midiPlayback.stop}
+                                />
+                              </>
+                            )}
+
+                            {analysisScreen === "export" && (
+                              <>
+                                {showPlaybackStack && (
+                                  <div className="playback-stack" aria-label="Playback controls">
+                                    <Playback
+                                      label="MIDI preview"
+                                      isPlaying={midiPlayback.isPlaying}
+                                      duration={midiPlayback.duration}
+                                      onPlay={midiPlayback.play}
+                                      onPause={midiPlayback.stop}
+                                      visible={hasResults}
+                                    />
+                                  </div>
+                                )}
+                                <Suspense fallback={<ExportPanelFallback />}>
+                                  <LazyExportPanel {...exportPanelProps} />
+                                </Suspense>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div className={`analysis-screen analysis-screen--${analysisScreen}`}>
+                            {analysisScreen === "summary" && (
+                              <>
+                                <div className="chord-lane-visualization">
+                                  <ChordDisplay chordName={displayedChord} onChordSelect={handleChordSelect} />
+                                  {variateSuggestions.length > 0 && (
+                                    <div className="variate-suggestions">
+                                      <span className="variate-suggestions__label">Try substituting:</span>
+                                      <div className="variate-suggestions__list">
+                                        {variateSuggestions.map((suggestion) => (
+                                          <button
+                                            key={suggestion.name}
+                                            type="button"
+                                            className={`variate-btn ${variateOverride === suggestion.name ? "active" : ""}`}
+                                            onClick={() => setVariateOverride(suggestion.name)}
+                                            title={`${suggestion.type}: ${suggestion.description}`}
+                                          >
+                                            {suggestion.name}
+                                          </button>
+                                        ))}
+                                        {variateOverride && (
+                                          <button
+                                            type="button"
+                                            className="variate-btn variate-btn--clear"
+                                            onClick={() => setVariateOverride(null)}
+                                            title="Clear substitution"
+                                          >
+                                            Clear
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <NoteDisplay
+                                  notes={uniqueNotes}
+                                  onNoteClick={(note) => {
+                                    void midiPlayback.previewNote(note);
+                                  }}
+                                />
+                              </>
+                            )}
+
+                            {analysisScreen === "shape" && (
+                              <div className="chord-lane-panel" aria-live="polite">
+                                {activeVoicing ? (
+                                  <>
+                                    <div className="chord-lane-panel__header">
+                                      <div>
+                                        <span className="chord-lane-panel__kicker">Guitar shape</span>
+                                        <h3>{displayedChord ?? "Detected chord"}</h3>
+                                        <p>
+                                          Shape {activeVoicingIndex + 1} of {chordVoicings.length}
+                                        </p>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className="analyze-btn analyze-btn--secondary"
+                                        onClick={handleNextVoicing}
+                                        disabled={chordVoicings.length <= 1}
+                                      >
+                                        Next shape
+                                      </button>
+                                    </div>
+                                    <Suspense
+                                      fallback={<ChordFretboardFallback chordName={displayedChord} />}
+                                    >
+                                      <LazyChordFretboard
+                                        chordName={displayedChord}
+                                        voicing={activeVoicing}
+                                      />
+                                    </Suspense>
+                                  </>
+                                ) : (
+                                  <div className="lane-placeholder">
+                                    <span className="lane-placeholder__kicker">Guitar shape</span>
+                                    <h3>No guitar shape yet</h3>
+                                    <p>This chord does not have a saved guitar shape yet.</p>
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="chord-lane-panel" aria-live="polite">
-                          {activeVoicing ? (
-                            <>
-                              <div className="chord-lane-panel__header">
-                                <div>
-                                  <span className="chord-lane-panel__kicker">Guitar shape</span>
-                                  <h3>{displayedChord ?? "Detected chord"}</h3>
-                                  <p>
-                                    Shape {activeVoicingIndex + 1} of {chordVoicings.length}
-                                  </p>
-                                </div>
-                                <button
-                                  type="button"
-                                  className="analyze-btn analyze-btn--secondary"
-                                  onClick={handleNextVoicing}
-                                  disabled={chordVoicings.length <= 1}
-                                >
-                                  Next shape
-                                </button>
-                              </div>
-                              <Suspense
-                                fallback={<ChordFretboardFallback chordName={displayedChord} />}
-                              >
-                                <LazyChordFretboard
-                                  chordName={displayedChord}
-                                  voicing={activeVoicing}
-                                />
+                            )}
+
+                            {analysisScreen === "export" && (
+                              <Suspense fallback={<ExportPanelFallback />}>
+                                <LazyExportPanel {...exportPanelProps} />
                               </Suspense>
-                            </>
-                          ) : (
-                            <div className="lane-placeholder">
-                              <span className="lane-placeholder__kicker">Guitar shape</span>
-                              <h3>No guitar shape yet</h3>
-                              <p>This chord does not have a saved guitar shape yet.</p>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <NoteDisplay
-                        notes={uniqueNotes}
-                        onNoteClick={(note) => {
-                          void midiPlayback.previewNote(note);
-                        }}
-                      />
-                      <Suspense fallback={<ExportPanelFallback />}>
-                        <LazyExportPanel {...exportPanelProps} />
-                      </Suspense>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="analysis-empty" aria-live="polite">
-                  <span className="analysis-empty-icon" aria-hidden="true">♩</span>
-                  <span className="analysis-empty-kicker">{activeWorkflow.emptyKicker}</span>
-                  <p>{activeWorkflow.emptyBody}</p>
-                </div>
+                    ) : (
+                      <div className="analysis-empty" aria-live="polite">
+                        <span className="analysis-empty-icon" aria-hidden="true">♩</span>
+                        <span className="analysis-empty-kicker">{activeWorkflow.emptyKicker}</span>
+                        <p>{activeWorkflow.emptyBody}</p>
+                        <button
+                          type="button"
+                          className="analyze-btn analyze-btn--secondary"
+                          onClick={() => setHomeStage("record")}
+                        >
+                          <RotateCcw size={14} strokeWidth={2} aria-hidden="true" />
+                          Record again
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </section>
               )}
-            </div>
-          </section>
+
+              <div className="riff-device__library">
+                <SessionPicker
+                  sessions={savedRiffs}
+                  activeSessionId={activeSessionId}
+                  onLoad={handleLoadSavedRiffForFlow}
+                  onDelete={handleDeleteSession}
+                />
+                {showStorageEvictionPrompt && savedRiffs.length > 0 && (
+                  <StorageEvictionPrompt />
+                )}
+              </div>
+            </section>
+          )}
         </main>
 
         <BuildBadge />
@@ -780,9 +1185,10 @@ function RiffWorkspace({ isActive, navigate }: RiffWorkspaceProps) {
 
 interface TunerRouteProps {
   navigate: NavigateToRoute;
+  themeControls: ThemeControls;
 }
 
-function TunerRoute({ navigate }: TunerRouteProps) {
+function TunerRoute({ navigate, themeControls }: TunerRouteProps) {
   return (
     <div className="app">
       <div className="app-shell app-shell--single">
@@ -793,6 +1199,10 @@ function TunerRoute({ navigate }: TunerRouteProps) {
               <AppRouteLink className="app-nav-link" to={HOME_PATH} navigate={navigate}>
                 Back to Riff
               </AppRouteLink>
+              <AppRouteLink className="app-nav-link" to={BUILDER_PATH} navigate={navigate}>
+                Builder
+              </AppRouteLink>
+              <ThemeToggleButton {...themeControls} />
             </nav>
           </div>
           <p className="tagline">Tune up quickly without loading the recording workspace.</p>
@@ -817,21 +1227,40 @@ function TunerRoute({ navigate }: TunerRouteProps) {
 
 function App() {
   const { route, navigate } = useAppRoute();
-  const [hasMountedWorkspace, setHasMountedWorkspace] = useState(() => route === "home");
+  const themePreference = useThemePreference();
+  const themeControls: ThemeControls = {
+    nextTheme: themePreference.nextTheme,
+    onToggle: themePreference.toggleTheme,
+    source: themePreference.source,
+    theme: themePreference.theme,
+  };
+  const isWorkspaceRoute = route === "home" || route === "builder";
+  const [hasMountedWorkspace, setHasMountedWorkspace] = useState(() => isWorkspaceRoute);
+  const [workspaceRoute, setWorkspaceRoute] = useState<WorkspaceRoute>(() =>
+    route === "builder" ? "builder" : "home"
+  );
 
   useEffect(() => {
-    if (route === "home") {
+    if (isWorkspaceRoute) {
       setHasMountedWorkspace(true);
+      setWorkspaceRoute(route);
     }
-  }, [route]);
+  }, [isWorkspaceRoute, route]);
 
-  const isWorkspaceActive = route === "home";
+  const isWorkspaceActive = isWorkspaceRoute;
   const shouldMountWorkspace = hasMountedWorkspace || isWorkspaceActive;
 
   return (
     <>
-      {shouldMountWorkspace && <RiffWorkspace isActive={isWorkspaceActive} navigate={navigate} />}
-      {route === "tuner" && <TunerRoute navigate={navigate} />}
+      {shouldMountWorkspace && (
+        <RiffWorkspace
+          activeRoute={workspaceRoute}
+          isActive={isWorkspaceActive}
+          navigate={navigate}
+          themeControls={themeControls}
+        />
+      )}
+      {route === "tuner" && <TunerRoute navigate={navigate} themeControls={themeControls} />}
     </>
   );
 }

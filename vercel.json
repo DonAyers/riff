@@ -12,6 +12,14 @@
     {
       "source": "/tuner/:path*",
       "destination": "/"
+    },
+    {
+      "source": "/builder",
+      "destination": "/"
+    },
+    {
+      "source": "/builder/:path*",
+      "destination": "/"
     }
   ]
 }

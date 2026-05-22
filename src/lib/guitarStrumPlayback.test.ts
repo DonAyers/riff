@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extendStrumPlaybackDurations } from "./guitarStrumPlayback";
+import { buildStrumClusters, extendStrumPlaybackDurations } from "./guitarStrumPlayback";
 import type { MappedNote } from "./noteMapper";
 
 function note(overrides: Partial<MappedNote> = {}): MappedNote {
@@ -14,6 +14,33 @@ function note(overrides: Partial<MappedNote> = {}): MappedNote {
     ...overrides,
   };
 }
+
+describe("buildStrumClusters", () => {
+  it("keeps adjacent string attacks together even when the full strum spans more than the window", () => {
+    const notes = [
+      note({ startTimeS: 0.0 }),
+      note({ startTimeS: 0.11 }),
+      note({ startTimeS: 0.22 }),
+    ];
+
+    const result = buildStrumClusters(notes, 0.15);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.noteIndices).toEqual([0, 1, 2]);
+  });
+
+  it("starts a new cluster when the next attack is outside the adjacent onset window", () => {
+    const notes = [
+      note({ startTimeS: 0.0 }),
+      note({ startTimeS: 0.08 }),
+      note({ startTimeS: 0.32 }),
+    ];
+
+    const result = buildStrumClusters(notes, 0.15);
+
+    expect(result.map((cluster) => cluster.noteIndices)).toEqual([[0, 1], [2]]);
+  });
+});
 
 describe("extendStrumPlaybackDurations", () => {
   it("extends shorter notes to share the latest release within a cluster", () => {

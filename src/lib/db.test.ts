@@ -24,9 +24,12 @@ vi.mock("idb", () => ({
 import type { StoredRiff, RiffSession } from "./db";
 import {
   deleteAudioBlobFromIndexedDB,
+  deleteSongBuilderSong,
+  listSongBuilderSongs,
   normalizeSession,
   readAudioBlobFromIndexedDB,
   saveAudioBlobToIndexedDB,
+  saveSongBuilderSong,
 } from "./db";
 
 // ---------------------------------------------------------------------------
@@ -265,5 +268,59 @@ describe("audio blob fallback storage", () => {
 
     await expect(deleteAudioBlobFromIndexedDB("riff-1.webm")).resolves.toBeUndefined();
     expect(mockDb.delete).toHaveBeenCalledWith("audioBlobs", "riff-1.webm");
+  });
+});
+
+describe("song builder storage", () => {
+  beforeEach(() => {
+    mockDb.put.mockReset();
+    mockDb.getAll.mockReset();
+    mockDb.delete.mockReset();
+  });
+
+  it("stores builder songs in the shared app database", async () => {
+    const song = {
+      id: "builder-1",
+      name: "Pocket chorus",
+      createdAt: 1_700_000_000_000,
+      updatedAt: 1_700_000_001_000,
+      version: 1 as const,
+      items: [
+        {
+          id: "c",
+          chord: "CM",
+          label: "C Major",
+          sourceStartTimeS: 0,
+          sourceEndTimeS: 1,
+          playbackBeats: 1,
+        },
+      ],
+    };
+    mockDb.put.mockResolvedValue(undefined);
+
+    await saveSongBuilderSong(song);
+
+    expect(mockDb.put).toHaveBeenCalledWith("builderSongs", song);
+  });
+
+  it("lists builder songs newest update first", async () => {
+    mockDb.getAll.mockResolvedValue([
+      { id: "old", name: "Old", createdAt: 1, updatedAt: 2, version: 1, items: [] },
+      { id: "new", name: "New", createdAt: 1, updatedAt: 4, version: 1, items: [] },
+    ]);
+
+    await expect(listSongBuilderSongs()).resolves.toMatchObject([
+      { id: "new" },
+      { id: "old" },
+    ]);
+    expect(mockDb.getAll).toHaveBeenCalledWith("builderSongs");
+  });
+
+  it("deletes builder songs by id", async () => {
+    mockDb.delete.mockResolvedValue(undefined);
+
+    await deleteSongBuilderSong("builder-1");
+
+    expect(mockDb.delete).toHaveBeenCalledWith("builderSongs", "builder-1");
   });
 });

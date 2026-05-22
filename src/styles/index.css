@@ -8,20 +8,21 @@
   color-scheme: dark;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
 html, body {
   height: 100%;
 }
 
 body {
   font-family: var(--font-sans);
-    background:
-      radial-gradient(circle at top left, rgba(130, 98, 255, 0.16), transparent 28%),
-      radial-gradient(circle at 85% 18%, rgba(86, 179, 255, 0.1), transparent 24%),
-      linear-gradient(180deg, #080914 0%, #050611 100%);
+  background: var(--body-bg);
   color: var(--fg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-    overflow-x: hidden;
+  overflow-x: hidden;
 }
 
 #root {

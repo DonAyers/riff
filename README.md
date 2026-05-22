@@ -7,7 +7,7 @@ It records from the microphone or imports audio files, runs Spotify's [Basic Pit
 ## App preview
 
 <p align="center">
-  <img src="./image.png" alt="Riff app screenshot showing capture and review workflow" width="430" />
+  <img src="./image.png" alt="Riff app screenshot showing the mobile record-first workflow" width="430" />
 </p>
 
 ## At a glance

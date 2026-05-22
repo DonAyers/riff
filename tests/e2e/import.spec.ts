@@ -2,14 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import { fixturePath, getImportFileInput, gotoApp, switchLane, waitForAnalysisResults } from "./helpers";
 
 async function importFixtureAndAnalyzeAutomatically(page: Page, fileName = "known-c-major.wav"): Promise<void> {
-  const analyzeAutomatically = page.getByRole("checkbox", { name: /analyze automatically/i });
-  await expect(analyzeAutomatically).toBeVisible();
-
-  if (!(await analyzeAutomatically.isChecked())) {
-    await analyzeAutomatically.check();
-  }
-
   await getImportFileInput(page).setInputFiles(fixturePath(fileName));
+  await expect(page.getByRole("heading", { level: 2, name: /take check/i })).toBeVisible({ timeout: 15000 });
+  await page.getByRole("button", { name: /^analyze$/i }).click();
   await waitForAnalysisResults(page);
 }
 
@@ -18,16 +13,12 @@ test("importing an audio file runs analysis and shows detected notes", async ({ 
 
   await gotoApp(page);
   await expect(page.getByText("Record live or import audio")).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: /analyze automatically/i })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /analyze automatically/i })).toHaveCount(0);
 
   await getImportFileInput(page).setInputFiles(fixturePath("known-c-major.wav"));
 
-  const analyzeNowButton = page.getByRole("button", { name: /analyze now/i });
-  await expect(analyzeNowButton).toBeVisible();
-  await analyzeNowButton.click();
-  await expect(page.locator(".progress-bar-title", { hasText: /working on your audio/i }).first()).toBeVisible({
-    timeout: 15000
-  });
+  await expect(page.getByRole("heading", { level: 2, name: /take check/i })).toBeVisible({ timeout: 15000 });
+  await page.getByRole("button", { name: /^analyze$/i }).click();
   await expect(page.locator(".progress-bar-title", { hasText: /listening for notes/i }).first()).toBeVisible({
     timeout: 15000
   });
@@ -38,11 +29,15 @@ test("importing an audio file runs analysis and shows detected notes", async ({ 
   await expect(page.locator(".note-chip", { hasText: "E4" })).toBeVisible({ timeout: 10000 });
   await expect(page.locator(".note-chip", { hasText: "G4" })).toBeVisible({ timeout: 10000 });
 
-  await expect(page.getByRole("heading", { level: 2, name: "Review notes" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Analyze notes" })).toBeVisible();
   await expect(page.getByRole("button", { name: /play recording/i })).toBeVisible({ timeout: 10000 });
+
+  await page.getByRole("button", { name: "Timeline" }).click();
   await expect(
     page.locator(".piano-roll").getByRole("button", { name: /play midi preview/i })
   ).toBeVisible({ timeout: 10000 });
+
+  await page.getByRole("button", { name: "Export" }).click();
   await expect(page.getByRole("group", { name: /export options/i })).toBeVisible();
   await expect(page.locator(".session-picker-trigger__meta")).toContainText("PCM");
 });
@@ -55,13 +50,12 @@ test("imported analysis can switch to chord lane and keep playback controls avai
   await expect(page.locator(".note-chip").first()).toBeVisible({ timeout: 60000 });
 
   await switchLane(page, "Guitar");
-  await expect(page.getByRole("heading", { level: 2, name: "Review chords" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Analyze chords" })).toBeVisible();
+  await page.getByRole("button", { name: "Shape" }).click();
 
   const voicingLabel = page.getByText(/shape \d+ of \d+/i);
   await expect(voicingLabel).toBeVisible({ timeout: 10000 });
   await expect(page.locator(".chord-lane-panel .chord-fretboard__diagram")).toBeVisible();
-  await expect(page.getByRole("button", { name: /play midi preview/i })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "Notes in this take" })).toBeVisible();
 
   const nextBtn = page.getByRole("button", { name: /next shape/i });
   if (await nextBtn.isEnabled()) {
@@ -69,6 +63,9 @@ test("imported analysis can switch to chord lane and keep playback controls avai
     await nextBtn.click();
     await expect(voicingLabel).not.toHaveText(before ?? "");
   }
+
+  await page.getByRole("button", { name: "Chord" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Notes in this take" })).toBeVisible();
 });
 
 test("piano roll playback controls toggle cleanly between play and stop", async ({ page }) => {
@@ -78,6 +75,7 @@ test("piano roll playback controls toggle cleanly between play and stop", async 
   await importFixtureAndAnalyzeAutomatically(page, "known-c-major.wav");
 
   const pianoRoll = page.locator(".piano-roll");
+  await page.getByRole("button", { name: "Timeline" }).click();
   await expect(pianoRoll.getByRole("heading", { level: 2, name: "Performance timeline" })).toBeVisible();
 
   const playButton = pianoRoll.getByRole("button", { name: /play midi preview/i });
@@ -125,6 +123,7 @@ test("clicking a timeline chord opens the matching selected chord sheet", async 
 
   await gotoApp(page);
   await importFixtureAndAnalyzeAutomatically(page, "guitar-c-major-clean.wav");
+  await page.getByRole("button", { name: "Timeline" }).click();
 
   const timelineEventButton = page
     .getByRole("button", { name: /select chord c major at /i })

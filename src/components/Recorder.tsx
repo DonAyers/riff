@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown, Mic2, Settings2, Sparkles, Square, Upload } from "lucide-react";
-import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
+import type { ProfileId } from "../lib/instrumentProfiles";
 import type { RecorderState } from "../hooks/useAudioRecorder";
 import "./Recorder.css";
 
-interface RecorderProps {
+export interface RecorderProps {
   state: RecorderState;
   onStart: () => void;
   onStop: () => void;
@@ -21,9 +21,9 @@ interface RecorderProps {
   onAnalyze: () => void;
   profileId: ProfileId;
   onProfileChange: (id: ProfileId) => void;
+  showSettings?: boolean;
+  showAnalyzeAction?: boolean;
 }
-
-const PROFILE_UI_ORDER: readonly ProfileId[] = ["guitar", "default"];
 
 export function Recorder({
   state,
@@ -40,8 +40,8 @@ export function Recorder({
   isLoading,
   hasPendingAnalysis,
   onAnalyze,
-  profileId,
-  onProfileChange,
+  showSettings = true,
+  showAnalyzeAction = true,
 }: RecorderProps) {
   const isRecording = state === "recording";
   const isBusy = state === "processing" || isImporting;
@@ -131,88 +131,75 @@ export function Recorder({
 
       {error && <p className="recorder-error">{error}</p>}
 
-      <div className="recorder-settings">
-        <label className="setting-toggle" title="Automatically analyze audio when recording stops">
-          <input
-            type="checkbox"
-            checked={autoProcess}
-            onChange={(e) => onAutoProcessChange(e.target.checked)}
-            disabled={settingsDisabled}
-          />
-          <span>Analyze automatically</span>
-        </label>
-      </div>
+      {showSettings && (
+        <>
+          <div className="recorder-settings">
+            <label className="setting-toggle" title="Automatically analyze audio when recording stops">
+              <input
+                type="checkbox"
+                checked={autoProcess}
+                onChange={(e) => onAutoProcessChange(e.target.checked)}
+                disabled={settingsDisabled}
+              />
+              <span>Analyze automatically</span>
+            </label>
+          </div>
 
-      <div className="advanced-section">
-        <button
-          type="button"
-          className="advanced-toggle"
-          aria-expanded={advancedOpen}
-          aria-controls={advancedSectionId}
-          aria-label={advancedOpen ? "Hide advanced options" : "Show advanced options"}
-          onClick={() => setAdvancedOpen((current) => !current)}
-        >
-          <Settings2 size={15} strokeWidth={1.8} className="advanced-toggle__icon" aria-hidden="true" />
-          <span className="advanced-toggle__label">Advanced</span>
-          <ChevronDown size={14} strokeWidth={2} className={`chevron ${advancedOpen ? "open" : ""}`} aria-hidden="true" />
-        </button>
-        {advancedOpen && (
-            <div className="advanced-content" id={advancedSectionId}>
-              <div className="advanced-settings">
-                <label className="setting-toggle" title="Reduce audio file size when saving">
-                  <input
-                    type="checkbox"
-                    checked={storageFormat === "compressed"}
-                    onChange={(e) => onStorageFormatChange(e.target.checked ? "compressed" : "pcm")}
-                    disabled={settingsDisabled}
-                  />
-                  <span>Use compressed audio</span>
-                </label>
-              </div>
-
-              <div className="profile-panel">
-                <div className="profile-panel__copy">
-                  <p className="profile-panel__eyebrow">Instrument mode</p>
-                  <p className="profile-panel__description">
-                    Use Guitar for most guitar recordings. Choose Full range for other instruments.
-                  </p>
-                </div>
-                <div className="profile-picker" role="radiogroup" aria-label="Instrument mode">
-                  {PROFILE_UI_ORDER.map((id) => (
-                    <label
-                      key={id}
-                      className={`profile-pill ${id === profileId ? "active" : ""} ${settingsDisabled ? "disabled" : ""}`}
-                    >
+          <div className="advanced-section">
+            <button
+              type="button"
+              className="advanced-toggle"
+              aria-expanded={advancedOpen}
+              aria-controls={advancedSectionId}
+              aria-label={advancedOpen ? "Hide advanced options" : "Show advanced options"}
+              onClick={() => setAdvancedOpen((current) => !current)}
+            >
+              <Settings2 size={15} strokeWidth={1.8} className="advanced-toggle__icon" aria-hidden="true" />
+              <span className="advanced-toggle__label">Advanced</span>
+              <ChevronDown size={14} strokeWidth={2} className={`chevron ${advancedOpen ? "open" : ""}`} aria-hidden="true" />
+            </button>
+            {advancedOpen && (
+                <div className="advanced-content" id={advancedSectionId}>
+                  <div className="advanced-settings">
+                    <label className="setting-toggle" title="Reduce audio file size when saving">
                       <input
-                        className="profile-pill__input"
-                        type="radio"
-                        name="detection-profile"
-                        value={id}
-                        checked={id === profileId}
-                        onChange={() => onProfileChange(id)}
+                        type="checkbox"
+                        checked={storageFormat === "compressed"}
+                        onChange={(e) => onStorageFormatChange(e.target.checked ? "compressed" : "pcm")}
                         disabled={settingsDisabled}
                       />
-                      <span>{PROFILES[id].label}</span>
+                      <span>Use compressed audio</span>
                     </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+                  </div>
 
-      <div className="recorder-action-row">
-        <button
-          className="analyze-btn"
-          onClick={onAnalyze}
-          disabled={autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"}
-          aria-keyshortcuts="A"
-          title="Analyze now (A)"
-        >
-          <Sparkles size={14} strokeWidth={2} />
-          Analyze now
-        </button>
-      </div>
+                  <div className="profile-panel">
+                    <div className="profile-panel__copy">
+                      <p className="profile-panel__eyebrow">Detection focus</p>
+                      <p className="profile-panel__description">
+                        Guitar mode is locked in for now so chord detection can be tuned around real guitar takes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+        </>
+      )}
+
+      {showAnalyzeAction && (
+        <div className="recorder-action-row">
+          <button
+            className="analyze-btn"
+            onClick={onAnalyze}
+            disabled={autoProcess || !hasPendingAnalysis || isLoading || recorderState !== "idle"}
+            aria-keyshortcuts="A"
+            title="Analyze now (A)"
+          >
+            <Sparkles size={14} strokeWidth={2} />
+            Analyze now
+          </button>
+        </div>
+      )}
     </div>
   );
 }

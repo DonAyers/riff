@@ -15,7 +15,9 @@ export interface UseMidiPlaybackReturn {
   play: () => Promise<void>;
   previewNote: (note: Pick<MappedNote, "midi" | "amplitude" | "durationS">) => Promise<void>;
   stop: () => void;
+  setLooping: (enabled: boolean) => void;
   isPlaying: boolean;
+  isLooping: boolean;
   currentTimeS: number;
   duration: number;
 }
@@ -35,11 +37,14 @@ function getVelocity(amplitude = 0.2, minVelocity = 10): number {
 
 export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybackReturn {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
   const [currentTimeS, setCurrentTimeS] = useState(0);
   const [duration, setDuration] = useState(0);
 
   const notesRef = useRef<MappedNote[]>([]);
   const playbackNotesRef = useRef<PlaybackNote[]>([]);
+  const isPlayingRef = useRef(false);
+  const isLoopingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const samplerRef = useRef<Soundfont | null>(null);
   const endTimerRef = useRef<number | null>(null);
@@ -119,6 +124,16 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
     }
   }, []);
 
+  const setPlaybackPlaying = useCallback((playing: boolean) => {
+    isPlayingRef.current = playing;
+    setIsPlaying(playing);
+  }, []);
+
+  const setLooping = useCallback((enabled: boolean) => {
+    isLoopingRef.current = enabled;
+    setIsLooping(enabled);
+  }, []);
+
   const startTimelineUpdates = useCallback((ctx: AudioContext, playbackId: number, startAtS: number, clipDurationS: number) => {
     const update = () => {
       if (playbackId !== playbackIdRef.current) {
@@ -140,38 +155,17 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
     animationFrameRef.current = window.requestAnimationFrame(update);
   }, [stopTimelineUpdates]);
 
-  const load = useCallback(
-    (notes: MappedNote[]) => {
-      invalidatePlayback();
-      notesRef.current = notes;
-      const playbackNotes = mapPlaybackNotes(notes);
-      playbackNotesRef.current = playbackNotes;
-      setDuration(getClipDuration(playbackNotes));
+  const schedulePlaybackCycle = useCallback((ctx: AudioContext, playbackId: number) => {
+    const playbackNotes = playbackNotesRef.current;
+    if (playbackNotes.length === 0) {
+      setPlaybackPlaying(false);
       setCurrentTimeS(0);
       clearPlayback();
-      setIsPlaying(false);
-    },
-    [clearPlayback, invalidatePlayback, mapPlaybackNotes],
-  );
-
-  const play = useCallback(async () => {
-    const playbackNotes = playbackNotesRef.current;
-    if (playbackNotes.length === 0) return;
-
-    const ctx = getAudioContext();
-    await resumeAudioContext(ctx);
-
-    const playbackId = invalidatePlayback();
-    clearPlayback();
-    setIsPlaying(true);
-    setCurrentTimeS(0);
-
-    const sampler = getSampler();
-    await sampler.load; // wait for instrument to be loaded if not already
-
-    if (playbackId !== playbackIdRef.current) {
       return;
     }
+
+    const sampler = samplerRef.current;
+    if (!sampler) return;
 
     const startAt = ctx.currentTime + 0.03;
     const clipDuration = getClipDuration(playbackNotes);
@@ -194,11 +188,58 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
         return;
       }
 
-      setIsPlaying(false);
+      if (isLoopingRef.current && playbackNotesRef.current.length > 0) {
+        setCurrentTimeS(0);
+        schedulePlaybackCycle(ctx, playbackId);
+        return;
+      }
+
+      setPlaybackPlaying(false);
       setCurrentTimeS(0);
       clearPlayback();
     }, Math.ceil((clipDuration + 0.1) * 1000));
-  }, [clearPlayback, getAudioContext, getSampler, invalidatePlayback, resumeAudioContext, startTimelineUpdates]);
+  }, [clearPlayback, setPlaybackPlaying, startTimelineUpdates]);
+
+  const load = useCallback(
+    (notes: MappedNote[]) => {
+      notesRef.current = notes;
+      const playbackNotes = mapPlaybackNotes(notes);
+      playbackNotesRef.current = playbackNotes;
+      setDuration(getClipDuration(playbackNotes));
+
+      if (isPlayingRef.current && isLoopingRef.current) {
+        return;
+      }
+
+      invalidatePlayback();
+      setCurrentTimeS(0);
+      clearPlayback();
+      setPlaybackPlaying(false);
+    },
+    [clearPlayback, invalidatePlayback, mapPlaybackNotes, setPlaybackPlaying],
+  );
+
+  const play = useCallback(async () => {
+    const playbackNotes = playbackNotesRef.current;
+    if (playbackNotes.length === 0) return;
+
+    const ctx = getAudioContext();
+    await resumeAudioContext(ctx);
+
+    const playbackId = invalidatePlayback();
+    clearPlayback();
+    setPlaybackPlaying(true);
+    setCurrentTimeS(0);
+
+    const sampler = getSampler();
+    await sampler.load; // wait for instrument to be loaded if not already
+
+    if (playbackId !== playbackIdRef.current) {
+      return;
+    }
+
+    schedulePlaybackCycle(ctx, playbackId);
+  }, [clearPlayback, getAudioContext, getSampler, invalidatePlayback, resumeAudioContext, schedulePlaybackCycle, setPlaybackPlaying]);
 
   const previewNote = useCallback(async (note: Pick<MappedNote, "midi" | "amplitude" | "durationS">) => {
     const ctx = getAudioContext();
@@ -219,9 +260,9 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
   const stop = useCallback(() => {
     invalidatePlayback();
     clearPlayback();
-    setIsPlaying(false);
+    setPlaybackPlaying(false);
     setCurrentTimeS(0);
-  }, [clearPlayback, invalidatePlayback]);
+  }, [clearPlayback, invalidatePlayback, setPlaybackPlaying]);
 
   useEffect(() => {
     return () => {
@@ -241,5 +282,5 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
     setCurrentTimeS(0);
   }, [mapPlaybackNotes]);
 
-  return { load, play, previewNote, stop, isPlaying, currentTimeS, duration };
+  return { load, play, previewNote, stop, setLooping, isPlaying, isLooping, currentTimeS, duration };
 }

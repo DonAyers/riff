@@ -3,19 +3,22 @@
   align-items: center;
   gap: var(--space-md);
   width: 100%;
-    min-width: 0;
-    padding: 0.95rem 1rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--surface-soft);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid var(--surface-border);
+  background:
+    linear-gradient(90deg, var(--accent-dim), transparent 46%),
+    var(--panel-glass);
 }
 
 .playback-label {
   min-width: 76px;
-    font-size: 0.72rem;
-    color: var(--fg-muted);
+  font-size: 0.68rem;
+  color: var(--fg-muted);
   text-transform: uppercase;
   letter-spacing: 0.12em;
+  font-weight: 800;
 }
 
 .playback-btn {
@@ -23,37 +26,43 @@
   height: 40px;
   border-radius: 50%;
   border: 2px solid var(--accent);
-  background: transparent;
+  background: var(--accent-dim);
   color: var(--accent);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
-    touch-action: manipulation;
+  touch-action: manipulation;
 }
 
 .playback-btn:hover {
   background: var(--accent);
-    color: #05030c;
-    transform: translateY(-1px);
-  }
-  
-  .playback-btn:focus-visible {
-    outline: 2px solid rgba(255, 255, 255, 0.8);
-    outline-offset: 3px;
+  color: var(--on-accent);
+  transform: translateY(-1px);
+}
+
+.playback-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
 }
 
 .playback-duration {
   font-size: 0.8rem;
   color: var(--fg-muted);
-  font-family: "SF Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-    margin-left: auto;
+  margin-left: auto;
+}
+
+:root[data-theme="light"] .playback {
+  background:
+    linear-gradient(90deg, rgba(102, 118, 0, 0.1), transparent 46%),
+    rgba(255, 252, 239, 0.74);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playback-btn {
+    transition: none;
   }
-  
-  @media (prefers-reduced-motion: reduce) {
-    .playback-btn {
-      transition: none;
-    }
 }

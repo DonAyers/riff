@@ -25,6 +25,10 @@ export const DEFAULT_WAV_EXPORT_OPTIONS = {
   sampleRate: DEFAULT_SAMPLE_RATE,
 } as const satisfies Required<WavExportOptions>;
 
+export function sanitizeExportFilename(name: string, fallback = "riff"): string {
+  return name.replace(/[^a-zA-Z0-9 _-]/g, "").replace(/\s+/g, "-") || fallback;
+}
+
 /** Encode a Float32Array (mono) into a WAV Blob. */
 export function encodeWav(
   samples: Float32Array,
@@ -348,4 +352,3 @@ export function exportToMp3(
     worker.postMessage({ pcmAudio, sampleRate });
   });
 }
-

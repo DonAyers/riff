@@ -1,0 +1,379 @@
+.chord-focus {
+  width: 100%;
+  display: grid;
+  gap: var(--space-lg);
+  padding: clamp(1rem, 3vw, 1.35rem);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--surface-border-strong);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(225, 252, 110, 0.24), transparent 30%),
+    radial-gradient(circle at 100% 18%, rgba(255, 159, 69, 0.16), transparent 34%),
+    linear-gradient(145deg, rgba(10, 12, 7, 0.96), rgba(30, 31, 22, 0.95));
+  box-shadow: var(--shadow-lg);
+  color: var(--fg);
+}
+
+.chord-focus__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+.chord-focus__copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.chord-focus__eyebrow,
+.chord-focus__section-kicker {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.chord-focus__hero h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 16vw, 6.4rem);
+  line-height: 0.82;
+  letter-spacing: -0.075em;
+  color: var(--fg);
+  text-shadow: 0 0 34px rgba(225, 252, 110, 0.18);
+  overflow-wrap: anywhere;
+}
+
+.chord-focus__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  color: var(--fg-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chord-focus__meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0 0.65rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 245, 209, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.chord-focus__badge {
+  min-width: 4.2rem;
+  min-height: 4.2rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(225, 252, 110, 0.34);
+  background: rgba(225, 252, 110, 0.11);
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 0.8;
+  transform: rotate(2deg);
+}
+
+.chord-focus__badge span {
+  margin-top: 0.35rem;
+  font-family: var(--font-sans);
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.chord-focus__body {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.chord-focus__panel {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 245, 209, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(0, 0, 0, 0.14);
+}
+
+.chord-focus__panel-heading {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.chord-focus__panel-heading h3,
+.chord-focus-category__header h4 {
+  margin: 0;
+}
+
+.chord-focus__panel-heading h3 {
+  font-size: 1.18rem;
+}
+
+.chord-focus__categories {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.chord-focus-category {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.chord-focus-category__header {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.chord-focus-category__header h4 {
+  color: var(--fg);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chord-focus-category__header p,
+.chord-focus__note-help,
+.chord-focus-category__empty {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.chord-focus-category__buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.55rem;
+}
+
+.chord-focus-suggestion {
+  min-height: 5.8rem;
+  display: grid;
+  gap: 0.18rem;
+  align-content: start;
+  padding: 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 245, 209, 0.11);
+  background: rgba(255, 255, 255, 0.052);
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.chord-focus-suggestion:hover {
+  transform: translateY(-1px);
+  border-color: rgba(225, 252, 110, 0.42);
+  background: rgba(225, 252, 110, 0.09);
+}
+
+.chord-focus-suggestion:focus-visible,
+.chord-focus-note:focus-visible,
+.chord-focus-note-lane__remove:focus-visible,
+.chord-focus-add-note button:focus-visible,
+.chord-focus-add-note select:focus-visible {
+  outline: 2px solid rgba(255, 245, 209, 0.84);
+  outline-offset: 3px;
+}
+
+.chord-focus-suggestion[aria-pressed="true"] {
+  border-color: rgba(225, 252, 110, 0.72);
+  background:
+    radial-gradient(circle at top right, rgba(225, 252, 110, 0.2), transparent 46%),
+    rgba(225, 252, 110, 0.11);
+  box-shadow: inset 0 0 0 1px rgba(225, 252, 110, 0.12);
+}
+
+.chord-focus-suggestion__chord {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  line-height: 0.95;
+}
+
+.chord-focus-suggestion__name {
+  color: var(--fg);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.chord-focus-suggestion__description {
+  color: var(--fg-muted);
+  font-size: 0.76rem;
+  line-height: 1.28;
+}
+
+.chord-focus__empty {
+  min-height: 8rem;
+  display: grid;
+  place-items: center;
+  gap: 0.3rem;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  border: 1px dashed rgba(255, 245, 209, 0.18);
+  background: rgba(0, 0, 0, 0.16);
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.chord-focus__empty strong {
+  color: var(--fg);
+}
+
+.chord-focus__empty--compact {
+  min-height: 5.5rem;
+  padding: var(--space-lg);
+}
+
+.chord-focus-notes {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.chord-focus-note-lane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.chord-focus-note {
+  min-height: 3.65rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(225, 252, 110, 0.24);
+  background:
+    linear-gradient(90deg, rgba(225, 252, 110, 0.12), rgba(255, 255, 255, 0.035)),
+    rgba(0, 0, 0, 0.1);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chord-focus-note[aria-pressed="false"] {
+  opacity: 0.54;
+  border-color: rgba(255, 245, 209, 0.09);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.chord-focus-note__index {
+  width: 1.8rem;
+  height: 1.8rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 245, 209, 0.09);
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.chord-focus-note__label {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.chord-focus-note__role {
+  color: var(--fg-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.chord-focus-note-lane__remove {
+  min-width: 3.4rem;
+  border: 1px solid rgba(255, 104, 77, 0.28);
+  border-radius: 1rem;
+  background: rgba(255, 104, 77, 0.08);
+  color: var(--fg);
+  font: inherit;
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+
+.chord-focus-add-note {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+}
+
+.chord-focus-add-note label {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.chord-focus-add-note select,
+.chord-focus-add-note button {
+  min-height: 2.8rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(255, 245, 209, 0.13);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--fg);
+  font: inherit;
+}
+
+.chord-focus-add-note select {
+  padding: 0 0.75rem;
+}
+
+.chord-focus-add-note button {
+  align-self: end;
+  padding: 0 1rem;
+  background: var(--accent);
+  color: #101207;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+@media (min-width: 760px) {
+  .chord-focus__body {
+    grid-template-columns: minmax(0, 1.25fr) minmax(17rem, 0.75fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 520px) {
+  .chord-focus__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .chord-focus__badge {
+    justify-self: start;
+    min-height: 3.5rem;
+    min-width: 3.5rem;
+  }
+
+  .chord-focus-category__buttons,
+  .chord-focus-add-note {
+    grid-template-columns: 1fr;
+  }
+}

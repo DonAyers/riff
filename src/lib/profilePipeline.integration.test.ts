@@ -24,6 +24,18 @@ function note(
   return { pitchMidi, startTimeS, durationS, amplitude };
 }
 
+function strum(
+  pitchMidis: readonly number[],
+  startTimeS: number,
+  onsetStepS = 0.035,
+  durationS = 1.7,
+  amplitude = 0.68,
+): DetectedNote[] {
+  return pitchMidis.map((pitchMidi, index) =>
+    note(pitchMidi, startTimeS + index * onsetStepS, durationS, amplitude),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Realistic detection output fixtures
 // ---------------------------------------------------------------------------
@@ -86,6 +98,12 @@ const GUITAR_C_MAJOR_SEPARATED_STRUMS: DetectedNote[] = [
   note(52, 0.66, 1.7, 0.67), // E3
   note(55, 0.72, 1.6, 0.69), // G3
 ];
+
+/** Open guitar G7 — G2 B2 D3 F3 B3 F4 */
+const GUITAR_G7_OPEN: DetectedNote[] = strum([43, 47, 50, 53, 59, 65], 0.2);
+
+/** Guitar Cadd9 — C3 E3 G3 D4 */
+const GUITAR_C_ADD9: DetectedNote[] = strum([48, 52, 55, 62], 0.2);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -166,6 +184,24 @@ describe("instrument profile integration — guitar", () => {
     expect(timeline[1]?.startTimeS).toBeCloseTo(0.58, 5);
     expect(timeline[0]?.label).toContain("C");
     expect(timeline[1]?.label).toContain("C");
+  });
+
+  it("G7 flows through map/filter/timeline without collapsing to G major", () => {
+    const mapped = mapNoteEvents(GUITAR_G7_OPEN);
+    const filtered = filterNotes(mapped, profile);
+    const timeline = detectChordTimeline(filtered, profile.chordWindowS);
+
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]?.label).toBe("G dominant 7");
+  });
+
+  it("Cadd9 flows through map/filter/timeline without collapsing to C major", () => {
+    const mapped = mapNoteEvents(GUITAR_C_ADD9);
+    const filtered = filterNotes(mapped, profile);
+    const timeline = detectChordTimeline(filtered, profile.chordWindowS);
+
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]?.label).toBe("C add9");
   });
 
   it("default profile does NOT filter noisy artifacts", () => {

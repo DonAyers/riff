@@ -5,6 +5,7 @@ import type { ChordEvent } from "./chordDetector";
 import type { KeyDetection } from "./keyDetector";
 import type { ProfileId } from "./instrumentProfiles";
 import { ANALYSIS_SAMPLE_RATE } from "./audioData";
+import type { SongBuilderChord } from "./songBuilder";
 
 // ---------------------------------------------------------------------------
 // V1 schema – kept for backward-compat and migration
@@ -48,6 +49,15 @@ export interface RiffSession {
   keyDetection: KeyDetection | null;
   primaryChord: string | null;
   readonly uniqueNoteNames: readonly string[];
+}
+
+export interface SongBuilderSong {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  version: 1;
+  readonly items: readonly SongBuilderChord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -147,10 +157,17 @@ interface RiffDb extends DBSchema {
     key: string;
     value: Blob;
   };
+  builderSongs: {
+    key: string;
+    value: SongBuilderSong;
+    indexes: {
+      "by-updatedAt": number;
+    };
+  };
 }
 
 const DB_NAME = "riff-db";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const dbPromise = openDB<RiffDb>(DB_NAME, DB_VERSION, {
   upgrade(db, oldVersion) {
@@ -168,7 +185,12 @@ const dbPromise = openDB<RiffDb>(DB_NAME, DB_VERSION, {
       db.createObjectStore("audioBlobs");
     }
 
-    // V2/V3 → records are normalized on read.
+    if (!db.objectStoreNames.contains("builderSongs")) {
+      const builderSongStore = db.createObjectStore("builderSongs", { keyPath: "id" });
+      builderSongStore.createIndex("by-updatedAt", "updatedAt");
+    }
+
+    // V2/V3/V4 → riff records are normalized on read.
   },
 });
 
@@ -228,6 +250,26 @@ export async function deleteAudioBlobFromIndexedDB(
   } catch {
     // Ignore fallback cleanup failures.
   }
+}
+
+// ---------------------------------------------------------------------------
+// Song Builder CRUD operations
+// ---------------------------------------------------------------------------
+
+export async function saveSongBuilderSong(song: SongBuilderSong): Promise<void> {
+  const db = await dbPromise;
+  await db.put("builderSongs", song);
+}
+
+export async function listSongBuilderSongs(): Promise<SongBuilderSong[]> {
+  const db = await dbPromise;
+  const all = await db.getAll("builderSongs");
+  return all.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function deleteSongBuilderSong(id: string): Promise<void> {
+  const db = await dbPromise;
+  await db.delete("builderSongs", id);
 }
 
 // ---------------------------------------------------------------------------

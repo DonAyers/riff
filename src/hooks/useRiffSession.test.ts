@@ -89,11 +89,13 @@ vi.mock("./useAudioPlayback", () => ({
 vi.mock("./useMidiPlayback", () => ({
   useMidiPlayback: () => ({
     isPlaying: false,
+    isLooping: false,
     currentTimeS: 0,
     duration: 0,
     load: mockMidiLoad,
     play: vi.fn(),
     stop: mockMidiStop,
+    setLooping: vi.fn(),
     previewNote: vi.fn(),
   }),
 }));
@@ -300,6 +302,69 @@ describe("useRiffSession", () => {
     );
     expect(mockAudioLoad).toHaveBeenCalledWith(importedAudio.storedAudio, 44100);
     expect(result.current.pendingAudioSampleRate).toBe(44100);
+  });
+
+  it("can stop a recording for manual review even when auto analysis is enabled", async () => {
+    const storage = stubLocalStorage();
+    storage.getItem.mockImplementation((key: string) => {
+      if (key === "riff:auto-process") return "true";
+      return null;
+    });
+    const recordedAudio = {
+      analysisAudio: new Float32Array([0.1, -0.1]),
+      storedAudio: new Float32Array([0.1, -0.1, 0.2, -0.2]),
+      storedSampleRate: 44100,
+    };
+    mockStopRecording.mockResolvedValue(recordedAudio);
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.handleStop({ analyze: false });
+    });
+
+    expect(mockAudioLoad).toHaveBeenCalledWith(recordedAudio.storedAudio, 44100);
+    expect(mockDetect).not.toHaveBeenCalled();
+    expect(result.current.hasRecording).toBe(true);
+    expect(result.current.hasPendingAnalysis).toBe(true);
+  });
+
+  it("discards the current pending recording without deleting saved riffs", async () => {
+    const recordedAudio = {
+      analysisAudio: new Float32Array([0.1, -0.1]),
+      storedAudio: new Float32Array([0.1, -0.1, 0.2, -0.2]),
+      storedSampleRate: 44100,
+    };
+    mockStopRecording.mockResolvedValue(recordedAudio);
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      await result.current.handleStop({ analyze: false });
+    });
+
+    expect(result.current.hasRecording).toBe(true);
+    expect(result.current.hasPendingAnalysis).toBe(true);
+
+    act(() => {
+      result.current.handleDiscardRecording();
+    });
+
+    expect(mockAudioReset).toHaveBeenCalled();
+    expect(mockMidiStop).toHaveBeenCalled();
+    expect(mockDeleteSession).not.toHaveBeenCalled();
+    expect(mockDeleteStoredAudio).not.toHaveBeenCalled();
+    expect(result.current.hasRecording).toBe(false);
+    expect(result.current.hasPendingAnalysis).toBe(false);
+    expect(result.current.pendingAudio).toBeNull();
   });
 
   it("defaults to guitar when no stored profile exists", async () => {

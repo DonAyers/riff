@@ -12,13 +12,73 @@ describe("chordDetector", () => {
     expect(result).toBeTruthy();
   });
 
+  it("prefers a plain triad when pitch-class input order looks like an inversion but no bass is known", () => {
+    expect(detectChord(["G", "C", "E"])).toBe("CM");
+    expect(detectChord(["E", "G", "C"])).toBe("CM");
+    expect(detectChord(["E", "A", "C"])).toBe("Am");
+  });
+
   it("returns null when fewer than two pitch classes are supplied", () => {
     expect(detectChord(["C"])).toBeNull();
   });
 
   it("formats common chord symbols into human readable names", () => {
-    const label = formatChordName("Am");
-    expect(label).toContain("A");
+    expect(formatChordName("CM")).toBe("C Major");
+    expect(formatChordName("Am")).toBe("A Minor");
+    expect(formatChordName("G7")).toBe("G dominant 7");
+    expect(formatChordName("Am7")).toBe("A minor 7");
+    expect(formatChordName("Cmaj7")).toBe("C major 7");
+    expect(formatChordName("Cadd9")).toBe("C add9");
+    expect(formatChordName("CMadd9")).toBe("C add9");
+    expect(formatChordName("C6")).toBe("C sixth");
+    expect(formatChordName("G9")).toBe("G dominant 9");
+    expect(formatChordName("G13")).toBe("G dominant 13");
+    expect(formatChordName("Cm11")).toBe("C minor 11");
+    expect(formatChordName("Dsus4")).toBe("D sus4");
+    expect(formatChordName("Dsus2")).toBe("D sus2");
+    expect(formatChordName("E5")).toBe("E power chord");
+    expect(formatChordName("Cdim")).toBe("C Diminished");
+    expect(formatChordName("Caug")).toBe("C Augmented");
+  });
+
+  it("prefers a non-slash candidate matching the bass pitch class", () => {
+    const result = detectChord(["C", "E", "G", "A"], {
+      bassPitchClass: "A",
+      weights: new Map([
+        ["A", 1.2],
+        ["C", 0.8],
+        ["E", 0.8],
+        ["G", 0.8],
+      ]),
+    });
+
+    expect(result).toBe("Am7");
+  });
+
+  it("detects root-fifth dyads as power chords", () => {
+    expect(detectChord(["E", "B"], { bassPitchClass: "E" })).toBe("E5");
+  });
+
+  it("falls back to highest-weighted pitch classes when a quiet artifact prevents full-set detection", () => {
+    const notes = [
+      { ...note("C", 48, 0), amplitude: 0.9 },
+      { ...note("E", 52, 0.01), amplitude: 0.8 },
+      { ...note("G", 55, 0.02), amplitude: 0.8 },
+      { ...note("D", 62, 0.03), amplitude: 0.75 },
+      { ...note("C#", 61, 0.04), amplitude: 0.05 },
+    ];
+
+    expect(detectChordTimeline(notes, 0.15)[0]?.label).toBe("C add9");
+  });
+
+  it("recovers omitted-fifth extended chords after regular detection fails", () => {
+    const notes = [
+      { ...note("C", 48, 0), amplitude: 0.9 },
+      { ...note("E", 52, 0.01), amplitude: 0.8 },
+      { ...note("B", 59, 0.02), amplitude: 0.75 },
+    ];
+
+    expect(detectChordTimeline(notes, 0.15)[0]?.label).toBe("C major 7");
   });
 });
 

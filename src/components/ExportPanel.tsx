@@ -6,6 +6,7 @@ import {
   exportToMidi,
   exportToMp3,
   exportToWav,
+  sanitizeExportFilename,
   type WavBitDepth,
   type WavSampleRate,
 } from "../lib/audioExport";
@@ -33,10 +34,6 @@ function mimeToExportExtension(mime: string): string {
   return "audio";
 }
 
-function sanitizeFilename(name: string): string {
-  return name.replace(/[^a-zA-Z0-9 _-]/g, "").replace(/\s+/g, "-") || "riff";
-}
-
 export function ExportPanel({
   notes,
   pcmAudio,
@@ -47,7 +44,7 @@ export function ExportPanel({
   visible,
   shortcutTargetRef,
 }: ExportPanelProps) {
-  const baseName = sanitizeFilename(riffName);
+  const baseName = sanitizeExportFilename(riffName);
   const wavSettingsId = useId();
   const [wavSettingsOpen, setWavSettingsOpen] = useState(false);
   const [isExportingWav, setIsExportingWav] = useState(false);

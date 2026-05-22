@@ -153,12 +153,13 @@ describe("Recorder", () => {
     it("hides detection profile in advanced section", () => {
       render(<Recorder {...defaultProps} />);
 
-      expect(screen.queryByRole("radiogroup", { name: /instrument mode/i })).not.toBeInTheDocument();
+      expect(screen.queryByText(/guitar mode is locked in for now/i)).not.toBeInTheDocument();
 
       const toggle = screen.getByRole("button", { name: /show advanced options/i });
       fireEvent.click(toggle);
 
-      expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeVisible();
+      expect(screen.getByText(/guitar mode is locked in for now/i)).toBeVisible();
+      expect(screen.queryByRole("radiogroup", { name: /instrument mode/i })).not.toBeInTheDocument();
     });
   });
 
@@ -181,40 +182,36 @@ describe("Recorder", () => {
       expect(screen.getByTitle("Reduce audio file size when saving")).toBeInTheDocument();
     });
 
-    it("renames detection focus to instrument mode in advanced", () => {
+    it("shows guitar-first detection copy in advanced", () => {
       render(<Recorder {...defaultProps} />);
       const toggle = screen.getByRole("button", { name: /show advanced options/i });
       fireEvent.click(toggle);
 
-      expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeInTheDocument();
-      expect(screen.getByText("Use Guitar for most guitar recordings. Choose Full range for other instruments.")).toBeInTheDocument();
+      expect(screen.getByText("Detection focus")).toBeInTheDocument();
+      expect(screen.getByText("Guitar mode is locked in for now so chord detection can be tuned around real guitar takes.")).toBeInTheDocument();
     });
   });
 
-  it("keeps guitar-focused profile options", () => {
+  it("keeps advanced options guitar-first without a mode selector", () => {
     render(<Recorder {...defaultProps} />);
     const toggle = screen.getByRole("button", { name: /show advanced options/i });
     fireEvent.click(toggle);
 
-    expect(screen.getByRole("radiogroup", { name: /instrument mode/i })).toBeInTheDocument();
-    expect(screen.getAllByRole("radio").map((option) => option.getAttribute("value"))).toEqual(["guitar", "default"]);
-    expect(screen.getByRole("radio", { name: "Guitar" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Full range" })).toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: "Piano" })).not.toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Guitar" })).toBeChecked();
+    expect(screen.getByText("Detection focus")).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: /instrument mode/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Guitar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Full range" })).not.toBeInTheDocument();
   });
 
-  it("updates capture settings and the selected profile when the user changes them", () => {
+  it("updates capture settings without exposing profile switching", () => {
     const onAutoProcessChange = vi.fn();
     const onStorageFormatChange = vi.fn();
-    const onProfileChange = vi.fn();
 
     render(
       <Recorder
         {...defaultProps}
         onAutoProcessChange={onAutoProcessChange}
         onStorageFormatChange={onStorageFormatChange}
-        onProfileChange={onProfileChange}
       />
     );
 
@@ -223,11 +220,9 @@ describe("Recorder", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: /analyze automatically/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /use compressed audio/i }));
-    fireEvent.click(screen.getByRole("radio", { name: "Full range" }));
 
     expect(onAutoProcessChange).toHaveBeenCalledWith(true);
     expect(onStorageFormatChange).toHaveBeenCalledWith("compressed");
-    expect(onProfileChange).toHaveBeenCalledWith("default");
   });
 
   it("disables controls while analysis is busy", () => {
@@ -239,7 +234,7 @@ describe("Recorder", () => {
     fireEvent.click(toggle);
 
     expect(screen.getByRole("checkbox", { name: /use compressed audio/i })).toBeDisabled();
-    expect(screen.getByRole("radio", { name: "Guitar" })).toBeDisabled();
+    expect(screen.getByText(/guitar mode is locked in for now/i)).toBeVisible();
     expect(screen.getByRole("button", { name: /analyze now/i })).toBeDisabled();
   });
 

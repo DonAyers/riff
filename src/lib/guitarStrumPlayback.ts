@@ -37,17 +37,17 @@ export function buildStrumClusters(
 
   const clusters: number[][] = [];
   let currentCluster: number[] = [indexed[0].index];
-  let clusterAnchorStart = indexed[0].note.startTimeS;
+  let previousStartTimeS = indexed[0].note.startTimeS;
 
   for (let i = 1; i < indexed.length; i++) {
     const { note, index } = indexed[i];
-    if (note.startTimeS - clusterAnchorStart <= windowS) {
+    if (note.startTimeS - previousStartTimeS <= windowS) {
       currentCluster.push(index);
     } else {
       clusters.push(currentCluster);
       currentCluster = [index];
-      clusterAnchorStart = note.startTimeS;
     }
+    previousStartTimeS = note.startTimeS;
   }
 
   clusters.push(currentCluster);

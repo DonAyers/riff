@@ -1,0 +1,1495 @@
+.song-builder {
+  display: grid;
+  gap: var(--space-md);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.song-builder__view-nav {
+  display: none;
+}
+
+.song-builder__panel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.song-builder__tools-panel {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: var(--space-md);
+  overflow: hidden;
+}
+
+.song-builder__capture {
+  align-items: start;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-sm);
+  padding: 0.65rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 245, 209, 0.1);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(130, 98, 255, 0.12), transparent 32%),
+    rgba(0, 0, 0, 0.18);
+}
+
+.song-builder__recorder-card {
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-md);
+  overflow: hidden;
+}
+
+.song-builder__capture .recorder {
+  --record-button-size: clamp(7rem, 13vw, 9rem);
+
+  min-height: 0;
+  gap: 0.55rem;
+}
+
+.song-builder__capture .recorder-timer-row {
+  min-height: 2rem;
+}
+
+.song-builder__capture .recorder-timer {
+  font-size: clamp(1.35rem, 3.8vw, 2rem);
+}
+
+.song-builder__capture .recorder-label {
+  font-size: 0.64rem;
+}
+
+.song-builder__arrangement {
+  width: 100%;
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--surface-border-strong);
+  background:
+    radial-gradient(circle at top right, rgba(130, 98, 255, 0.16), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012));
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(16px);
+}
+
+.song-builder__tools-panel {
+  padding: var(--space-md);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 245, 209, 0.1);
+  background:
+    radial-gradient(circle at top right, rgba(225, 252, 110, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 245, 209, 0.035), rgba(255, 245, 209, 0.012));
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(16px);
+}
+
+.song-builder__arrangement .workspace-pane__title,
+.song-builder__capture .workspace-pane__title {
+  font-family: var(--font-display);
+  letter-spacing: -0.035em;
+}
+
+.song-builder__arrangement-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.song-builder__transport {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  flex: 1 1 22rem;
+  min-width: min(100%, 22rem);
+}
+
+.song-builder__transport .playback {
+  flex: 1 1 16rem;
+}
+
+.song-builder__project-panel {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: start;
+  gap: 0.55rem;
+  padding: 0.55rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(77, 225, 255, 0.15);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(77, 225, 255, 0.12), transparent 32%),
+    rgba(0, 0, 0, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 245, 209, 0.035);
+}
+
+.song-builder__name-field {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.song-builder__name-field span,
+.song-builder__project-status,
+.song-builder__saved-empty {
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.song-builder__name-field input {
+  width: 100%;
+  min-height: 2.7rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 0 0.85rem;
+}
+
+.song-builder__name-field input::placeholder {
+  color: rgba(255, 245, 209, 0.42);
+}
+
+.song-builder__project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.song-builder__project-button {
+  min-height: 2.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  padding: 0 0.82rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.song-builder__project-button--primary {
+  border-color: rgba(225, 252, 110, 0.34);
+  background:
+    linear-gradient(135deg, rgba(225, 252, 110, 0.18), rgba(77, 225, 255, 0.08)),
+    rgba(0, 0, 0, 0.18);
+}
+
+.song-builder__project-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(225, 252, 110, 0.46);
+  background: rgba(225, 252, 110, 0.1);
+}
+
+.song-builder__project-button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.song-builder__project-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: rgb(171, 241, 255);
+}
+
+.song-builder__saved-songs {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.05rem;
+}
+
+.song-builder__saved-empty {
+  margin: 0;
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.7rem;
+  border-radius: var(--radius-full);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.song-builder__saved-song {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 245, 209, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.song-builder__saved-song--active {
+  border-color: rgba(77, 225, 255, 0.44);
+  box-shadow: 0 0 0 1px rgba(77, 225, 255, 0.1);
+}
+
+.song-builder__saved-song button {
+  min-height: 2.55rem;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.song-builder__saved-song > button:first-child {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "icon name"
+    "icon meta";
+  align-items: center;
+  column-gap: 0.42rem;
+  padding: 0.42rem 0.7rem;
+  text-align: left;
+}
+
+.song-builder__saved-song > button:first-child svg {
+  grid-area: icon;
+  color: rgb(171, 241, 255);
+}
+
+.song-builder__saved-song span {
+  grid-area: name;
+  max-width: 11rem;
+  overflow: hidden;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-builder__saved-song small {
+  grid-area: meta;
+  color: var(--fg-muted);
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.song-builder__saved-song-delete {
+  width: 2.6rem;
+  display: grid;
+  place-items: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--fg-muted) !important;
+}
+
+.song-builder__name-field input:focus-visible,
+.song-builder__project-button:focus-visible,
+.song-builder__saved-song button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.song-builder__loop-toggle,
+.song-builder__stop-button {
+  min-height: 3.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(225, 252, 110, 0.22);
+  background:
+    radial-gradient(circle at top left, rgba(225, 252, 110, 0.16), transparent 48%),
+    rgba(0, 0, 0, 0.22);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  touch-action: manipulation;
+}
+
+.song-builder__loop-toggle:hover,
+.song-builder__stop-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(225, 252, 110, 0.52);
+  background:
+    radial-gradient(circle at top left, rgba(225, 252, 110, 0.24), transparent 50%),
+    rgba(225, 252, 110, 0.09);
+}
+
+.song-builder__stop-button {
+  border-color: rgba(255, 104, 77, 0.24);
+  background:
+    radial-gradient(circle at top left, rgba(255, 104, 77, 0.14), transparent 48%),
+    rgba(0, 0, 0, 0.22);
+}
+
+.song-builder__stop-button:hover:not(:disabled) {
+  border-color: rgba(255, 104, 77, 0.52);
+  background:
+    radial-gradient(circle at top left, rgba(255, 104, 77, 0.24), transparent 50%),
+    rgba(255, 104, 77, 0.1);
+}
+
+.song-builder__stop-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.song-builder__loop-toggle--active {
+  border-color: rgba(225, 252, 110, 0.76);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(225, 252, 110, 0.3), transparent 48%),
+    rgba(225, 252, 110, 0.13);
+  color: rgb(248, 255, 194);
+  box-shadow: 0 0 0 1px rgba(225, 252, 110, 0.13), 0 16px 38px rgba(0, 0, 0, 0.24);
+}
+
+.song-builder__loop-toggle:focus-visible,
+.song-builder__stop-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.song-builder__sequence-workspace {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.song-builder__manual-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr) auto;
+  align-items: stretch;
+  gap: var(--space-md);
+  padding: 0.65rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(225, 252, 110, 0.16);
+  background:
+    radial-gradient(circle at 8% 15%, rgba(225, 252, 110, 0.13), transparent 34%),
+    radial-gradient(circle at 90% 10%, rgba(77, 225, 255, 0.1), transparent 30%),
+    rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 245, 209, 0.035);
+}
+
+.song-builder__tools-panel .song-builder__manual-entry {
+  grid-template-columns: 1fr;
+}
+
+.song-builder__manual-copy {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 0.28rem;
+  padding: 0.35rem 0.45rem;
+}
+
+.song-builder__manual-copy h3,
+.song-builder__manual-copy p {
+  margin: 0;
+}
+
+.song-builder__manual-copy h3 {
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: clamp(1.65rem, 4vw, 2.35rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+}
+
+.song-builder__manual-copy p {
+  max-width: 38ch;
+  color: var(--fg-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.song-builder__manual-controls {
+  min-width: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.song-builder__manual-group {
+  display: flex;
+  align-content: start;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0.45rem;
+  border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.song-builder__manual-group--qualities {
+  background: rgba(77, 225, 255, 0.045);
+}
+
+.song-builder__manual-pill {
+  min-height: 2.55rem;
+  min-width: 2.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.78rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.song-builder__manual-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(225, 252, 110, 0.42);
+  color: var(--fg);
+}
+
+.song-builder__manual-pill--active {
+  border-color: rgba(225, 252, 110, 0.68);
+  background:
+    radial-gradient(circle at 25% 10%, rgba(225, 252, 110, 0.28), transparent 52%),
+    rgba(225, 252, 110, 0.12);
+  color: rgb(248, 255, 194);
+  box-shadow: 0 0 0 1px rgba(225, 252, 110, 0.11);
+}
+
+.song-builder__manual-add-row {
+  display: grid;
+  align-content: stretch;
+  gap: 0.5rem;
+  min-width: 9rem;
+}
+
+.song-builder__manual-preview {
+  display: grid;
+  place-items: center;
+  min-height: 3.25rem;
+  padding: 0 1rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(77, 225, 255, 0.18);
+  background: rgba(77, 225, 255, 0.075);
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 850;
+  letter-spacing: -0.04em;
+}
+
+.song-builder__manual-add {
+  min-height: 3.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0 1rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(225, 252, 110, 0.34);
+  background:
+    linear-gradient(135deg, rgba(225, 252, 110, 0.22), rgba(77, 225, 255, 0.12)),
+    rgba(0, 0, 0, 0.22);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 950;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+}
+
+.song-builder__manual-add:hover {
+  transform: translateY(-1px);
+  border-color: rgba(225, 252, 110, 0.72);
+  filter: brightness(1.06);
+}
+
+.song-builder__manual-pill:focus-visible,
+.song-builder__manual-add:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.song-builder__sequence-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  padding: 0.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.song-builder__sequence-tools-label {
+  padding-inline: 0.25rem;
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.song-builder__sequence-tools button {
+  min-height: 2.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  padding: 0 0.85rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.song-builder__sequence-tools button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(225, 252, 110, 0.4);
+  background: rgba(225, 252, 110, 0.1);
+}
+
+.song-builder__sequence-tools button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.song-builder__sequence-tools button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.song-builder__jam-status {
+  min-height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.72rem;
+  border-radius: var(--radius-full);
+  background: rgba(77, 225, 255, 0.09);
+  color: rgb(171, 241, 255);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.song-builder__sequence {
+  list-style: none;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0.2rem 0.1rem 0.4rem;
+  overflow-x: auto;
+  scroll-padding-inline: var(--space-md);
+}
+
+.song-builder-card {
+  flex: 0 0 min(15.5rem, 74vw);
+  min-height: 12rem;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.85rem;
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
+  transition: border-color 0.16s ease, background 0.16s ease, opacity 0.16s ease, transform 0.16s ease;
+}
+
+.song-builder-card:hover {
+  border-color: rgba(130, 98, 255, 0.42);
+  background: rgba(130, 98, 255, 0.09);
+}
+
+.song-builder-card--dragging {
+  opacity: 0.58;
+  transform: scale(0.98);
+}
+
+.song-builder-card--current {
+  border-color: rgba(225, 252, 110, 0.76);
+  background:
+    radial-gradient(circle at top right, rgba(225, 252, 110, 0.2), transparent 42%),
+    rgba(225, 252, 110, 0.075);
+  box-shadow:
+    0 0 0 1px rgba(225, 252, 110, 0.16),
+    0 18px 48px rgba(0, 0, 0, 0.3);
+}
+
+.song-builder-card--focused {
+  border-color: rgba(77, 225, 255, 0.64);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(77, 225, 255, 0.16), transparent 38%),
+    rgba(77, 225, 255, 0.07);
+}
+
+.song-builder-card__focus-button {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.85rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.song-builder-card__focus-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 4px;
+  border-radius: 1rem;
+}
+
+.song-builder-card__header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.song-builder-card__drag {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  border-radius: var(--radius-full);
+  color: var(--fg-muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.song-builder-card__body {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 0.4rem;
+}
+
+.song-builder-card__index {
+  display: inline-grid;
+  place-items: center;
+  min-height: 1.7rem;
+  padding: 0 0.55rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.song-builder-card__now {
+  min-width: 0;
+  justify-self: start;
+  overflow: hidden;
+  max-width: 100%;
+  padding: 0.26rem 0.52rem;
+  border-radius: var(--radius-full);
+  background: rgba(225, 252, 110, 0.16);
+  color: rgb(239, 255, 164);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.song-builder-card__label {
+  color: var(--fg);
+  font-size: 1.65rem;
+  font-weight: 850;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.song-builder-card__meta {
+  color: var(--fg-muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.song-builder-card__hint {
+  min-height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.58rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(77, 225, 255, 0.22);
+  background: rgba(77, 225, 255, 0.08);
+  color: rgb(171, 241, 255);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.song-builder-card__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.song-builder-card__actions button {
+  min-height: 2.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 0.6rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.song-builder-card__actions button:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: rgba(130, 98, 255, 0.48);
+  background: var(--accent-dim);
+}
+
+.song-builder-card__actions button:disabled {
+  opacity: 0.34;
+  cursor: not-allowed;
+}
+
+.song-builder-card__actions button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.song-builder__empty {
+  min-height: 15rem;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.song-builder__empty h3,
+.song-builder__empty p {
+  margin: 0;
+}
+
+.song-builder__empty p {
+  max-width: 46ch;
+  color: var(--fg-muted);
+  line-height: 1.55;
+}
+
+.song-builder__focus-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-md);
+  padding: 0.6rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(77, 225, 255, 0.2);
+  background:
+    radial-gradient(circle at top left, rgba(77, 225, 255, 0.12), transparent 34%),
+    rgba(0, 0, 0, 0.18);
+}
+
+.song-builder__focus-panel--empty {
+  min-height: 16rem;
+}
+
+.song-builder__focus-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 0.25rem 0.35rem 0;
+}
+
+.song-builder__focus-bar h3 {
+  margin: 0.12rem 0 0;
+  color: var(--fg);
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 7vw, 3rem);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+
+.song-builder__focus-close {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0 0.9rem;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 245, 209, 0.14);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.song-builder__focus-close:hover {
+  border-color: rgba(255, 104, 77, 0.36);
+  background: rgba(255, 104, 77, 0.1);
+}
+
+.song-builder__focus-close:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.song-builder__focus-empty {
+  min-height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  border: 1px dashed rgba(77, 225, 255, 0.2);
+  background:
+    radial-gradient(circle at top right, rgba(77, 225, 255, 0.08), transparent 40%),
+    rgba(255, 255, 255, 0.024);
+}
+
+.song-builder__focus-empty h3,
+.song-builder__focus-empty p {
+  margin: 0;
+}
+
+.song-builder__focus-empty p {
+  max-width: 38ch;
+  color: var(--fg-muted);
+  line-height: 1.55;
+}
+
+.song-builder__focus-panel .chord-focus {
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  gap: clamp(0.55rem, 1.2vw, 0.9rem);
+  padding: clamp(0.75rem, 1.5vw, 1rem);
+}
+
+.song-builder__focus-panel .chord-focus__hero {
+  gap: 0.75rem;
+}
+
+.song-builder__focus-panel .chord-focus__hero h2 {
+  font-size: clamp(2.25rem, 5.6vw, 4.7rem);
+}
+
+.song-builder__focus-panel .chord-focus__body,
+.song-builder__focus-panel .chord-focus__categories {
+  min-height: 0;
+  gap: 0.7rem;
+}
+
+.song-builder__focus-panel .chord-focus__panel {
+  min-height: 0;
+  gap: 0.65rem;
+  padding: 0.72rem;
+}
+
+.song-builder__focus-panel .chord-focus-category {
+  gap: 0.45rem;
+}
+
+.song-builder__focus-panel .chord-focus-category__header p {
+  display: none;
+}
+
+.song-builder__focus-panel .chord-focus-category__buttons {
+  grid-template-columns: repeat(auto-fit, minmax(7.6rem, 1fr));
+  gap: 0.45rem;
+}
+
+.song-builder__focus-panel .chord-focus-suggestion {
+  min-height: 4.35rem;
+  padding: 0.58rem;
+}
+
+.song-builder__focus-panel .chord-focus-suggestion__chord {
+  font-size: 1.35rem;
+}
+
+.song-builder__focus-panel .chord-focus-suggestion__description,
+.song-builder__focus-panel .chord-focus__note-help {
+  font-size: 0.7rem;
+}
+
+@media (min-width: 980px) {
+  .song-builder {
+    grid-template-columns: minmax(18rem, 0.48fr) minmax(34rem, 1.2fr) minmax(24rem, 0.76fr);
+    grid-template-rows: minmax(13rem, 0.42fr) minmax(0, 0.58fr);
+    grid-template-areas:
+      "capture sequence explorer"
+      "add sequence explorer";
+    align-items: stretch;
+    gap: var(--space-md);
+  }
+
+  .song-builder:not(.song-builder--has-focus) {
+    grid-template-columns: minmax(18rem, 0.46fr) minmax(0, 1fr);
+    grid-template-areas:
+      "capture sequence"
+      "add sequence";
+  }
+
+  .song-builder:not(.song-builder--has-focus) .song-builder__focus-panel {
+    display: none;
+  }
+
+  .song-builder__capture {
+    grid-area: capture;
+    overflow: hidden;
+  }
+
+  .song-builder__arrangement {
+    grid-area: sequence;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .song-builder__focus-panel {
+    grid-area: explorer;
+    min-height: 0;
+    overflow: auto;
+    box-shadow: -18px 0 70px rgba(0, 0, 0, 0.22);
+  }
+
+  .song-builder__tools-panel {
+    grid-area: add;
+    min-height: 0;
+    align-content: stretch;
+    overflow: hidden;
+  }
+
+  .song-builder__sequence-workspace {
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .song-builder__sequence {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    grid-auto-rows: minmax(12rem, auto);
+    align-content: start;
+    overflow: auto;
+    padding-right: 0.35rem;
+  }
+
+  .song-builder-card {
+    flex: initial;
+    min-height: 11.75rem;
+  }
+
+  .song-builder__manual-entry,
+  .song-builder__capture {
+    align-self: stretch;
+  }
+
+  .song-builder__capture {
+    gap: 0.85rem;
+  }
+
+  .song-builder__capture .workspace-pane__intro {
+    gap: 0.2rem;
+  }
+
+  .song-builder__capture .workspace-pane__title,
+  .song-builder__manual-copy h3 {
+    font-size: clamp(1.55rem, 1.9vw, 2rem);
+  }
+
+  .song-builder__capture .workspace-pane__description,
+  .song-builder__manual-copy p {
+    font-size: 0.78rem;
+  }
+
+  .song-builder__manual-group {
+    max-height: clamp(5.5rem, 17dvh, 10rem);
+    overflow: auto;
+  }
+
+  .song-builder__manual-add-row {
+    min-width: 0;
+  }
+
+  .song-builder--jam {
+    min-height: 0;
+  }
+
+  .song-builder--jam .song-builder__arrangement,
+  .song-builder--jam .song-builder__focus-panel {
+    border-color: rgba(225, 252, 110, 0.26);
+    background:
+      radial-gradient(circle at top right, rgba(225, 252, 110, 0.13), transparent 30%),
+      radial-gradient(circle at bottom left, rgba(77, 225, 255, 0.13), transparent 34%),
+      rgba(8, 9, 6, 0.7);
+  }
+}
+
+@media (min-width: 1280px) {
+  .song-builder {
+    grid-template-columns: minmax(20rem, 0.45fr) minmax(42rem, 1.32fr) minmax(25rem, 0.72fr);
+  }
+
+  .song-builder__sequence {
+    grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr));
+  }
+}
+
+@media (max-width: 979px) and (min-width: 761px) {
+  .song-builder {
+    grid-template-columns: minmax(17rem, 0.42fr) minmax(0, 1fr);
+    grid-template-rows: minmax(12rem, 0.45fr) minmax(0, 0.55fr);
+    grid-template-areas:
+      "capture sequence"
+      "add sequence";
+    align-items: stretch;
+  }
+
+  .song-builder__capture {
+    grid-area: capture;
+    overflow: hidden;
+  }
+
+  .song-builder__arrangement {
+    grid-area: sequence;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .song-builder__focus-panel {
+    display: none;
+  }
+
+  .song-builder__tools-panel {
+    grid-area: add;
+    overflow: hidden;
+  }
+
+  .song-builder__tools-panel .song-builder__manual-entry {
+    align-content: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .song-builder__view-nav {
+    position: fixed;
+    left: max(1rem, env(safe-area-inset-left));
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    z-index: 4;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
+    padding: 0.35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 245, 209, 0.12);
+    background: rgba(5, 7, 12, 0.78);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(18px);
+  }
+
+  .song-builder__view-nav a {
+    min-height: 2.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: var(--fg-muted);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .song-builder__view-nav a:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.75);
+    outline-offset: 2px;
+  }
+
+  .song-builder {
+    display: flex;
+    gap: 0.75rem;
+    height: 100%;
+    width: calc(100vw - max(2rem, calc(env(safe-area-inset-left) + env(safe-area-inset-right))));
+    margin-inline: calc((100% - (100vw - max(2rem, calc(env(safe-area-inset-left) + env(safe-area-inset-right))))) / 2);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-padding-inline: 0.1rem;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .song-builder__tools-panel {
+    display: contents;
+  }
+
+  .song-builder__panel,
+  .song-builder__manual-entry,
+  .song-builder__capture {
+    flex: 0 0 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  .song-builder__sequence-workspace,
+  .song-builder__arrangement,
+  .song-builder__focus-panel,
+  .song-builder__capture,
+  .song-builder__manual-entry {
+    min-height: 0;
+  }
+
+  .song-builder__arrangement,
+  .song-builder__focus-panel,
+  .song-builder__manual-entry,
+  .song-builder__capture {
+    padding: 0.9rem;
+    border-radius: 1.6rem;
+  }
+
+  .song-builder__focus-panel {
+    border-color: rgba(77, 225, 255, 0.2);
+    background:
+      radial-gradient(circle at top right, rgba(77, 225, 255, 0.12), transparent 35%),
+      rgba(8, 9, 6, 0.62);
+  }
+
+  .song-builder__capture {
+    gap: 0.85rem;
+    border: 1px solid rgba(225, 252, 110, 0.18);
+    background:
+      radial-gradient(circle at top right, rgba(225, 252, 110, 0.1), transparent 42%),
+      rgba(8, 9, 6, 0.58);
+    box-shadow: inset 0 0 0 1px rgba(255, 245, 209, 0.035);
+  }
+
+  .song-builder__capture .workspace-pane__intro {
+    gap: 0.2rem;
+  }
+
+  .song-builder__capture .workspace-pane__title,
+  .song-builder__arrangement .workspace-pane__title {
+    font-size: clamp(1.75rem, 9vw, 2.35rem);
+    line-height: 0.9;
+  }
+
+  .song-builder__capture .workspace-pane__description {
+    max-width: 28ch;
+  }
+
+  .song-builder__recorder-card {
+    padding: 0.85rem;
+    border-color: rgba(255, 245, 209, 0.1);
+    border-radius: 1.45rem;
+    background:
+      linear-gradient(160deg, rgba(255, 245, 209, 0.07), transparent 48%),
+      rgba(0, 0, 0, 0.25);
+  }
+
+  .song-builder__arrangement-header {
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .song-builder__project-panel {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+    padding: 0.48rem;
+    border-radius: 1.15rem;
+  }
+
+  .song-builder__project-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: 0.38rem;
+  }
+
+  .song-builder__project-button,
+  .song-builder__name-field input {
+    min-height: 2.55rem;
+  }
+
+  .song-builder__transport {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .song-builder__loop-toggle,
+  .song-builder__stop-button {
+    min-height: 3rem;
+    border-radius: 1rem;
+  }
+
+  .song-builder__arrangement {
+    gap: 0.9rem;
+    border-color: rgba(225, 252, 110, 0.18);
+    background:
+      radial-gradient(circle at top right, rgba(77, 225, 255, 0.12), transparent 35%),
+      rgba(8, 9, 6, 0.62);
+  }
+
+  .song-builder__arrangement .playback {
+    padding: 0.65rem 0.75rem;
+    border-radius: 1rem;
+  }
+
+  .song-builder__manual-entry {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    border: 1px solid rgba(225, 252, 110, 0.18);
+    background:
+      radial-gradient(circle at 8% 15%, rgba(225, 252, 110, 0.13), transparent 34%),
+      radial-gradient(circle at 90% 10%, rgba(77, 225, 255, 0.1), transparent 30%),
+      rgba(8, 9, 6, 0.62);
+  }
+
+  .song-builder__manual-copy {
+    padding: 0.2rem 0.25rem 0;
+  }
+
+  .song-builder__manual-copy p {
+    max-width: 32ch;
+  }
+
+  .song-builder__manual-controls {
+    min-height: 0;
+    gap: 0.45rem;
+  }
+
+  .song-builder__manual-group {
+    gap: 0.35rem;
+    padding: 0.38rem;
+    max-height: clamp(5.3rem, 20dvh, 8.6rem);
+    overflow: auto;
+  }
+
+  .song-builder__manual-pill {
+    flex: 1 1 4.7rem;
+    min-height: 2.85rem;
+    padding: 0 0.55rem;
+  }
+
+  .song-builder__manual-add-row {
+    grid-template-columns: minmax(5.5rem, 0.42fr) minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  .song-builder__manual-preview,
+  .song-builder__manual-add {
+    min-height: 3.4rem;
+    border-radius: 1rem;
+  }
+
+  .song-builder__sequence-tools {
+    gap: 0.45rem;
+    padding: 0.45rem;
+  }
+
+  .song-builder__sequence-tools button {
+    flex: 1 1 8rem;
+    min-height: 2.8rem;
+  }
+
+  .song-builder__jam-status {
+    flex: 1 1 100%;
+    justify-content: center;
+    min-height: 2.4rem;
+    text-align: center;
+  }
+
+  .song-builder__sequence {
+    gap: 0.65rem;
+    padding-bottom: 0.2rem;
+    scroll-snap-type: x mandatory;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .song-builder-card {
+    flex-basis: min(16.5rem, 82vw);
+    min-height: 12rem;
+    padding: 0.85rem;
+    border-color: rgba(255, 245, 209, 0.11);
+    border-radius: 1.25rem;
+    background:
+      linear-gradient(145deg, rgba(225, 252, 110, 0.08), transparent 44%),
+      rgba(0, 0, 0, 0.24);
+    scroll-snap-align: start;
+  }
+
+  .song-builder-card__header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .song-builder-card__label {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    letter-spacing: -0.04em;
+  }
+
+  .song-builder-card__actions button {
+    min-height: 2.85rem;
+  }
+
+  .song-builder__focus-panel {
+    gap: 0.8rem;
+  }
+
+  .song-builder__focus-bar {
+    align-items: start;
+  }
+
+  .song-builder__empty {
+    min-height: 12rem;
+    padding: 1rem;
+    border-color: rgba(225, 252, 110, 0.18);
+    background: rgba(225, 252, 110, 0.045);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .song-builder-card,
+  .song-builder__project-button,
+  .song-builder__sequence-tools button,
+  .song-builder__saved-song button,
+  .song-builder-card__focus-button,
+  .song-builder-card__actions button,
+  .song-builder__manual-pill,
+  .song-builder__manual-add {
+    transition: none;
+  }
+}
+
+:root[data-theme="light"] .song-builder__capture,
+:root[data-theme="light"] .song-builder__arrangement,
+:root[data-theme="light"] .song-builder__tools-panel,
+:root[data-theme="light"] .song-builder__manual-entry,
+:root[data-theme="light"] .song-builder__focus-panel {
+  border-color: rgba(86, 70, 24, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(102, 118, 0, 0.12), transparent 32%),
+    rgba(255, 252, 239, 0.72);
+  box-shadow: var(--shadow-md);
+}
+
+:root[data-theme="light"] .song-builder__tools-panel,
+:root[data-theme="light"] .song-builder__manual-entry {
+  background:
+    radial-gradient(circle at 8% 15%, rgba(102, 118, 0, 0.14), transparent 34%),
+    radial-gradient(circle at 90% 10%, rgba(8, 127, 149, 0.11), transparent 30%),
+    rgba(255, 252, 239, 0.74);
+}
+
+:root[data-theme="light"] .song-builder__loop-toggle,
+:root[data-theme="light"] .song-builder__stop-button,
+:root[data-theme="light"] .song-builder__manual-pill,
+:root[data-theme="light"] .song-builder__sequence-tools,
+:root[data-theme="light"] .song-builder__sequence-tools button,
+:root[data-theme="light"] .song-builder-card,
+:root[data-theme="light"] .song-builder-card__actions button,
+:root[data-theme="light"] .song-builder__empty,
+:root[data-theme="light"] .song-builder__focus-empty,
+:root[data-theme="light"] .song-builder__focus-close {
+  border-color: rgba(86, 70, 24, 0.14);
+  background: rgba(255, 252, 239, 0.58);
+}
+
+:root[data-theme="light"] .song-builder-card--current,
+:root[data-theme="light"] .song-builder__manual-pill--active,
+:root[data-theme="light"] .song-builder__loop-toggle--active {
+  color: var(--fg);
+  border-color: rgba(102, 118, 0, 0.48);
+  background:
+    radial-gradient(circle at top right, rgba(102, 118, 0, 0.16), transparent 42%),
+    rgba(102, 118, 0, 0.1);
+}
+
+:root[data-theme="light"] .song-builder-card--focused {
+  border-color: rgba(8, 127, 149, 0.44);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(8, 127, 149, 0.14), transparent 38%),
+    rgba(8, 127, 149, 0.08);
+}
+
+:root[data-theme="light"] .song-builder-card__now,
+:root[data-theme="light"] .song-builder-card__hint,
+:root[data-theme="light"] .song-builder__jam-status {
+  color: var(--fg);
+}
+
+:root[data-theme="light"] .song-builder__view-nav {
+  border-color: rgba(86, 70, 24, 0.18);
+  background: rgba(255, 252, 239, 0.86);
+}

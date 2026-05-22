@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import fs from "node:fs/promises";
 import { gotoApp, importAndAnalyzeFixture, switchLane } from "./helpers";
 
@@ -60,11 +60,16 @@ function readMp3SampleRate(buffer: Buffer): number {
   throw new Error("Could not determine MP3 sample rate");
 }
 
+async function openExportScreen(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Export" }).click();
+}
+
 test("export buttons appear after importing and analysing audio", async ({ page }) => {
   test.setTimeout(180000);
 
   await gotoApp(page);
   await importAndAnalyzeFixture(page);
+  await openExportScreen(page);
 
   // Export panel should be visible with the current song-lane export options.
   const exportGroup = page.getByRole("group", { name: /export options/i });
@@ -85,6 +90,7 @@ test("MIDI export triggers a download", async ({ page }) => {
 
   await gotoApp(page);
   await importAndAnalyzeFixture(page);
+  await openExportScreen(page);
 
   // Wait for the MIDI export button and trigger download
   const midiBtn = page.getByRole("button", { name: "Export as MIDI" });
@@ -103,6 +109,7 @@ test("WAV export triggers a download", async ({ page }) => {
 
   await gotoApp(page);
   await importAndAnalyzeFixture(page);
+  await openExportScreen(page);
 
   const wavBtn = page.getByRole("button", { name: "Export as WAV" });
   await expect(wavBtn).toBeEnabled({ timeout: 10000 });
@@ -123,6 +130,7 @@ test("WAV quality options stay opt-in and apply to the exported file", async ({ 
 
   await gotoApp(page);
   await importAndAnalyzeFixture(page);
+  await openExportScreen(page);
 
   const wavQualityBtn = page.getByRole("button", { name: "Show WAV quality options" });
   await expect(wavQualityBtn).toBeEnabled({ timeout: 10000 });
@@ -153,6 +161,7 @@ test("MP3 export preserves the imported native sample rate", async ({ page }) =>
 
   await gotoApp(page);
   await importAndAnalyzeFixture(page, "known-c-major.wav");
+  await openExportScreen(page);
 
   const mp3Btn = page.getByRole("button", { name: "Export as MP3" });
   await expect(mp3Btn).toBeEnabled({ timeout: 10000 });
@@ -173,10 +182,12 @@ test("guitar lane still shows shapes and exports after deferred analysis UI load
   await gotoApp(page);
   await importAndAnalyzeFixture(page, "guitar-c-major-clean.wav");
   await switchLane(page, "Guitar");
+  await page.getByRole("button", { name: "Shape" }).click();
 
   await expect(page.getByText(/shape 1 of/i)).toBeVisible({ timeout: 10000 });
   await expect(page.locator(".chord-fretboard__diagram")).toBeVisible({ timeout: 10000 });
 
+  await openExportScreen(page);
   const exportGroup = page.getByRole("group", { name: /export options/i });
   await expect(exportGroup).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole("button", { name: "Export as MIDI" })).toBeEnabled();

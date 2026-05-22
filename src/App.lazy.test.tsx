@@ -48,6 +48,7 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     hasRecording: false,
     hasPendingAnalysis: false,
     handleLoadDemoAnalysis: vi.fn(),
+    handleDiscardRecording: vi.fn(),
     handleImport: vi.fn(),
     isImporting: false,
     storageFormat: "pcm",
@@ -74,11 +75,13 @@ function createSessionState(overrides: Record<string, unknown> = {}) {
     },
     midiPlayback: {
       isPlaying: false,
+      isLooping: false,
       currentTimeS: 0,
       duration: 0,
       load: vi.fn(),
       play: vi.fn(),
       stop: vi.fn(),
+      setLooping: vi.fn(),
       previewNote: vi.fn(),
     },
     ...overrides,
@@ -149,6 +152,9 @@ function mockAppModules(options: MockAppModulesOptions = {}) {
   }));
   vi.doMock("./components/GuitarTuner", () => ({
     GuitarTuner: () => <div data-testid="guitar-tuner" />,
+  }));
+  vi.doMock("./components/SongBuilder", () => ({
+    SongBuilder: () => <div data-testid="song-builder" />,
   }));
   vi.doMock("./lib/chordVoicings", () => ({
     lookupVoicings: lookupVoicingsMock,
@@ -229,6 +235,7 @@ describe("App lazy analysis surfaces", () => {
     );
 
     await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: /export/i }));
 
     expect(screen.getByRole("status", { name: /loading export options/i })).toBeInTheDocument();
     expect(screen.getByText(/preparing export tools/i)).toBeInTheDocument();
@@ -264,6 +271,7 @@ describe("App lazy analysis surfaces", () => {
 
     await renderApp();
     fireEvent.click(screen.getByRole("button", { name: /guitar/i }));
+    fireEvent.click(screen.getByRole("button", { name: /shape/i }));
 
     expect(screen.getByText(/loading shape/i)).toBeInTheDocument();
     expect(screen.getByText(/preparing the guitar diagram for c major/i)).toBeInTheDocument();

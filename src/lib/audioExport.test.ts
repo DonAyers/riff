@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { encodeWav, exportToMidi, downloadBlob, exportToMp3, exportToWav } from "./audioExport";
+import { encodeWav, exportToMidi, downloadBlob, exportToMp3, exportToWav, sanitizeExportFilename } from "./audioExport";
 import type { MappedNote } from "./noteMapper";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +47,13 @@ function readInt24(view: DataView, offset: number): number {
 // ---------------------------------------------------------------------------
 // encodeWav
 // ---------------------------------------------------------------------------
+
+describe("sanitizeExportFilename", () => {
+  it("preserves readable words while stripping unsafe filename characters", () => {
+    expect(sanitizeExportFilename("My Hook! #1")).toBe("My-Hook-1");
+    expect(sanitizeExportFilename("!@#$", "builder-song")).toBe("builder-song");
+  });
+});
 
 describe("encodeWav", () => {
   it("returns a Blob with audio/wav MIME type", () => {
