@@ -1282,8 +1282,47 @@
   gap: 0.45rem;
 }
 
+.riff-device .playback {
+  min-height: 2.55rem;
+  padding: 0.42rem 0.58rem;
+  border-radius: 1rem;
+}
+
+.riff-device .playback-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.riff-device .playback-label {
+  min-width: 4.6rem;
+  font-size: 0.58rem;
+}
+
 .riff-device .results-song-stack {
   gap: 0.45rem;
+}
+
+.riff-device .key-display {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.16rem 0.55rem;
+  padding: 0.46rem 0.58rem;
+  border-radius: 1rem;
+}
+
+.riff-device .key-display__label,
+.riff-device .key-display__confidence {
+  font-size: 0.55rem;
+}
+
+.riff-device .key-display__value {
+  font-size: 1.1rem;
+}
+
+.riff-device .key-display__meta,
+.riff-device .key-display__warning {
+  display: none;
 }
 
 .riff-device .results-summary {

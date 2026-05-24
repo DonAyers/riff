@@ -3,6 +3,7 @@ import {
   gotoApp,
   importFixture,
   openAdvancedOptions,
+  openNotesScreen,
   waitForAnalysisResults,
 } from "./helpers";
 
@@ -40,6 +41,7 @@ test.describe("guitar-first recorder e2e", () => {
       "guitar-c-major-clean.wav",
     );
 
+    await openNotesScreen(page);
     await expect(page.locator(".note-chip")).not.toHaveCount(0);
   });
 

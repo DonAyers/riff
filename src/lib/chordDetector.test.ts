@@ -166,4 +166,33 @@ describe("detectChordTimeline", () => {
     expect(result[0]?.label).toContain("C");
     expect(result[1]?.label).toContain("C");
   });
+
+  it("uses nearby color tones to avoid collapsing arpeggiated Em7 into a power chord", () => {
+    const notes = [
+      note("E", 40, 0, 1.35),
+      note("B", 47, 0.03, 1.32),
+      note("G", 55, 0.24, 1.1),
+      note("D", 62, 0.36, 0.95),
+    ];
+    const result = detectChordTimeline(notes, 0.15);
+
+    expect(result[0]?.label).toBe("E minor 7");
+    expect(result.map((event) => event.label)).not.toContain("E power chord");
+  });
+
+  it("does not drag long-ringing minor notes into a later chord change", () => {
+    const notes = [
+      note("E", 40, 0, 1.4),
+      note("B", 47, 0.03, 1.35),
+      note("G", 55, 0.24, 1.1),
+      note("C", 48, 0.82, 1),
+      note("E", 52, 0.86, 0.96),
+      note("G", 55, 0.9, 0.92),
+    ];
+    const result = detectChordTimeline(notes, 0.15);
+    const labels = result.map((event) => event.label);
+
+    expect(labels[0]).toBe("E Minor");
+    expect(labels).toContain("C Major");
+  });
 });

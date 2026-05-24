@@ -1,5 +1,5 @@
 import { Chord, Note } from "tonal";
-import { buildStrumClusters } from "./guitarStrumPlayback";
+import { buildStrumClusters, type NoteStrumCluster } from "./guitarStrumPlayback";
 import type { MappedNote } from "./noteMapper";
 
 export interface ChordEvent {
@@ -77,6 +77,37 @@ function buildPitchClassWeights(notes: readonly MappedNote[]): PitchClassWeights
   }
 
   return weights;
+}
+
+function noteEndTimeS(note: MappedNote): number {
+  return note.startTimeS + note.durationS;
+}
+
+function clusterOnsetRange(cluster: NoteStrumCluster, notes: readonly MappedNote[]) {
+  const onsets = cluster.noteIndices.map((index) => notes[index].startTimeS);
+  return {
+    startTimeS: Math.min(...onsets),
+    endTimeS: Math.max(...onsets),
+  };
+}
+
+function buildChordContextNotes(
+  notes: readonly MappedNote[],
+  cluster: NoteStrumCluster,
+  windowS: number,
+): MappedNote[] {
+  const clusterIndices = new Set(cluster.noteIndices);
+  const { startTimeS } = clusterOnsetRange(cluster, notes);
+  const contextWindowS = Math.max(windowS * 2.5, 0.34);
+
+  return notes.filter((note, index) => {
+    if (clusterIndices.has(index)) return true;
+
+    const onsetDistanceS = Math.abs(note.startTimeS - startTimeS);
+    if (onsetDistanceS > contextWindowS) return false;
+
+    return noteEndTimeS(note) >= startTimeS;
+  });
 }
 
 function lowestPitchClass(notes: readonly MappedNote[]): string | undefined {
@@ -257,20 +288,20 @@ export function detectChordTimeline(notes: MappedNote[], windowS: number): Chord
     return [{ chord: detected, label: formatChordName(detected), startTimeS, endTimeS }];
   }
 
-  const clusters = buildStrumClusters(notes, windowS).map((cluster) =>
-    cluster.noteIndices.map((index) => notes[index]),
-  );
+  const clusters = buildStrumClusters(notes, windowS);
 
   return clusters.flatMap((cluster) => {
-    const pitchClasses = uniquePitchClasses(cluster.map((n) => n.pitchClass));
+    const clusterNotes = cluster.noteIndices.map((index) => notes[index]);
+    const contextNotes = buildChordContextNotes(notes, cluster, windowS);
+    const pitchClasses = uniquePitchClasses(contextNotes.map((n) => n.pitchClass));
     const chord = detectChord(pitchClasses, {
-      bassPitchClass: lowestPitchClass(cluster),
-      weights: buildPitchClassWeights(cluster),
+      bassPitchClass: lowestPitchClass(contextNotes),
+      weights: buildPitchClassWeights(contextNotes),
     });
     if (!chord) return [];
 
-    const startTimeS = Math.min(...cluster.map((note) => note.startTimeS));
-    const endTimeS = Math.max(...cluster.map((note) => note.startTimeS + note.durationS));
+    const startTimeS = Math.min(...clusterNotes.map((note) => note.startTimeS));
+    const endTimeS = Math.max(...contextNotes.map(noteEndTimeS));
 
     return [{
       chord,

@@ -45,6 +45,7 @@ export interface ChordFocusViewProps {
   suggestionCategories?: ChordSuggestionCategory[];
   limitPerCategory?: number;
   notes?: ChordFocusNote[];
+  showNoteEditor?: boolean;
   onApplySuggestion?: (suggestion: ChordSuggestion) => void;
   onNotesChange?: (notes: ChordFocusNote[]) => void;
   onNoteToggle?: (note: ChordFocusNote, notes: ChordFocusNote[]) => void;
@@ -79,6 +80,7 @@ export function ChordFocusView({
   suggestionCategories,
   limitPerCategory,
   notes,
+  showNoteEditor = true,
   onApplySuggestion,
   onNotesChange,
   onNoteToggle,
@@ -206,64 +208,66 @@ export function ChordFocusView({
           )}
         </section>
 
-        <section className="chord-focus__panel chord-focus__panel--notes" aria-labelledby="chord-focus-notes">
-          <div className="chord-focus__panel-heading">
-            <p className="chord-focus__section-kicker">Touch edit</p>
-            <h3 id="chord-focus-notes">Note lanes</h3>
-          </div>
-          <p className="chord-focus__note-help">
-            Tap a note to mute or revive it. Builder uses these tones for the focused chord preview.
-          </p>
-
-          {localNotes.length > 0 ? (
-            <div className="chord-focus-notes" role="group" aria-label="Editable chord notes">
-              {localNotes.map((note, index) => (
-                <div className="chord-focus-note-lane" key={note.id}>
-                  <button
-                    type="button"
-                    className="chord-focus-note"
-                    aria-label={`${index + 1} ${note.label} ${note.role ?? "tone"}`}
-                    aria-pressed={!note.muted}
-                    onClick={() => handleNoteToggle(note.id)}
-                  >
-                    <span className="chord-focus-note__index">{index + 1}</span>
-                    <span className="chord-focus-note__label">{note.label}</span>
-                    <span className="chord-focus-note__role">{note.role ?? "tone"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="chord-focus-note-lane__remove"
-                    onClick={() => handleRemoveNote(note.id)}
-                    aria-label={`Remove note ${note.label}`}
-                  >
-                    −
-                  </button>
-                </div>
-              ))}
+        {showNoteEditor && (
+          <section className="chord-focus__panel chord-focus__panel--notes" aria-labelledby="chord-focus-notes">
+            <div className="chord-focus__panel-heading">
+              <p className="chord-focus__section-kicker">Touch edit</p>
+              <h3 id="chord-focus-notes">Note lanes</h3>
             </div>
-          ) : (
-            <div className="chord-focus__empty chord-focus__empty--compact" role="status">
-              <strong>No editable notes.</strong>
-              <span>Add a color tone to sketch the chord shape.</span>
-            </div>
-          )}
+            <p className="chord-focus__note-help">
+              Tap a note to mute or revive it. Builder uses these tones for the focused chord preview.
+            </p>
 
-          <div className="chord-focus-add-note">
-            <label>
-              Add tone
-              <select value={newNote} onChange={(event) => setNewNote(event.target.value)}>
-                {NOTE_CHOICES.map((noteName) => (
-                  <option value={noteName} key={noteName}>
-                    {noteName}
-                  </option>
+            {localNotes.length > 0 ? (
+              <div className="chord-focus-notes" role="group" aria-label="Editable chord notes">
+                {localNotes.map((note, index) => (
+                  <div className="chord-focus-note-lane" key={note.id}>
+                    <button
+                      type="button"
+                      className="chord-focus-note"
+                      aria-label={`${index + 1} ${note.label} ${note.role ?? "tone"}`}
+                      aria-pressed={!note.muted}
+                      onClick={() => handleNoteToggle(note.id)}
+                    >
+                      <span className="chord-focus-note__index">{index + 1}</span>
+                      <span className="chord-focus-note__label">{note.label}</span>
+                      <span className="chord-focus-note__role">{note.role ?? "tone"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="chord-focus-note-lane__remove"
+                      onClick={() => handleRemoveNote(note.id)}
+                      aria-label={`Remove note ${note.label}`}
+                    >
+                      −
+                    </button>
+                  </div>
                 ))}
-              </select>
-            </label>
-            <button type="button" onClick={handleAddNote}>
-              Add note
-            </button>
-          </div>
-        </section>
+              </div>
+            ) : (
+              <div className="chord-focus__empty chord-focus__empty--compact" role="status">
+                <strong>No editable notes.</strong>
+                <span>Add a color tone to sketch the chord shape.</span>
+              </div>
+            )}
+
+            <div className="chord-focus-add-note">
+              <label>
+                Add tone
+                <select value={newNote} onChange={(event) => setNewNote(event.target.value)}>
+                  {NOTE_CHOICES.map((noteName) => (
+                    <option value={noteName} key={noteName}>
+                      {noteName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={handleAddNote}>
+                Add note
+              </button>
+            </div>
+          </section>
+        )}
       </div>
     </section>
   );

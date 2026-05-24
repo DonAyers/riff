@@ -130,6 +130,19 @@ function mockAppModules(options: MockAppModulesOptions = {}) {
       </button>
     ),
   }));
+  vi.doMock("./components/ChordMapExplorer", () => ({
+    ChordMapExplorer: ({
+      fallbackChord,
+      onOpenChord,
+    }: {
+      fallbackChord?: string | null;
+      onOpenChord?: (chordName: string, context?: ChordEvent) => void;
+    }) => (
+      <button onClick={() => onOpenChord?.(fallbackChord ?? "C Major")}>
+        Open {fallbackChord ?? "C Major"}
+      </button>
+    ),
+  }));
   vi.doMock("./components/PianoRoll", () => ({
     PianoRoll: () => <div data-testid="piano-roll" />,
   }));

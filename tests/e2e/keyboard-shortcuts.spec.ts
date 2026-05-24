@@ -23,7 +23,7 @@ test("analyze, playback, and export shortcuts work after importing audio", async
   await page.keyboard.press("a");
   await waitForAnalysisResults(page);
 
-  await page.getByRole("button", { name: "Timeline" }).click();
+  await page.getByTestId("stage-analyze").getByRole("button", { name: "Notes" }).click();
   await page.evaluate(() => {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();

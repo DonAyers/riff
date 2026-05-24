@@ -495,7 +495,7 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     expect(screen.getByTestId("progress-bar-panel")).toHaveTextContent(
-      "Listening for notes"
+      "Mapping chords"
     );
     expect(
       screen.getByText(/the chord map drops in as soon as the pass finishes/i)
@@ -515,15 +515,15 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     expect(screen.queryByText(/ready for a take/i)).not.toBeInTheDocument();
-    expect(screen.getByTestId("chord-display")).toBeInTheDocument();
+    expect(screen.getByTestId("chord-map-explorer")).toBeInTheDocument();
     expect(screen.getByTestId("key-display")).toBeInTheDocument();
-    expect(screen.getByTestId("note-display")).toBeInTheDocument();
+    expect(screen.queryByTestId("note-display")).not.toBeInTheDocument();
     expect(screen.queryByTestId("chord-timeline")).not.toBeInTheDocument();
     expect(screen.queryByTestId("piano-roll")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /timeline/i }));
+    fireEvent.click(screen.getByRole("button", { name: /notes/i }));
 
-    expect(screen.getByTestId("chord-timeline")).toBeInTheDocument();
+    expect(screen.getByTestId("note-display")).toBeInTheDocument();
     expect(screen.getByTestId("piano-roll")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /export/i }));

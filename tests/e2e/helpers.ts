@@ -86,6 +86,11 @@ export async function importFixture(page: Page, fileName = "known-c-major.wav"):
 }
 
 export async function waitForAnalysisResults(page: Page): Promise<void> {
+  await expect(page.getByTestId("chord-map-explorer")).toBeVisible({ timeout: 90000 });
+}
+
+export async function openNotesScreen(page: Page): Promise<void> {
+  await page.getByTestId("stage-analyze").getByRole("button", { name: "Notes" }).click();
   await expect(
     page.getByRole("heading", { level: 2, name: "Notes in this take" })
   ).toBeVisible({ timeout: 90000 });

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoApp, waitForAnalysisResults } from "./helpers";
+import { gotoApp, openNotesScreen, waitForAnalysisResults } from "./helpers";
 
 test("shows demo analysis fallback when microphone permission is denied", async ({ page }) => {
   await page.addInitScript(() => {
@@ -26,10 +26,10 @@ test("shows demo analysis fallback when microphone permission is denied", async 
   await demoButton.click();
 
   await waitForAnalysisResults(page);
+  await openNotesScreen(page);
   await expect(page.locator(".note-chip", { hasText: "C4" })).toBeVisible();
   await expect(page.getByRole("button", { name: /play recording/i })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Timeline" }).click();
   await expect(
     page.locator(".piano-roll").getByRole("button", { name: /play midi preview/i })
   ).toBeVisible();

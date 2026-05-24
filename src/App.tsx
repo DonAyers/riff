@@ -15,7 +15,7 @@ import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
 import { LaneToggle, type Lane } from "./components/LaneToggle";
 import { KeyDisplay } from "./components/KeyDisplay";
-import { ChordTimeline } from "./components/ChordTimeline";
+import { ChordMapExplorer } from "./components/ChordMapExplorer";
 import { NoteDisplay } from "./components/NoteDisplay";
 import { ChordDisplay } from "./components/ChordDisplay";
 import { PianoRoll } from "./components/PianoRoll";
@@ -74,10 +74,10 @@ const CAPTURE_PANEL_COPY = {
 const WORKFLOW_COPY = {
   song: {
     eyebrow: "Screen 03",
-    title: "Analyze notes",
-    description: "Notes, timing, and playback show up here together after approval.",
+    title: "Chord map",
+    description: "Chord changes, shapes, variants, and timing show up here after approval.",
     emptyKicker: "No notes yet",
-    emptyBody: "Approve a take from the record screen and Riff will map the notes here.",
+    emptyBody: "Approve a take from the record screen and Riff will map the chords here.",
   },
   chord: {
     eyebrow: "Screen 03",
@@ -91,8 +91,8 @@ const WORKFLOW_COPY = {
 const ANALYSIS_LOADING_COPY = {
   song: {
     eyebrow: "Analysis in progress",
-    label: "Listening for notes",
-    description: "Riff is checking pitch and timing now. Notes, timing, and playback will show up here together.",
+    label: "Mapping chords",
+    description: "Riff is checking pitch, harmony, and timing now. The chord map will show up here.",
   },
   chord: {
     eyebrow: "Analysis in progress",
@@ -596,8 +596,8 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
 
   const analysisScreens: Array<{ id: AnalysisScreen; label: string }> = isSongLane
     ? [
-        { id: "summary", label: "Summary" },
-        { id: "timeline", label: "Timeline" },
+        { id: "summary", label: "Chords" },
+        { id: "timeline", label: "Notes" },
         { id: "export", label: "Export" },
       ]
     : [
@@ -978,21 +978,22 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                                 <div className="results-song-stack">
                                   <KeyDisplay result={keyDetection} />
                                 </div>
-                                <div className="results-summary">
-                                  <ChordDisplay chordName={chord} onChordSelect={handleChordSelect} />
-                                  <NoteDisplay
-                                    notes={uniqueNotes}
-                                    onNoteClick={(note) => {
-                                      void midiPlayback.previewNote(note);
-                                    }}
-                                  />
-                                </div>
+                                <ChordMapExplorer
+                                  events={chordTimeline}
+                                  fallbackChord={chord}
+                                  onOpenChord={handleChordSelect}
+                                />
                               </>
                             )}
 
                             {analysisScreen === "timeline" && (
                               <>
-                                <ChordTimeline events={chordTimeline} onChordSelect={handleChordSelect} />
+                                <NoteDisplay
+                                  notes={uniqueNotes}
+                                  onNoteClick={(note) => {
+                                    void midiPlayback.previewNote(note);
+                                  }}
+                                />
                                 <PianoRoll
                                   notes={notes}
                                   isPlaying={midiPlayback.isPlaying}
