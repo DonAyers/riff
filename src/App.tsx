@@ -25,6 +25,8 @@ import { SessionPicker } from "./components/SessionPicker";
 import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { GuitarTuner } from "./components/GuitarTuner";
+import { AppTabBar } from "./components/AppTabBar";
+import { Looper } from "./components/Looper";
 import { SongBuilder } from "./components/SongBuilder";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
@@ -53,34 +55,31 @@ const LazySelectedChordDialog = lazy(async () => {
   return { default: module.SelectedChordDialog };
 });
 
-const APP_SUBTITLE = "A pocket studio for turning one take into playable chords.";
 const HOME_PATH = "/";
 const TUNER_PATH = "/tuner";
 const BUILDER_PATH = "/builder";
+const LOOPER_PATH = "/looper";
 const SKIP_DISCARD_CONFIRMATION_KEY = "riff:skip-discard-confirmation";
 
 type WorkspaceRoute = "home" | "builder";
-type AppRoute = WorkspaceRoute | "tuner";
+type AppRoute = WorkspaceRoute | "tuner" | "looper";
 type NavigateToRoute = (pathname: string) => void;
 type HomeStage = "record" | "approve" | "analyze";
 type AnalysisScreen = "summary" | "timeline" | "shape" | "export";
 
 const CAPTURE_PANEL_COPY = {
-  eyebrow: "Screen 01",
   title: "Record",
   description: "Catch a riff, play it back, then decide if it deserves analysis.",
 } as const;
 
 const WORKFLOW_COPY = {
   song: {
-    eyebrow: "Screen 03",
     title: "Chord map",
     description: "Chord changes, shapes, variants, and timing show up here after approval.",
     emptyKicker: "No notes yet",
     emptyBody: "Approve a take from the record screen and Riff will map the chords here.",
   },
   chord: {
-    eyebrow: "Screen 03",
     title: "Analyze chords",
     description: "Key, chord changes, and playable guitar shapes show up here after approval.",
     emptyKicker: "No chords yet",
@@ -112,11 +111,13 @@ function resolveAppRoute(pathname: string): AppRoute {
   const normalized = normalizePathname(pathname);
   if (normalized === TUNER_PATH) return "tuner";
   if (normalized === BUILDER_PATH) return "builder";
+  if (normalized === LOOPER_PATH) return "looper";
   return "home";
 }
 
 function getRoutePathname(route: AppRoute): string {
   if (route === "builder") return BUILDER_PATH;
+  if (route === "looper") return LOOPER_PATH;
   return route === "tuner" ? TUNER_PATH : HOME_PATH;
 }
 
@@ -747,13 +748,7 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
           <header className="app-header">
             <div className="app-header-main">
               <AppTitle navigate={navigate} />
-              <nav className="app-header-actions" aria-label="Primary">
-                <AppRouteLink className="app-nav-link" to={HOME_PATH} navigate={navigate}>
-                  Back to Riff
-                </AppRouteLink>
-                <AppRouteLink className="app-nav-link" to={TUNER_PATH} navigate={navigate}>
-                  Tuner
-                </AppRouteLink>
+              <div className="app-header-actions">
                 <ThemeToggleButton {...themeControls} />
                 <button
                   className="help-btn"
@@ -762,9 +757,8 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                 >
                   <HelpCircle size={18} strokeWidth={1.8} />
                 </button>
-              </nav>
+              </div>
             </div>
-            <p className="tagline">{APP_SUBTITLE}</p>
           </header>
         )}
 
@@ -799,13 +793,7 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                     <span />
                     <span />
                   </div>
-                  <nav className="app-header-actions riff-device__actions" aria-label="Primary">
-                    <AppRouteLink className="app-nav-link" to={BUILDER_PATH} navigate={navigate}>
-                      Builder
-                    </AppRouteLink>
-                    <AppRouteLink className="app-nav-link" to={TUNER_PATH} navigate={navigate}>
-                      Tuner
-                    </AppRouteLink>
+                  <div className="app-header-actions riff-device__actions">
                     <ThemeToggleButton {...themeControls} />
                     <button
                       className="help-btn"
@@ -814,7 +802,7 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                     >
                       <HelpCircle size={16} strokeWidth={1.8} />
                     </button>
-                  </nav>
+                  </div>
                 </div>
               </div>
 
@@ -827,7 +815,6 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
               {homeStage === "record" && (
                 <section className="app-screen app-screen--record" aria-label="Capture" data-testid="stage-record">
                   <div className="workspace-pane__intro">
-                    <span className="workspace-pane__kicker">{CAPTURE_PANEL_COPY.eyebrow}</span>
                     <p className="workspace-pane__description">{CAPTURE_PANEL_COPY.description}</p>
                   </div>
                   <div className="recorder-card">
@@ -850,7 +837,6 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
               {homeStage === "approve" && (
                 <section className="app-screen app-screen--approve" aria-label="Approve take" data-testid="stage-approve">
                   <div className="take-card">
-                    <span className="workspace-pane__kicker">Screen 02</span>
                     <h2>Keep this take?</h2>
                     <p>Listen once. If the idea is there, send it to chord analysis. If not, toss it and record again.</p>
                     <Playback
@@ -914,7 +900,6 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                   <div className="analysis-panel">
                     <div className="analysis-panel__header">
                       <div className="analysis-panel__intro">
-                        <span className="analysis-panel__eyebrow">{activeWorkflow.eyebrow}</span>
                         <p className="analysis-panel__description">{activeWorkflow.description}</p>
                       </div>
                       <LaneToggle activeLane={activeLane} onChange={handleLaneChange} />
@@ -1184,40 +1169,33 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
   );
 }
 
-interface TunerRouteProps {
+interface ToolRouteProps {
   navigate: NavigateToRoute;
   themeControls: ThemeControls;
+  title: string;
+  description: string;
+  children: ReactNode;
 }
 
-function TunerRoute({ navigate, themeControls }: TunerRouteProps) {
+function ToolRoute({ navigate, themeControls, title, description, children }: ToolRouteProps) {
   return (
     <div className="app">
       <div className="app-shell app-shell--single">
         <header className="app-header">
           <div className="app-header-main">
             <AppTitle navigate={navigate} />
-            <nav className="app-header-actions" aria-label="Primary">
-              <AppRouteLink className="app-nav-link" to={HOME_PATH} navigate={navigate}>
-                Back to Riff
-              </AppRouteLink>
-              <AppRouteLink className="app-nav-link" to={BUILDER_PATH} navigate={navigate}>
-                Builder
-              </AppRouteLink>
+            <div className="app-header-actions">
               <ThemeToggleButton {...themeControls} />
-            </nav>
+            </div>
           </div>
-          <p className="tagline">Tune up quickly without loading the recording workspace.</p>
         </header>
 
         <main className="tuner-page">
           <div className="workspace-pane__intro tuner-page__intro">
-            <span className="workspace-pane__kicker">Utility</span>
-            <h2 className="workspace-pane__title">Guitar tuner</h2>
-            <p className="workspace-pane__description">
-              A focused page for checking standard EADGBE tuning before capture.
-            </p>
+            <h2 className="workspace-pane__title">{title}</h2>
+            <p className="workspace-pane__description">{description}</p>
           </div>
-          <GuitarTuner />
+          {children}
         </main>
 
         <BuildBadge />
@@ -1261,7 +1239,27 @@ function App() {
           themeControls={themeControls}
         />
       )}
-      {route === "tuner" && <TunerRoute navigate={navigate} themeControls={themeControls} />}
+      {route === "tuner" && (
+        <ToolRoute
+          navigate={navigate}
+          themeControls={themeControls}
+          title="Guitar tuner"
+          description="Pick a tuning, pluck one string, and follow the note."
+        >
+          <GuitarTuner />
+        </ToolRoute>
+      )}
+      {route === "looper" && (
+        <ToolRoute
+          navigate={navigate}
+          themeControls={themeControls}
+          title="Looper"
+          description="Lay down a loop, then stack up to three more parts on top."
+        >
+          <Looper />
+        </ToolRoute>
+      )}
+      <AppTabBar activeTab={route} navigate={navigate} />
     </>
   );
 }

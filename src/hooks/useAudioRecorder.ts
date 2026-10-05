@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import audioCaptureWorkletUrl from "../worklets/audio-capture.worklet?url";
+import audioCaptureWorkletUrl from "../worklets/audio-capture.worklet?worker&url";
 import { ANALYSIS_SAMPLE_RATE, type PreparedAudio } from "../lib/audioData";
 
 export type RecorderState = "idle" | "recording" | "processing";

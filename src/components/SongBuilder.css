@@ -1138,7 +1138,7 @@
     position: fixed;
     left: max(1rem, env(safe-area-inset-left));
     right: max(1rem, env(safe-area-inset-right));
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    bottom: calc(var(--tab-bar-space) + 0.5rem);
     z-index: 4;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

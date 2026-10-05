@@ -1,0 +1,353 @@
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useLooper } from "./useLooper";
+
+vi.mock("../worklets/looper-capture.worklet?worker&url", () => ({
+  default: "looper-capture.worklet.js",
+}));
+
+const SAMPLE_RATE = 48000;
+
+interface MockBufferSource {
+  buffer: { length: number; data: Float32Array } | null;
+  loop: boolean;
+  start: ReturnType<typeof vi.fn>;
+  stop: ReturnType<typeof vi.fn>;
+  connect: ReturnType<typeof vi.fn>;
+  disconnect: ReturnType<typeof vi.fn>;
+  onended: null;
+}
+
+function connectable<T extends object>(node: T) {
+  return Object.assign(node, {
+    connect: vi.fn((target: unknown) => target),
+    disconnect: vi.fn(),
+  });
+}
+
+function createAudioMocks() {
+  const sources: MockBufferSource[] = [];
+  const gains: { gain: { value: number; setTargetAtTime: ReturnType<typeof vi.fn> } }[] = [];
+  let workletPort: { onmessage: ((event: { data: unknown }) => void) | null } = { onmessage: null };
+  const context = {
+    currentTime: 0,
+    sampleRate: SAMPLE_RATE,
+    state: "running",
+    baseLatency: 0.01,
+    outputLatency: 0.02,
+    destination: {},
+    resume: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+    audioWorklet: { addModule: vi.fn().mockResolvedValue(undefined) },
+    createMediaStreamSource: vi.fn(() => connectable({})),
+    createGain: vi.fn(() => {
+      const gain = connectable({ gain: { value: 1, setTargetAtTime: vi.fn() } });
+      gains.push(gain);
+      return gain;
+    }),
+    createBuffer: vi.fn((_channels: number, length: number) => {
+      const data = new Float32Array(length);
+      return { length, data, copyToChannel: (samples: Float32Array) => data.set(samples) };
+    }),
+    createBufferSource: vi.fn(() => {
+      const source = connectable({
+        buffer: null,
+        loop: false,
+        start: vi.fn(),
+        stop: vi.fn(),
+        onended: null,
+      }) as MockBufferSource;
+      sources.push(source);
+      return source;
+    }),
+  };
+
+  vi.stubGlobal("AudioContext", function MockAudioContext() {
+    return context;
+  });
+  vi.stubGlobal("AudioWorkletNode", function MockAudioWorkletNode() {
+    const node = connectable({ port: { onmessage: null } });
+    workletPort = node.port;
+    return node;
+  });
+
+  /** Delivers captured frames [fromFrame, toFrame) where each sample's value is its frame / 1e6. */
+  function deliverFrames(fromFrame: number, toFrame: number) {
+    for (let start = fromFrame; start < toFrame; start += 2048) {
+      const samples = new Float32Array(Math.min(2048, toFrame - start));
+      for (let i = 0; i < samples.length; i += 1) samples[i] = (start + i) / 1e6;
+      workletPort.onmessage?.({ data: { startFrame: start, samples } });
+    }
+  }
+
+  return { context, sources, gains, deliverFrames };
+}
+
+describe("useLooper", () => {
+  const getUserMedia = vi.fn();
+  const stopTrack = vi.fn();
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    getUserMedia.mockReset();
+    stopTrack.mockReset();
+    getUserMedia.mockResolvedValue({
+      getTracks: () => [{ stop: stopTrack }],
+      getAudioTracks: () => [{ getSettings: () => ({}) }],
+    });
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia } });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  async function recordFirstLoop(
+    mocks: ReturnType<typeof createAudioMocks>,
+    result: { current: ReturnType<typeof useLooper> }
+  ) {
+    mocks.context.currentTime = 1;
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+    mocks.context.currentTime = 3;
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+    act(() => {
+      mocks.deliverFrames(1 * SAMPLE_RATE, 3 * SAMPLE_RATE + 2048);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30);
+    });
+  }
+
+  it("opens a raw microphone and sets the loop length from the first take", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+
+    await recordFirstLoop(mocks, result);
+
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: expect.objectContaining({
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      }),
+    });
+    expect(result.current.loopDurationS).toBe(2);
+    expect(result.current.isPlaying).toBe(true);
+    expect(result.current.tracks[0].status).toBe("playing");
+    expect(result.current.tracks[0].peaks.length).toBeGreaterThan(0);
+
+    const [player] = mocks.sources;
+    expect(player.loop).toBe(true);
+    expect(player.buffer?.length).toBe(2 * SAMPLE_RATE);
+    // The loop seam is the stop press at t=3 s, so starting 30 ms later starts 30 ms in.
+    expect(player.start).toHaveBeenCalledWith(expect.closeTo(3.03, 6), expect.closeTo(0.03, 6));
+    expect(player.buffer?.data[SAMPLE_RATE]).toBeCloseTo((1 * SAMPLE_RATE + SAMPLE_RATE) / 1e6, 6);
+  });
+
+  it("resets the loop when it is stopped before the first take is committed", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+
+    mocks.context.currentTime = 1;
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+    mocks.context.currentTime = 3;
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+    // The capture has not delivered the take yet, and the player taps Stop.
+    act(() => {
+      result.current.togglePlayback();
+    });
+
+    expect(result.current.loopDurationS).toBeNull();
+    expect(result.current.isPlaying).toBe(false);
+    expect(result.current.tracks[0].status).toBe("empty");
+
+    // A late capture must not resurrect the cancelled take.
+    act(() => {
+      mocks.deliverFrames(1 * SAMPLE_RATE, 3 * SAMPLE_RATE + 2048);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60);
+    });
+    expect(mocks.sources).toHaveLength(0);
+  });
+
+  it("rejects a first loop that is too short", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+
+    mocks.context.currentTime = 1;
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+    mocks.context.currentTime = 1.2;
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+
+    expect(result.current.loopDurationS).toBeNull();
+    expect(result.current.tracks[0].status).toBe("empty");
+    expect(result.current.error).toMatch(/at least/);
+  });
+
+  it("records overdubs from the next loop start, shifted by the round-trip latency", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+
+    mocks.context.currentTime = 3.5;
+    await act(async () => {
+      await result.current.toggleRecord(1);
+    });
+    expect(result.current.tracks[1].status).toBe("armed");
+
+    // Next loop start after t=3.6 s is t=5 s; round trip = 10 ms base + 20 ms output.
+    const fromFrame = 5 * SAMPLE_RATE + Math.round(0.03 * SAMPLE_RATE);
+    mocks.context.currentTime = 5;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    expect(result.current.tracks[1].status).toBe("recording");
+
+    mocks.context.currentTime = 7.1;
+    act(() => {
+      mocks.deliverFrames(5 * SAMPLE_RATE, fromFrame + 2 * SAMPLE_RATE + 2048);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2100);
+    });
+
+    expect(result.current.tracks[1].status).toBe("playing");
+    const overdub = mocks.sources[mocks.sources.length - 1];
+    expect(overdub.buffer?.length).toBe(2 * SAMPLE_RATE);
+    expect(overdub.buffer?.data[1000]).toBeCloseTo((fromFrame + 1000) / 1e6, 6);
+    // Started mid-loop, at the same loop position as track 1.
+    const [whenS, offsetS] = overdub.start.mock.calls[0] as [number, number];
+    expect(offsetS).toBeCloseTo((((whenS - 3) % 2) + 2) % 2, 6);
+  });
+
+  it("applies the saved latency nudge to overdubs", async () => {
+    localStorage.setItem("riff:looper-latency-nudge-ms", "100");
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    expect(result.current.latencyNudgeMs).toBe(100);
+    await recordFirstLoop(mocks, result);
+
+    mocks.context.currentTime = 3.5;
+    await act(async () => {
+      await result.current.toggleRecord(1);
+    });
+    const fromFrame = 5 * SAMPLE_RATE + Math.round(0.13 * SAMPLE_RATE);
+    mocks.context.currentTime = 7.2;
+    act(() => {
+      mocks.deliverFrames(5 * SAMPLE_RATE, fromFrame + 2 * SAMPLE_RATE + 2048);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+
+    const overdub = mocks.sources[mocks.sources.length - 1];
+    expect(overdub.buffer?.data[1000]).toBeCloseTo((fromFrame + 1000) / 1e6, 6);
+
+    act(() => {
+      result.current.setLatencyNudgeMs(999);
+    });
+    expect(result.current.latencyNudgeMs).toBe(300);
+  });
+
+  it("cancels an armed overdub and keeps the loop playing", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+
+    await act(async () => {
+      await result.current.toggleRecord(2);
+    });
+    await act(async () => {
+      await result.current.toggleRecord(2);
+    });
+
+    expect(result.current.tracks[2].status).toBe("empty");
+    expect(result.current.isPlaying).toBe(true);
+  });
+
+  it("mutes with a ramp, stops, restarts from the top and clears", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+
+    act(() => {
+      result.current.toggleMute(0);
+    });
+    expect(result.current.tracks[0].muted).toBe(true);
+    // gains[0] is the silent capture sink; track gains follow.
+    expect(mocks.gains[1].gain.setTargetAtTime).toHaveBeenCalledWith(0, 3, 0.01);
+
+    act(() => {
+      result.current.togglePlayback();
+    });
+    expect(result.current.isPlaying).toBe(false);
+    expect(mocks.sources[0].stop).toHaveBeenCalled();
+
+    mocks.context.currentTime = 10;
+    act(() => {
+      result.current.togglePlayback();
+    });
+    expect(result.current.isPlaying).toBe(true);
+    expect(mocks.sources[mocks.sources.length - 1].start).toHaveBeenCalledWith(10.03, 0);
+
+    act(() => {
+      result.current.clearAll();
+    });
+    expect(result.current.loopDurationS).toBeNull();
+    expect(result.current.isPlaying).toBe(false);
+    expect(result.current.tracks.every((track) => track.status === "empty")).toBe(true);
+  });
+
+  it("reports a microphone failure", async () => {
+    createAudioMocks();
+    getUserMedia.mockRejectedValue(new Error("Permission denied"));
+    const { result } = renderHook(() => useLooper());
+
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+
+    expect(result.current.error).toBe("Microphone unavailable: Permission denied");
+    expect(result.current.tracks[0].status).toBe("empty");
+  });
+
+  it("stops the microphone if the capture worklet fails to load", async () => {
+    const mocks = createAudioMocks();
+    mocks.context.audioWorklet.addModule.mockRejectedValueOnce(new Error("worklet failed"));
+    const { result } = renderHook(() => useLooper());
+
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+
+    expect(result.current.error).toBe("Microphone unavailable: worklet failed");
+    expect(stopTrack).toHaveBeenCalled();
+    expect(mocks.context.close).toHaveBeenCalled();
+  });
+
+  it("releases the microphone and audio context on unmount", async () => {
+    const mocks = createAudioMocks();
+    const { result, unmount } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+
+    unmount();
+
+    expect(stopTrack).toHaveBeenCalled();
+    expect(mocks.context.close).toHaveBeenCalled();
+  });
+});

@@ -33,7 +33,32 @@ describe("useGuitarTuner", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    localStorage.clear();
   });
+
+  function stubAnalyserFrequency(getFrequency: () => number) {
+    const source = { connect: vi.fn(), disconnect: vi.fn() };
+    const analyser = {
+      fftSize: 0,
+      smoothingTimeConstant: 0,
+      disconnect: vi.fn(),
+      getFloatTimeDomainData: vi.fn((buffer: Float32Array) => {
+        fillSineWave(buffer, getFrequency(), 44100);
+      }),
+    };
+    const audioContext = {
+      sampleRate: 44100,
+      state: "running",
+      close: vi.fn().mockResolvedValue(undefined),
+      resume: vi.fn().mockResolvedValue(undefined),
+      createAnalyser: vi.fn(() => analyser),
+      createMediaStreamSource: vi.fn(() => source),
+    };
+    vi.stubGlobal("AudioContext", function MockAudioContext() {
+      return audioContext;
+    });
+    return { source, analyser, audioContext };
+  }
 
   it("starts microphone analysis and exposes tuning readings", async () => {
     const stopTrack = vi.fn();
@@ -82,7 +107,7 @@ describe("useGuitarTuner", () => {
         channelCount: { ideal: 1 },
       },
     });
-    expect(analyser.fftSize).toBe(8192);
+    expect(analyser.fftSize).toBe(4096);
     expect(source.connect).toHaveBeenCalledWith(analyser);
 
     await act(async () => {
@@ -253,5 +278,112 @@ describe("useGuitarTuner", () => {
 
     expect(result.current.state).toBe("idle");
     expect(result.current.error).toBe("permission denied");
+  });
+
+  it("turns off voice isolation when the browser supports that constraint", async () => {
+    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
+    vi.stubGlobal("navigator", {
+      mediaDevices: {
+        getUserMedia,
+        getSupportedConstraints: () => ({ voiceIsolation: true }),
+      },
+    });
+    stubAnalyserFrequency(() => 110);
+
+    const { result } = renderHook(() => useGuitarTuner());
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: expect.objectContaining({ voiceIsolation: false, echoCancellation: false }),
+    });
+  });
+
+  it("holds a screen wake lock while listening and releases it on stop", async () => {
+    const release = vi.fn().mockResolvedValue(undefined);
+    const request = vi.fn().mockResolvedValue({ release });
+    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia }, wakeLock: { request } });
+    stubAnalyserFrequency(() => 110);
+
+    const { result } = renderHook(() => useGuitarTuner());
+    await act(async () => {
+      await result.current.start();
+    });
+
+    expect(request).toHaveBeenCalledWith("screen");
+
+    act(() => {
+      result.current.stop();
+    });
+
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases a wake lock that resolves after the tuner already stopped", async () => {
+    const release = vi.fn().mockResolvedValue(undefined);
+    let resolveRequest: (sentinel: { release: typeof release }) => void = () => undefined;
+    const request = vi.fn(
+      () => new Promise<{ release: typeof release }>((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
+    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia }, wakeLock: { request } });
+    stubAnalyserFrequency(() => 110);
+
+    const { result } = renderHook(() => useGuitarTuner());
+    await act(async () => {
+      await result.current.start();
+    });
+    act(() => {
+      result.current.stop();
+    });
+    await act(async () => {
+      resolveRequest({ release });
+    });
+
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it("measures against a locked string", async () => {
+    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
+    stubAnalyserFrequency(() => 100);
+
+    const { result } = renderHook(() => useGuitarTuner());
+    act(() => {
+      result.current.setLockedStringId("a2");
+    });
+    await act(async () => {
+      await result.current.start();
+    });
+    await act(async () => {
+      rafCallback?.(0);
+    });
+
+    expect(result.current.lockedStringId).toBe("a2");
+    expect(result.current.reading?.target.id).toBe("a2");
+    expect(result.current.reading?.cents).toBeLessThan(-100);
+  });
+
+  it("persists the tuning and a clamped reference pitch", () => {
+    const { result, unmount } = renderHook(() => useGuitarTuner());
+
+    act(() => {
+      result.current.setLockedStringId("e2");
+      result.current.setTuningId("drop-d");
+      result.current.setA4Hz(470);
+    });
+
+    expect(result.current.tuning.id).toBe("drop-d");
+    expect(result.current.strings[0].note).toBe("D2");
+    expect(result.current.lockedStringId).toBeNull();
+    expect(result.current.a4Hz).toBe(450);
+    unmount();
+
+    const { result: next } = renderHook(() => useGuitarTuner());
+    expect(next.current.tuning.id).toBe("drop-d");
+    expect(next.current.a4Hz).toBe(450);
   });
 });

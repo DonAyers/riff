@@ -23,6 +23,7 @@
   --accent-dim: rgba(225, 252, 110, 0.14);
   --accent-glow: rgba(225, 252, 110, 0.34);
   --danger: #ff684d;
+  --success: #5ee88c;
   --ember: #ff9f45;
   --magnetic: #4de1ff;
   --on-accent: #111308;
@@ -93,6 +94,7 @@
   --accent-dim: rgba(95, 113, 0, 0.12);
   --accent-glow: rgba(95, 113, 0, 0.2);
   --danger: #bf3b2d;
+  --success: #17803f;
   --ember: #b76513;
   --magnetic: #087f95;
   --on-accent: #fffbea;

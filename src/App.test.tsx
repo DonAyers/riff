@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import App from "./App";
 import { useRiffSession } from "./hooks/useRiffSession";
@@ -94,6 +94,9 @@ vi.mock("./components/OnboardingSheet", () => ({
 }));
 vi.mock("./components/GuitarTuner", () => ({
   GuitarTuner: () => <div data-testid="guitar-tuner" />,
+}));
+vi.mock("./components/Looper", () => ({
+  Looper: () => <div data-testid="looper" />,
 }));
 vi.mock("./components/SongBuilder", () => ({
   SongBuilder: () => <div data-testid="song-builder" />,
@@ -284,10 +287,12 @@ describe("App mic permission fallback", () => {
       screen.queryByText("A pocket studio for turning one take into playable chords.")
     ).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /record/i })).toBeInTheDocument();
-    expect(screen.getByText(/screen 01/i)).toBeInTheDocument();
+    expect(screen.queryByText(/screen 01/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("list", { name: /recording flow/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /builder/i })).toHaveAttribute("href", "/builder");
-    expect(screen.getByRole("link", { name: /tuner/i })).toHaveAttribute("href", "/tuner");
+    const primaryNav = screen.getByRole("navigation", { name: /primary/i });
+    expect(within(primaryNav).getByRole("link", { name: /record/i })).toHaveAttribute("aria-current", "page");
+    expect(within(primaryNav).getByRole("link", { name: /builder/i })).toHaveAttribute("href", "/builder");
+    expect(within(primaryNav).getByRole("link", { name: /tuner/i })).toHaveAttribute("href", "/tuner");
     expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
   });
 
@@ -398,6 +403,25 @@ describe("App mic permission fallback", () => {
     expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
   });
 
+  it("renders the looper on its own route and returns to recording from the tab bar", () => {
+    window.history.replaceState(null, "", "/looper");
+    useRiffSessionMock.mockReturnValue(
+      createSessionState() as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByRole("heading", { level: 2, name: /looper/i })).toBeInTheDocument();
+    expect(screen.getByTestId("looper")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Looper" })).toHaveAttribute("aria-current", "page");
+    expect(useRiffSessionMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("link", { name: /^record$/i }));
+
+    expect(screen.getByTestId("recorder")).toBeInTheDocument();
+    expect(screen.queryByTestId("looper")).not.toBeInTheDocument();
+  });
+
   it("renders the guitar tuner only on its dedicated route", () => {
     window.history.replaceState(null, "", "/tuner");
     useRiffSessionMock.mockReturnValue(
@@ -411,7 +435,7 @@ describe("App mic permission fallback", () => {
     expect(screen.queryByTestId("recorder")).not.toBeInTheDocument();
     expect(useRiffSessionMock).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("link", { name: /back to riff/i }));
+    fireEvent.click(screen.getByRole("link", { name: /^record$/i }));
 
     expect(screen.getByTestId("recorder")).toBeInTheDocument();
     expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
@@ -435,7 +459,7 @@ describe("App mic permission fallback", () => {
     fireEvent.keyDown(window, { key: "r" });
     expect(handleStart).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("link", { name: /back to riff/i }));
+    fireEvent.click(screen.getByRole("link", { name: /^record$/i }));
 
     expect(workspace).not.toHaveAttribute("hidden");
     expect(screen.getByRole("region", { name: /capture/i })).toBeInTheDocument();

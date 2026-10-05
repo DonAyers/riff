@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAudioRecorder } from "./useAudioRecorder";
 import type { PreparedAudio } from "../lib/audioData";
 
-vi.mock("../worklets/audio-capture.worklet?url", () => ({
+vi.mock("../worklets/audio-capture.worklet?worker&url", () => ({
   default: "/mock-audio-capture.worklet.js",
 }));
 
