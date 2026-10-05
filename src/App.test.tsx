@@ -95,6 +95,9 @@ vi.mock("./components/OnboardingSheet", () => ({
 vi.mock("./components/GuitarTuner", () => ({
   GuitarTuner: () => <div data-testid="guitar-tuner" />,
 }));
+vi.mock("./components/Looper", () => ({
+  Looper: () => <div data-testid="looper" />,
+}));
 vi.mock("./components/SongBuilder", () => ({
   SongBuilder: () => <div data-testid="song-builder" />,
 }));
@@ -398,6 +401,25 @@ describe("App mic permission fallback", () => {
     expect(screen.getByTestId("song-builder")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: /analysis/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
+  });
+
+  it("renders the looper on its own route and returns to recording from the tab bar", () => {
+    window.history.replaceState(null, "", "/looper");
+    useRiffSessionMock.mockReturnValue(
+      createSessionState() as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByRole("heading", { level: 2, name: /looper/i })).toBeInTheDocument();
+    expect(screen.getByTestId("looper")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Looper" })).toHaveAttribute("aria-current", "page");
+    expect(useRiffSessionMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("link", { name: /^record$/i }));
+
+    expect(screen.getByTestId("recorder")).toBeInTheDocument();
+    expect(screen.queryByTestId("looper")).not.toBeInTheDocument();
   });
 
   it("renders the guitar tuner only on its dedicated route", () => {

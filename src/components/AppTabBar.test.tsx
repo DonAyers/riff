@@ -11,6 +11,7 @@ describe("AppTabBar", () => {
     expect(screen.getByRole("link", { name: "Record" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "Builder" })).toHaveAttribute("href", "/builder");
     expect(screen.getByRole("link", { name: "Tuner" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Looper" })).toHaveAttribute("href", "/looper");
     expect(screen.getByRole("link", { name: "Record" })).not.toHaveAttribute("aria-current");
   });
 

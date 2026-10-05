@@ -1,8 +1,8 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { Gauge, LayoutGrid, Mic } from "lucide-react";
+import { Gauge, LayoutGrid, Mic, Repeat } from "lucide-react";
 import "./AppTabBar.css";
 
-export type AppTab = "home" | "builder" | "tuner";
+export type AppTab = "home" | "builder" | "tuner" | "looper";
 
 interface AppTabBarProps {
   activeTab: AppTab;
@@ -13,6 +13,7 @@ const TABS = [
   { id: "home", label: "Record", href: "/", Icon: Mic },
   { id: "builder", label: "Builder", href: "/builder", Icon: LayoutGrid },
   { id: "tuner", label: "Tuner", href: "/tuner", Icon: Gauge },
+  { id: "looper", label: "Looper", href: "/looper", Icon: Repeat },
 ] as const satisfies readonly { id: AppTab; label: string; href: string; Icon: typeof Mic }[];
 
 export function AppTabBar({ activeTab, navigate }: AppTabBarProps) {

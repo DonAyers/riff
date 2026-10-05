@@ -26,6 +26,7 @@ import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { GuitarTuner } from "./components/GuitarTuner";
 import { AppTabBar } from "./components/AppTabBar";
+import { Looper } from "./components/Looper";
 import { SongBuilder } from "./components/SongBuilder";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
@@ -57,10 +58,11 @@ const LazySelectedChordDialog = lazy(async () => {
 const HOME_PATH = "/";
 const TUNER_PATH = "/tuner";
 const BUILDER_PATH = "/builder";
+const LOOPER_PATH = "/looper";
 const SKIP_DISCARD_CONFIRMATION_KEY = "riff:skip-discard-confirmation";
 
 type WorkspaceRoute = "home" | "builder";
-type AppRoute = WorkspaceRoute | "tuner";
+type AppRoute = WorkspaceRoute | "tuner" | "looper";
 type NavigateToRoute = (pathname: string) => void;
 type HomeStage = "record" | "approve" | "analyze";
 type AnalysisScreen = "summary" | "timeline" | "shape" | "export";
@@ -109,11 +111,13 @@ function resolveAppRoute(pathname: string): AppRoute {
   const normalized = normalizePathname(pathname);
   if (normalized === TUNER_PATH) return "tuner";
   if (normalized === BUILDER_PATH) return "builder";
+  if (normalized === LOOPER_PATH) return "looper";
   return "home";
 }
 
 function getRoutePathname(route: AppRoute): string {
   if (route === "builder") return BUILDER_PATH;
+  if (route === "looper") return LOOPER_PATH;
   return route === "tuner" ? TUNER_PATH : HOME_PATH;
 }
 
@@ -1165,12 +1169,15 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
   );
 }
 
-interface TunerRouteProps {
+interface ToolRouteProps {
   navigate: NavigateToRoute;
   themeControls: ThemeControls;
+  title: string;
+  description: string;
+  children: ReactNode;
 }
 
-function TunerRoute({ navigate, themeControls }: TunerRouteProps) {
+function ToolRoute({ navigate, themeControls, title, description, children }: ToolRouteProps) {
   return (
     <div className="app">
       <div className="app-shell app-shell--single">
@@ -1185,12 +1192,10 @@ function TunerRoute({ navigate, themeControls }: TunerRouteProps) {
 
         <main className="tuner-page">
           <div className="workspace-pane__intro tuner-page__intro">
-            <h2 className="workspace-pane__title">Guitar tuner</h2>
-            <p className="workspace-pane__description">
-              Pick a tuning, pluck one string, and follow the note.
-            </p>
+            <h2 className="workspace-pane__title">{title}</h2>
+            <p className="workspace-pane__description">{description}</p>
           </div>
-          <GuitarTuner />
+          {children}
         </main>
 
         <BuildBadge />
@@ -1234,7 +1239,26 @@ function App() {
           themeControls={themeControls}
         />
       )}
-      {route === "tuner" && <TunerRoute navigate={navigate} themeControls={themeControls} />}
+      {route === "tuner" && (
+        <ToolRoute
+          navigate={navigate}
+          themeControls={themeControls}
+          title="Guitar tuner"
+          description="Pick a tuning, pluck one string, and follow the note."
+        >
+          <GuitarTuner />
+        </ToolRoute>
+      )}
+      {route === "looper" && (
+        <ToolRoute
+          navigate={navigate}
+          themeControls={themeControls}
+          title="Looper"
+          description="Lay down a loop, then stack up to three more parts on top."
+        >
+          <Looper />
+        </ToolRoute>
+      )}
       <AppTabBar activeTab={route} navigate={navigate} />
     </>
   );
