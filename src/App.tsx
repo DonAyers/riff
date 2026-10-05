@@ -1214,7 +1214,7 @@ function TunerRoute({ navigate, themeControls }: TunerRouteProps) {
             <span className="workspace-pane__kicker">Utility</span>
             <h2 className="workspace-pane__title">Guitar tuner</h2>
             <p className="workspace-pane__description">
-              A focused page for checking standard EADGBE tuning before capture.
+              Pick a tuning, pluck one string, and follow the note.
             </p>
           </div>
           <GuitarTuner />

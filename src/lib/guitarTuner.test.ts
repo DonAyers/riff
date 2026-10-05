@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createTuningStabilizer,
-  detectPitchYin,
+  buildStringTargets,
+  createPitchDetector,
   frequencyToNoteName,
+  getTuningPreset,
   getTuningReading,
   STANDARD_GUITAR_STRINGS,
   type TuningReading,
@@ -24,7 +26,7 @@ function tuningReading(cents: number, target = STANDARD_GUITAR_STRINGS[1]): Tuni
     detectedNote: target.note,
     target,
     cents,
-    inTune: Math.abs(cents) <= 5,
+    inTune: Math.abs(cents) <= 3,
     clarity: 0.98,
   };
 }
@@ -115,7 +117,8 @@ describe("guitarTuner", () => {
 
   it("detects a stable monophonic guitar pitch", () => {
     const sampleRate = 44100;
-    const estimate = detectPitchYin(sineWave(110, sampleRate, 0.1), sampleRate);
+    const detect = createPitchDetector(4096);
+    const estimate = detect(sineWave(110, sampleRate, 4096 / sampleRate), sampleRate);
 
     expect(estimate).not.toBeNull();
     expect(estimate?.frequencyHz).toBeCloseTo(110, 1);
@@ -137,7 +140,9 @@ describe("guitarTuner", () => {
     const stabilizer = createTuningStabilizer();
 
     stabilizer.update(tuningReading(30, STANDARD_GUITAR_STRINGS[1]), 0);
-    const switchedReading = stabilizer.update(tuningReading(-24, STANDARD_GUITAR_STRINGS[0]), 16);
+    stabilizer.update(tuningReading(-24, STANDARD_GUITAR_STRINGS[0]), 16);
+    stabilizer.update(tuningReading(-24, STANDARD_GUITAR_STRINGS[0]), 32);
+    const switchedReading = stabilizer.update(tuningReading(-24, STANDARD_GUITAR_STRINGS[0]), 48);
 
     expect(switchedReading?.target.note).toBe("E2");
     expect(switchedReading?.cents).toBeCloseTo(-24, 3);
@@ -150,14 +155,116 @@ describe("guitarTuner", () => {
     const heldReading = stabilizer.update(null, 1050);
     const expiredReading = stabilizer.update(null, 1150);
 
-    expect(heldReading).toBe(stableReading);
+    expect(heldReading).toEqual({ ...stableReading, held: true });
     expect(expiredReading).toBeNull();
   });
 
   it("ignores quiet input", () => {
     const sampleRate = 44100;
-    const estimate = detectPitchYin(sineWave(110, sampleRate, 0.1, 0.001), sampleRate);
+    const detect = createPitchDetector(4096);
+    const estimate = detect(sineWave(110, sampleRate, 4096 / sampleRate, 0.001), sampleRate);
 
     expect(estimate).toBeNull();
+  });
+
+  it("finds the fundamental of a plucked string with a louder second harmonic", () => {
+    const sampleRate = 48000;
+    const samples = new Float32Array(4096);
+    for (let i = 0; i < samples.length; i += 1) {
+      const t = i / sampleRate;
+      samples[i] =
+        0.06 * Math.sin(2 * Math.PI * 82.4069 * t) +
+        0.3 * Math.sin(2 * Math.PI * 164.8138 * t + 1) +
+        0.18 * Math.sin(2 * Math.PI * 247.2207 * t + 2);
+    }
+
+    const estimate = createPitchDetector(4096)(samples, sampleRate);
+
+    expect(estimate?.frequencyHz).toBeCloseTo(82.4069, 0);
+  });
+
+  it("rejects frames of the wrong length or out of range pitches", () => {
+    const detect = createPitchDetector(4096, { maxFrequencyHz: 400 });
+
+    expect(detect(sineWave(110, 44100, 0.05), 44100)).toBeNull();
+    expect(detect(sineWave(880, 44100, 4096 / 44100), 44100)).toBeNull();
+  });
+
+  it("builds string targets for alternate tunings and reference pitches", () => {
+    const dropD = buildStringTargets(getTuningPreset("drop-d"));
+    const dadgad = buildStringTargets(getTuningPreset("dadgad"));
+    const standard432 = buildStringTargets(getTuningPreset("standard"), 432);
+
+    expect(dropD[0]).toMatchObject({ note: "D2", stringNumber: 6 });
+    expect(dropD[0].frequencyHz).toBeCloseTo(73.4162, 3);
+    expect(dadgad.map((string) => string.label)).toEqual([
+      "Low D",
+      "Low A",
+      "D",
+      "G",
+      "High A",
+      "High D",
+    ]);
+    expect(new Set(dadgad.map((string) => string.id)).size).toBe(6);
+    expect(standard432[1].frequencyHz).toBeCloseTo(108, 3);
+    expect(getTuningPreset("missing").id).toBe("standard");
+  });
+
+  it("targets drop D low string instead of standard low E", () => {
+    const reading = getTuningReading(
+      { frequencyHz: 73.8, clarity: 0.95, rms: 0.2 },
+      { strings: buildStringTargets(getTuningPreset("drop-d")) }
+    );
+
+    expect(reading.target.note).toBe("D2");
+    expect(reading.cents).toBeGreaterThan(5);
+  });
+
+  it("measures against a locked string and folds octave errors onto it", () => {
+    const reading = getTuningReading(
+      { frequencyHz: 164.0, clarity: 0.95, rms: 0.2 },
+      { lockedStringId: "e2" }
+    );
+    const farReading = getTuningReading(
+      { frequencyHz: 100, clarity: 0.95, rms: 0.2 },
+      { lockedStringId: "a2" }
+    );
+
+    expect(reading.target.id).toBe("e2");
+    expect(reading.frequencyHz).toBeCloseTo(82, 3);
+    expect(reading.cents).toBeLessThan(0);
+    expect(farReading.target.id).toBe("a2");
+    expect(farReading.cents).toBeLessThan(-100);
+  });
+
+  it("uses tighter enter and looser exit thresholds for in-tune feedback", () => {
+    const stabilizer = createTuningStabilizer({ minCutoffHz: 1000 });
+
+    expect(stabilizer.update(tuningReading(4), 0)?.inTune).toBe(false);
+    expect(stabilizer.update(tuningReading(2.5), 16)?.inTune).toBe(true);
+    expect(stabilizer.update(tuningReading(4.5), 32)?.inTune).toBe(true);
+    expect(stabilizer.update(tuningReading(6), 48)?.inTune).toBe(false);
+  });
+
+  it("ignores a single-frame jump to another string while a note rings", () => {
+    const stabilizer = createTuningStabilizer();
+
+    stabilizer.update(tuningReading(1, STANDARD_GUITAR_STRINGS[1]), 0);
+    const blip = stabilizer.update(tuningReading(0, STANDARD_GUITAR_STRINGS[2]), 16);
+    const back = stabilizer.update(tuningReading(1, STANDARD_GUITAR_STRINGS[1]), 32);
+
+    expect(blip?.target.id).toBe("a2");
+    expect(back?.target.id).toBe("a2");
+  });
+
+  it("switches strings at once when a new string is plucked after silence", () => {
+    const stabilizer = createTuningStabilizer();
+
+    stabilizer.update(tuningReading(1, STANDARD_GUITAR_STRINGS[1]), 0);
+    stabilizer.update(null, 300);
+    const next = stabilizer.update(tuningReading(0, STANDARD_GUITAR_STRINGS[2]), 400);
+
+    expect(next?.target.id).toBe("d3");
+    expect(next?.held).toBe(false);
   });
 });
