@@ -26,6 +26,8 @@ It records from the microphone or imports audio files, runs Spotify's [Basic Pit
   - **Notes** for pitch, timing, note preview, and piano-roll playback
   - **Guitar** for key, chord changes, substitutions, and playable chord shapes
 - Save riffs locally and reload them later
+- Tune with a live guitar tuner (alternate tunings, A4 reference, string lock)
+- Layer ideas in a 4-track looper that keeps every track on one loop clock
 - Show saved audio format on riff cards (`PCM`, `WebM`, `M4A`, `Ogg`, and similar)
 - Export **MIDI**, **WAV**, **MP3**, and the original compressed capture when available
 - Display the deployed build identity as `v<version> · <short-sha>` in the help modal and browser console
@@ -65,7 +67,7 @@ Mic / Imported audio
 | Build | Vite 7 |
 | Testing | Vitest + Playwright |
 | Audio capture | Web Audio API + AudioWorklet |
-| Pitch detection | `@spotify/basic-pitch` + TensorFlow.js |
+| Pitch detection | `@spotify/basic-pitch` + TensorFlow.js (analysis), `pitchy` MPM (live tuner) |
 | Music theory | Tonal / `@tonaljs` |
 | Local storage | IndexedDB (`idb`) + OPFS fallback |
 | Deployment | Vercel + `vite-plugin-pwa` |
