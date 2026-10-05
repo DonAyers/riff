@@ -168,18 +168,10 @@ test("guitar tuner lives on its own route", async ({ page }) => {
   await expect(page.getByRole("region", { name: /guitar tuner/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /start tuner/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /start recording/i })).toHaveCount(0);
-  await expect(page.locator(".guitar-tuner__bar")).toHaveCount(25);
+  await expect(page.getByRole("meter", { name: /tuning cents/i })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: /tuning/i })).toHaveValue("standard");
 
-  await page.getByRole("button", { name: "Fine" }).click();
-  await expect(page.getByRole("button", { name: "Fine" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".guitar-tuner__bar")).toHaveCount(49);
-
-  await page.getByRole("button", { name: "Fluid" }).click();
-  await expect(page.getByRole("button", { name: "Fluid" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(".guitar-tuner__bar")).toHaveCount(0);
-  await expect(page.locator(".guitar-tuner__fluid-track")).toBeVisible();
-
-  await page.getByRole("link", { name: /back to riff/i }).click();
+  await page.getByRole("link", { name: "Record" }).click();
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { level: 2, name: "Record" })).toBeVisible();
@@ -199,7 +191,7 @@ test("pending recording survives visiting the tuner route", async ({ page }) => 
   await expect(page.getByRole("region", { name: /guitar tuner/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /start recording/i })).toHaveCount(0);
 
-  await page.getByRole("link", { name: /back to riff/i }).click();
+  await page.getByRole("link", { name: "Record" }).click();
 
   await expect(page.getByRole("heading", { level: 2, name: "Take check" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^analyze$/i })).toBeVisible();

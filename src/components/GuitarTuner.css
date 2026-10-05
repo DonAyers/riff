@@ -107,6 +107,10 @@
   transition: color var(--duration-normal) var(--ease-out);
 }
 
+.guitar-tuner__note--empty {
+  opacity: 0.25;
+}
+
 .guitar-tuner__note-name {
   font-size: clamp(5rem, 28vw, 7.5rem);
   letter-spacing: -0.04em;

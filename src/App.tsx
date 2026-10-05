@@ -25,6 +25,7 @@ import { SessionPicker } from "./components/SessionPicker";
 import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { GuitarTuner } from "./components/GuitarTuner";
+import { AppTabBar } from "./components/AppTabBar";
 import { SongBuilder } from "./components/SongBuilder";
 import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
@@ -53,7 +54,6 @@ const LazySelectedChordDialog = lazy(async () => {
   return { default: module.SelectedChordDialog };
 });
 
-const APP_SUBTITLE = "A pocket studio for turning one take into playable chords.";
 const HOME_PATH = "/";
 const TUNER_PATH = "/tuner";
 const BUILDER_PATH = "/builder";
@@ -66,21 +66,18 @@ type HomeStage = "record" | "approve" | "analyze";
 type AnalysisScreen = "summary" | "timeline" | "shape" | "export";
 
 const CAPTURE_PANEL_COPY = {
-  eyebrow: "Screen 01",
   title: "Record",
   description: "Catch a riff, play it back, then decide if it deserves analysis.",
 } as const;
 
 const WORKFLOW_COPY = {
   song: {
-    eyebrow: "Screen 03",
     title: "Chord map",
     description: "Chord changes, shapes, variants, and timing show up here after approval.",
     emptyKicker: "No notes yet",
     emptyBody: "Approve a take from the record screen and Riff will map the chords here.",
   },
   chord: {
-    eyebrow: "Screen 03",
     title: "Analyze chords",
     description: "Key, chord changes, and playable guitar shapes show up here after approval.",
     emptyKicker: "No chords yet",
@@ -747,13 +744,7 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
           <header className="app-header">
             <div className="app-header-main">
               <AppTitle navigate={navigate} />
-              <nav className="app-header-actions" aria-label="Primary">
-                <AppRouteLink className="app-nav-link" to={HOME_PATH} navigate={navigate}>
-                  Back to Riff
-                </AppRouteLink>
-                <AppRouteLink className="app-nav-link" to={TUNER_PATH} navigate={navigate}>
-                  Tuner
-                </AppRouteLink>
+              <div className="app-header-actions">
                 <ThemeToggleButton {...themeControls} />
                 <button
                   className="help-btn"
@@ -762,9 +753,8 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                 >
                   <HelpCircle size={18} strokeWidth={1.8} />
                 </button>
-              </nav>
+              </div>
             </div>
-            <p className="tagline">{APP_SUBTITLE}</p>
           </header>
         )}
 
@@ -799,13 +789,7 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                     <span />
                     <span />
                   </div>
-                  <nav className="app-header-actions riff-device__actions" aria-label="Primary">
-                    <AppRouteLink className="app-nav-link" to={BUILDER_PATH} navigate={navigate}>
-                      Builder
-                    </AppRouteLink>
-                    <AppRouteLink className="app-nav-link" to={TUNER_PATH} navigate={navigate}>
-                      Tuner
-                    </AppRouteLink>
+                  <div className="app-header-actions riff-device__actions">
                     <ThemeToggleButton {...themeControls} />
                     <button
                       className="help-btn"
@@ -814,7 +798,7 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                     >
                       <HelpCircle size={16} strokeWidth={1.8} />
                     </button>
-                  </nav>
+                  </div>
                 </div>
               </div>
 
@@ -827,7 +811,6 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
               {homeStage === "record" && (
                 <section className="app-screen app-screen--record" aria-label="Capture" data-testid="stage-record">
                   <div className="workspace-pane__intro">
-                    <span className="workspace-pane__kicker">{CAPTURE_PANEL_COPY.eyebrow}</span>
                     <p className="workspace-pane__description">{CAPTURE_PANEL_COPY.description}</p>
                   </div>
                   <div className="recorder-card">
@@ -850,7 +833,6 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
               {homeStage === "approve" && (
                 <section className="app-screen app-screen--approve" aria-label="Approve take" data-testid="stage-approve">
                   <div className="take-card">
-                    <span className="workspace-pane__kicker">Screen 02</span>
                     <h2>Keep this take?</h2>
                     <p>Listen once. If the idea is there, send it to chord analysis. If not, toss it and record again.</p>
                     <Playback
@@ -914,7 +896,6 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                   <div className="analysis-panel">
                     <div className="analysis-panel__header">
                       <div className="analysis-panel__intro">
-                        <span className="analysis-panel__eyebrow">{activeWorkflow.eyebrow}</span>
                         <p className="analysis-panel__description">{activeWorkflow.description}</p>
                       </div>
                       <LaneToggle activeLane={activeLane} onChange={handleLaneChange} />
@@ -1196,22 +1177,14 @@ function TunerRoute({ navigate, themeControls }: TunerRouteProps) {
         <header className="app-header">
           <div className="app-header-main">
             <AppTitle navigate={navigate} />
-            <nav className="app-header-actions" aria-label="Primary">
-              <AppRouteLink className="app-nav-link" to={HOME_PATH} navigate={navigate}>
-                Back to Riff
-              </AppRouteLink>
-              <AppRouteLink className="app-nav-link" to={BUILDER_PATH} navigate={navigate}>
-                Builder
-              </AppRouteLink>
+            <div className="app-header-actions">
               <ThemeToggleButton {...themeControls} />
-            </nav>
+            </div>
           </div>
-          <p className="tagline">Tune up quickly without loading the recording workspace.</p>
         </header>
 
         <main className="tuner-page">
           <div className="workspace-pane__intro tuner-page__intro">
-            <span className="workspace-pane__kicker">Utility</span>
             <h2 className="workspace-pane__title">Guitar tuner</h2>
             <p className="workspace-pane__description">
               Pick a tuning, pluck one string, and follow the note.
@@ -1262,6 +1235,7 @@ function App() {
         />
       )}
       {route === "tuner" && <TunerRoute navigate={navigate} themeControls={themeControls} />}
+      <AppTabBar activeTab={route} navigate={navigate} />
     </>
   );
 }

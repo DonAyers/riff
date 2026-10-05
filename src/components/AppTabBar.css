@@ -1,0 +1,72 @@
+:root {
+  /* Height of the tab bar itself; pages pad by this plus the bottom safe area. */
+  --tab-bar-height: 4rem;
+  --tab-bar-space: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px));
+}
+
+.app-tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  height: var(--tab-bar-space);
+  padding: 0 max(0.5rem, env(safe-area-inset-right)) env(safe-area-inset-bottom, 0px)
+    max(0.5rem, env(safe-area-inset-left));
+  border-top: 1px solid var(--surface-border);
+  background: var(--surface-strong);
+  backdrop-filter: blur(16px);
+}
+
+.app-tab-bar__tab {
+  min-height: 2.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--duration-fast) ease;
+}
+
+.app-tab-bar__tab:hover {
+  color: var(--fg);
+}
+
+.app-tab-bar__tab--active {
+  color: var(--accent);
+}
+
+.app-tab-bar__tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -4px;
+  border-radius: var(--radius-sm);
+}
+
+@media (min-width: 960px) {
+  .app-tab-bar {
+    left: 50%;
+    right: auto;
+    bottom: 1rem;
+    width: 26rem;
+    height: var(--tab-bar-height);
+    padding: 0 0.5rem;
+    transform: translateX(-50%);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-md);
+  }
+
+  .app-tab-bar__tab {
+    flex-direction: row;
+    gap: 0.45rem;
+    font-size: var(--text-sm);
+  }
+}

@@ -27,6 +27,8 @@ body {
 
 #root {
   min-height: 100%;
+  /* Room for the fixed bottom tab bar (see AppTabBar.css). */
+  padding-bottom: var(--tab-bar-space);
   display: flex;
   flex-direction: column;
 }

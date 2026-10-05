@@ -164,7 +164,10 @@ export function GuitarTuner({ disabled = false }: GuitarTunerProps) {
       </div>
 
       <div className="guitar-tuner__readout">
-        <div className="guitar-tuner__note" data-testid="tuner-note">
+        <div
+          className={`guitar-tuner__note ${displayTarget ? "" : "guitar-tuner__note--empty"}`}
+          data-testid="tuner-note"
+        >
           <span className="guitar-tuner__note-name">{pitchClass}</span>
           {octave && <span className="guitar-tuner__note-octave">{octave}</span>}
         </div>
