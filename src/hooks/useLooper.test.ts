@@ -150,6 +150,37 @@ describe("useLooper", () => {
     expect(player.buffer?.data[SAMPLE_RATE]).toBeCloseTo((1 * SAMPLE_RATE + SAMPLE_RATE) / 1e6, 6);
   });
 
+  it("resets the loop when it is stopped before the first take is committed", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+
+    mocks.context.currentTime = 1;
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+    mocks.context.currentTime = 3;
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+    // The capture has not delivered the take yet, and the player taps Stop.
+    act(() => {
+      result.current.togglePlayback();
+    });
+
+    expect(result.current.loopDurationS).toBeNull();
+    expect(result.current.isPlaying).toBe(false);
+    expect(result.current.tracks[0].status).toBe("empty");
+
+    // A late capture must not resurrect the cancelled take.
+    act(() => {
+      mocks.deliverFrames(1 * SAMPLE_RATE, 3 * SAMPLE_RATE + 2048);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60);
+    });
+    expect(mocks.sources).toHaveLength(0);
+  });
+
   it("rejects a first loop that is too short", async () => {
     const mocks = createAudioMocks();
     const { result } = renderHook(() => useLooper());
@@ -293,6 +324,20 @@ describe("useLooper", () => {
 
     expect(result.current.error).toBe("Microphone unavailable: Permission denied");
     expect(result.current.tracks[0].status).toBe("empty");
+  });
+
+  it("stops the microphone if the capture worklet fails to load", async () => {
+    const mocks = createAudioMocks();
+    mocks.context.audioWorklet.addModule.mockRejectedValueOnce(new Error("worklet failed"));
+    const { result } = renderHook(() => useLooper());
+
+    await act(async () => {
+      await result.current.toggleRecord(0);
+    });
+
+    expect(result.current.error).toBe("Microphone unavailable: worklet failed");
+    expect(stopTrack).toHaveBeenCalled();
+    expect(mocks.context.close).toHaveBeenCalled();
   });
 
   it("releases the microphone and audio context on unmount", async () => {

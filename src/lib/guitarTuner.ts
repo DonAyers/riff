@@ -29,6 +29,8 @@ export interface TuningReading {
   cents: number;
   inTune: boolean;
   clarity: number;
+  /** Reference pitch the note name was computed against. */
+  a4Hz?: number;
   /** True when the stabilizer is repeating the last reading because the string has gone quiet. */
   held?: boolean;
 }
@@ -277,6 +279,7 @@ export function getTuningReading(
     cents,
     inTune: Math.abs(cents) <= inTuneThresholdCents,
     clarity: estimate.clarity,
+    a4Hz,
   };
 }
 
@@ -360,6 +363,7 @@ export function createTuningStabilizer(options: TuningStabilizerOptions = {}): T
       const smoothedReading: TuningReading = {
         ...reading,
         frequencyHz,
+        detectedNote: frequencyToNoteName(frequencyHz, reading.a4Hz ?? DEFAULT_A4_HZ),
         cents: smoothedCents,
         inTune,
         held: false,

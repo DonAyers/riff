@@ -321,6 +321,32 @@ describe("useGuitarTuner", () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
+  it("releases a wake lock that resolves after the tuner already stopped", async () => {
+    const release = vi.fn().mockResolvedValue(undefined);
+    let resolveRequest: (sentinel: { release: typeof release }) => void = () => undefined;
+    const request = vi.fn(
+      () => new Promise<{ release: typeof release }>((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
+    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
+    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia }, wakeLock: { request } });
+    stubAnalyserFrequency(() => 110);
+
+    const { result } = renderHook(() => useGuitarTuner());
+    await act(async () => {
+      await result.current.start();
+    });
+    act(() => {
+      result.current.stop();
+    });
+    await act(async () => {
+      resolveRequest({ release });
+    });
+
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
   it("measures against a locked string", async () => {
     getUserMedia.mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] });
     stubAnalyserFrequency(() => 100);

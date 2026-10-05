@@ -267,4 +267,27 @@ describe("guitarTuner", () => {
     expect(next?.target.id).toBe("d3");
     expect(next?.held).toBe(false);
   });
+
+  it("keeps the note name consistent with the smoothed frequency and A4 reference", () => {
+    const strings432 = buildStringTargets(getTuningPreset("standard"), 432);
+    const raw = getTuningReading({ frequencyHz: 109.5, clarity: 0.95, rms: 0.2 }, {
+      strings: strings432,
+      a4Hz: 432,
+    });
+    const stabilizer = createTuningStabilizer();
+    const reading = stabilizer.update(raw, 0);
+
+    expect(raw.detectedNote).toBe("A2");
+    expect(reading?.detectedNote).toBe("A2");
+
+    // Smoothing that drags a reading across a note boundary must rename it too.
+    const sharp = getTuningReading({ frequencyHz: 114.5, clarity: 0.95, rms: 0.2 });
+    const slow = createTuningStabilizer({ minCutoffHz: 0.01, beta: 0 });
+    slow.update(getTuningReading({ frequencyHz: 107, clarity: 0.95, rms: 0.2 }), 0);
+    const smoothed = slow.update(sharp, 16);
+
+    expect(sharp.detectedNote).toBe("A♯2");
+    expect(smoothed?.detectedNote).toBe(frequencyToNoteName(smoothed!.frequencyHz));
+    expect(smoothed?.detectedNote).toBe("A2");
+  });
 });

@@ -154,7 +154,13 @@ export function useGuitarTuner(): UseGuitarTunerReturn {
     }
 
     try {
-      wakeLockRef.current = await wakeLock.request("screen");
+      const sentinel = await wakeLock.request("screen");
+      // The tuner may have stopped while the request was pending.
+      if (streamRef.current) {
+        wakeLockRef.current = sentinel;
+      } else {
+        void sentinel.release().catch(() => undefined);
+      }
     } catch {
       wakeLockRef.current = null;
     }

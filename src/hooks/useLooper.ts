@@ -170,9 +170,10 @@ export function useLooper(): UseLooperReturn {
         // Create and resume the context before any await so iOS still sees the tap.
         const context = new AudioContext({ latencyHint: "interactive" });
         const resumePromise = context.state === "running" ? Promise.resolve() : context.resume();
+        let stream: MediaStream | null = null;
 
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: LOOPER_MIC_CONSTRAINTS });
+          stream = await navigator.mediaDevices.getUserMedia({ audio: LOOPER_MIC_CONSTRAINTS });
           await resumePromise;
           await context.audioWorklet.addModule(looperCaptureWorkletUrl);
 
@@ -231,7 +232,12 @@ export function useLooper(): UseLooperReturn {
           if (wakeLock) {
             wakeLock.request("screen").then(
               (sentinel) => {
-                wakeLockRef.current = sentinel;
+                // The looper may have closed while the request was pending.
+                if (isMountedRef.current) {
+                  wakeLockRef.current = sentinel;
+                } else {
+                  void sentinel.release().catch(() => undefined);
+                }
               },
               () => undefined
             );
@@ -239,6 +245,7 @@ export function useLooper(): UseLooperReturn {
 
           return engine;
         } catch (err) {
+          stream?.getTracks().forEach((track) => track.stop());
           if (context.state !== "closed") void context.close().catch(() => undefined);
           setAudioSessionType("auto");
           throw err;
@@ -371,12 +378,22 @@ export function useLooper(): UseLooperReturn {
     });
   }, [clearJob, updateTrack]);
 
+  const resetLoopIfEmpty = useCallback(() => {
+    if (buffersRef.current.some(Boolean) || jobsRef.current.some(Boolean)) return;
+    loopDurationRef.current = null;
+    setLoopDurationS(null);
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+  }, []);
+
   const stopAll = useCallback(() => {
     cancelPendingTakes();
     playersRef.current.forEach((_, index) => stopPlayer(index));
     isPlayingRef.current = false;
     setIsPlaying(false);
-  }, [cancelPendingTakes, stopPlayer]);
+    // Stopping before the first take was committed leaves no audio: drop the loop too.
+    resetLoopIfEmpty();
+  }, [cancelPendingTakes, resetLoopIfEmpty, stopPlayer]);
 
   const startOverdub = useCallback((index: number, engine: LooperEngine) => {
     const durationS = loopDurationRef.current;
@@ -487,14 +504,6 @@ export function useLooper(): UseLooperReturn {
     applyGain(index, next);
     updateTrack(index, { volume: clamped });
   }, [applyGain, updateTrack]);
-
-  const resetLoopIfEmpty = useCallback(() => {
-    if (buffersRef.current.some(Boolean) || jobsRef.current.some(Boolean)) return;
-    loopDurationRef.current = null;
-    setLoopDurationS(null);
-    isPlayingRef.current = false;
-    setIsPlaying(false);
-  }, []);
 
   const clearTrack = useCallback((index: number) => {
     clearJob(index);
