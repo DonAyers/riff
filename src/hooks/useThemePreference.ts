@@ -7,8 +7,8 @@ export const THEME_STORAGE_KEY = "riff:theme-preference";
 const LIGHT_QUERY = "(prefers-color-scheme: light)";
 const THEME_COLOR_META = "meta[name='theme-color']";
 const THEME_COLORS: Record<ThemeMode, string> = {
-  dark: "#0f0f0f",
-  light: "#f4ecd6",
+  dark: "#23222f",
+  light: "#eedebe",
 };
 
 function canUseWindow(): boolean {

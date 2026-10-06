@@ -20,6 +20,9 @@
   "license": "ISC",
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
+    "@fontsource/atkinson-hyperlegible": "^5.3.0",
+    "@fontsource/silkscreen": "^5.3.0",
+    "@fontsource/vt323": "^5.3.0",
     "@spotify/basic-pitch": "^1.0.1",
     "@tensorflow/tfjs": "^4.22.0",
     "@tonaljs/chord": "^6.1.2",

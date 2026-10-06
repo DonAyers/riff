@@ -7,16 +7,16 @@
   margin: 0 auto;
   padding: 0.9rem 1rem;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
 }
 
 .progress-bar-container--panel {
   max-width: none;
   margin: 0;
   padding: 1rem 1.05rem;
-  background: rgba(130, 98, 255, 0.06);
-  border-color: rgba(130, 98, 255, 0.18);
+  background: var(--surface-soft);
+  border-color: transparent;
 }
 
 .progress-bar-copy {
@@ -27,9 +27,9 @@
 .progress-bar-eyebrow {
   font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .progress-bar-heading {
@@ -55,7 +55,7 @@
 .progress-bar {
   width: 100%;
   height: 0.4rem;
-  background: rgba(139, 92, 246, 0.12);
+  background: var(--surface-strong);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
@@ -68,13 +68,14 @@
 }
 
 .progress-text {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0;
   color: var(--fg-muted);
   min-width: 36px;
   text-align: right;
-  font-family: "SF Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .progress-bar-sr-only {

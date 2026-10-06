@@ -4,6 +4,7 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import { initializeThemePreference } from "./hooks/useThemePreference";
 import { buildLabel } from "./lib/buildInfo";
+import "./styles/fonts";
 import "./styles/tokens.css";
 import "./styles/index.css";
 

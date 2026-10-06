@@ -422,6 +422,27 @@ describe("App mic permission fallback", () => {
     expect(screen.queryByTestId("looper")).not.toBeInTheDocument();
   });
 
+  it.each(["/", "/builder", "/tuner", "/looper"])(
+    "renders the same shared header on %s",
+    (path) => {
+      window.history.replaceState(null, "", path);
+      useRiffSessionMock.mockReturnValue(
+        createSessionState() as ReturnType<typeof useRiffSession>
+      );
+
+      const { container } = render(<App />);
+
+      const headers = Array.from(container.querySelectorAll("header.app-header")).filter(
+        (header) => !header.closest("[hidden]")
+      );
+      expect(headers).toHaveLength(1);
+      const header = headers[0] as HTMLElement;
+      expect(within(header).getByRole("heading", { level: 1, name: /riff/i })).toBeInTheDocument();
+      expect(within(header).getByRole("button", { name: /switch to (light|dark) mode/i })).toBeInTheDocument();
+      expect(container.querySelector(".riff-device__meter")).toBeNull();
+    }
+  );
+
   it("renders the guitar tuner only on its dedicated route", () => {
     window.history.replaceState(null, "", "/tuner");
     useRiffSessionMock.mockReturnValue(

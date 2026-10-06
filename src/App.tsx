@@ -164,7 +164,6 @@ interface ThemeControls {
 
 function ThemeToggleButton({ nextTheme, onToggle, source, theme }: ThemeControls) {
   const Icon = nextTheme === "light" ? Sun : Moon;
-  const nextThemeLabel = nextTheme === "light" ? "Light" : "Dark";
   const currentSource =
     source === "system" ? `following system ${theme} mode` : `using saved ${theme} mode`;
 
@@ -177,8 +176,7 @@ function ThemeToggleButton({ nextTheme, onToggle, source, theme }: ThemeControls
       aria-pressed={theme === "light"}
       title={`Switch to ${nextTheme} mode (${currentSource})`}
     >
-      <Icon size={15} strokeWidth={2} aria-hidden="true" />
-      <span className="theme-toggle__label">{nextThemeLabel}</span>
+      <Icon size={16} strokeWidth={2} aria-hidden="true" />
     </button>
   );
 }
@@ -225,9 +223,35 @@ function AppTitle({ navigate }: AppTitleProps) {
   return (
     <h1>
       <AppRouteLink className="app-title-link" to={HOME_PATH} navigate={navigate}>
-        <i className="note-icon">♪</i> Riff
+        Riff
+        <span className="app-title-dot" aria-hidden="true" />
       </AppRouteLink>
     </h1>
+  );
+}
+
+interface AppHeaderProps {
+  navigate: NavigateToRoute;
+  themeControls: ThemeControls;
+  onHelp?: () => void;
+}
+
+/** The one header every tab shares: wordmark on the left, theme and help on the right. */
+function AppHeader({ navigate, themeControls, onHelp }: AppHeaderProps) {
+  return (
+    <header className="app-header">
+      <div className="app-header-main">
+        <AppTitle navigate={navigate} />
+        <div className="app-header-actions">
+          <ThemeToggleButton {...themeControls} />
+          {onHelp && (
+            <button className="help-btn" onClick={onHelp} aria-label="Help and about">
+              <HelpCircle size={16} strokeWidth={2} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -745,21 +769,11 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
     >
       <div className={`app-shell ${activeRoute === "builder" ? "app-shell--builder" : ""}`}>
         {activeRoute === "builder" && (
-          <header className="app-header">
-            <div className="app-header-main">
-              <AppTitle navigate={navigate} />
-              <div className="app-header-actions">
-                <ThemeToggleButton {...themeControls} />
-                <button
-                  className="help-btn"
-                  onClick={() => setShowOnboarding(true)}
-                  aria-label="Help and about"
-                >
-                  <HelpCircle size={18} strokeWidth={1.8} />
-                </button>
-              </div>
-            </div>
-          </header>
+          <AppHeader
+            navigate={navigate}
+            themeControls={themeControls}
+            onHelp={() => setShowOnboarding(true)}
+          />
         )}
 
         <main className={`app-main ${activeRoute === "builder" ? "app-main--builder" : "app-main--flow"}`}>
@@ -779,32 +793,11 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
               onPointerDown={handleFlowPointerDown}
               onPointerUp={handleFlowPointerUp}
             >
-              <div className="riff-device__glow" aria-hidden="true" />
-              <div className="riff-device__topbar">
-                <div className="riff-device__heading">
-                  <div className="riff-device__brandline">
-                    <AppTitle navigate={navigate} />
-                  </div>
-                </div>
-                <div className="riff-device__controls">
-                  <div className="riff-device__meter" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <div className="app-header-actions riff-device__actions">
-                    <ThemeToggleButton {...themeControls} />
-                    <button
-                      className="help-btn"
-                      onClick={() => setShowOnboarding(true)}
-                      aria-label="Help and about"
-                    >
-                      <HelpCircle size={16} strokeWidth={1.8} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <AppHeader
+                navigate={navigate}
+                themeControls={themeControls}
+                onHelp={() => setShowOnboarding(true)}
+              />
 
               <h2 className="riff-device__stage-title">
                 {homeStage === "record" && CAPTURE_PANEL_COPY.title}
@@ -1181,14 +1174,7 @@ function ToolRoute({ navigate, themeControls, title, description, children }: To
   return (
     <div className="app">
       <div className="app-shell app-shell--single">
-        <header className="app-header">
-          <div className="app-header-main">
-            <AppTitle navigate={navigate} />
-            <div className="app-header-actions">
-              <ThemeToggleButton {...themeControls} />
-            </div>
-          </div>
-        </header>
+        <AppHeader navigate={navigate} themeControls={themeControls} />
 
         <main className="tuner-page">
           <div className="workspace-pane__intro tuner-page__intro">

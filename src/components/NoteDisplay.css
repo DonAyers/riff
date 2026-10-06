@@ -1,20 +1,21 @@
 .note-display {
   text-align: center;
   width: 100%;
-    min-width: 0;
-    padding: 1.1rem;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--surface-soft);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  min-width: 0;
+  padding: 1.1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
 }
 
 .note-display h2 {
+  font-family: var(--font-sans);
   font-size: 0.65rem;
   color: var(--fg-muted);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: var(--space-md);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .note-chips {
@@ -31,26 +32,23 @@
   min-width: 48px;
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius-sm);
-  background: var(--accent-dim);
-  border: 1px solid rgba(130, 98, 255, 0.3);
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-border);
   color: var(--fg);
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 1.25rem;
+  font-weight: 400;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
   cursor: pointer;
-  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 
 .note-chip:hover {
-  transform: translateY(-1px);
-  border-color: rgba(130, 98, 255, 0.5);
-}
-
-.note-chip:active {
-  transform: translateY(0);
+  background: var(--surface-strong);
+  border-color: var(--surface-border-strong);
 }
 
 .note-chip:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }

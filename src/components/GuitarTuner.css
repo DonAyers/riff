@@ -1,13 +1,13 @@
 .guitar-tuner {
   --tuner-tone: var(--fg-muted);
+  --needle-tone: var(--fg);
   width: min(100%, 30rem);
   display: grid;
   gap: var(--space-xl);
   padding: var(--space-xl) var(--space-lg);
   border-radius: var(--radius-xl);
   border: 1px solid var(--surface-border);
-  background: var(--surface-strong);
-  box-shadow: var(--shadow-md);
+  background: var(--surface);
   color: var(--fg);
 }
 
@@ -21,6 +21,7 @@
 
 .guitar-tuner--in-tune {
   --tuner-tone: var(--success);
+  --needle-tone: var(--success);
 }
 
 /* ── Settings row ── */
@@ -70,6 +71,9 @@
   min-width: 4.5rem;
   text-align: center;
   font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -101,8 +105,10 @@
   display: flex;
   align-items: baseline;
   color: var(--tuner-tone);
-  font-family: var(--font-sans);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
   line-height: 1;
   transition: color var(--duration-normal) var(--ease-out);
 }
@@ -112,8 +118,8 @@
 }
 
 .guitar-tuner__note-name {
-  font-size: clamp(5rem, 28vw, 7.5rem);
-  letter-spacing: -0.04em;
+  font-size: clamp(5rem, 28vw, 7rem);
+  letter-spacing: 0;
 }
 
 .guitar-tuner__note-octave {
@@ -140,7 +146,9 @@
   margin: 0;
   color: var(--fg-muted);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -159,7 +167,7 @@
   position: relative;
   height: 3.5rem;
   border-radius: var(--radius-sm);
-  background: var(--surface-soft);
+  background: var(--surface-strong);
   overflow: hidden;
 }
 
@@ -173,13 +181,13 @@
 .guitar-tuner__meter-zone--close {
   left: 35%;
   width: 30%;
-  background: color-mix(in srgb, var(--ember) 14%, transparent);
+  background: color-mix(in srgb, var(--ember) 22%, transparent);
 }
 
 .guitar-tuner__meter-zone--in-tune {
   left: 47%;
   width: 6%;
-  background: color-mix(in srgb, var(--success) 30%, transparent);
+  background: var(--selected);
 }
 
 .guitar-tuner__meter-tick {
@@ -204,8 +212,7 @@
   left: var(--needle-position);
   width: 4px;
   border-radius: var(--radius-full);
-  background: var(--tuner-tone);
-  box-shadow: 0 0 12px var(--tuner-tone);
+  background: var(--needle-tone);
   transform: translateX(-50%);
   transition: left 80ms linear, background-color var(--duration-normal) var(--ease-out);
 }
@@ -232,9 +239,9 @@
   justify-content: center;
   gap: 2px;
   padding: 0 var(--space-sm);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--surface-border);
-  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--surface-strong);
   color: var(--fg);
   font: inherit;
   font-size: var(--text-md);
@@ -247,15 +254,17 @@
   font-size: var(--text-sm);
 }
 
+.guitar-tuner__string:hover:not(.guitar-tuner__string--selected) {
+  border-color: var(--surface-border-strong);
+}
+
 .guitar-tuner__string--selected {
-  border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--selected);
+  color: var(--on-selected);
 }
 
 .guitar-tuner__string--active {
-  border-color: var(--tuner-tone);
-  box-shadow: inset 0 0 0 1px var(--tuner-tone);
-  color: var(--tuner-tone);
+  border: 2px solid var(--tuner-tone);
 }
 
 .guitar-tuner__string:focus-visible,
@@ -283,9 +292,13 @@
   cursor: pointer;
 }
 
+.tuner-toggle:hover:not(:disabled):not(.listening) {
+  background: color-mix(in srgb, var(--accent) 88%, var(--fg));
+}
+
 .tuner-toggle.listening {
-  border-color: var(--surface-border-strong);
-  background: transparent;
+  border-color: var(--surface-border);
+  background: var(--surface-strong);
   color: var(--fg);
 }
 

@@ -19,14 +19,13 @@
 
 .recorder-timer {
   padding: 0.2rem 0.6rem;
-  border-radius: 0.75rem;
-  font-size: clamp(1.65rem, 11vw, 2.55rem);
-  font-weight: 700;
+  font-size: clamp(2.15rem, 14vw, 3.3rem);
+  font-weight: 400;
   font-family: var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--accent);
-  background: rgba(0, 0, 0, 0.24);
-  text-shadow: 0 0 18px rgba(225, 252, 110, 0.22);
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--fg);
+  background: none;
   font-variant-numeric: tabular-nums;
 }
 
@@ -36,9 +35,9 @@
   gap: 0.45rem;
   padding: 0.26rem 0.7rem;
   border-radius: var(--radius-full);
-  background: rgba(255, 104, 77, 0.16);
-  border: 1px solid rgba(255, 104, 77, 0.38);
-  color: #ffd4c9;
+  background: color-mix(in srgb, var(--record) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--record) 40%, transparent);
+  color: var(--fg);
   flex-shrink: 0;
 }
 
@@ -46,15 +45,15 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--danger);
+  background: var(--record);
   animation: blink 1.2s ease-in-out infinite;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
 }
 
 .recording-indicator__text {
+  font-family: var(--font-sans);
   font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -76,26 +75,19 @@
   width: var(--record-button-size);
   height: var(--record-button-size);
   border-radius: 50%;
-  border: 5px solid rgba(255, 245, 209, 0.16);
-  background: #f04438;
+  border: none;
+  background: var(--record);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff5d1;
-  transition: box-shadow 0.25s ease, transform 0.25s ease, opacity 0.2s ease, filter 0.2s ease;
-  box-shadow:
-    0 0 0 1px rgba(255, 104, 77, 0.34),
-    0 12px 24px rgba(0, 0, 0, 0.24);
+  color: var(--on-record);
+  transition: background 0.2s ease, opacity 0.2s ease;
   touch-action: manipulation;
 }
 
 .record-btn:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.01);
-  filter: saturate(1.08);
-  box-shadow:
-    0 0 0 1px rgba(255, 104, 77, 0.48),
-    0 14px 28px rgba(0, 0, 0, 0.28);
+  background: color-mix(in srgb, var(--record) 88%, var(--fg));
 }
 
 .record-btn:disabled {
@@ -104,31 +96,29 @@
 }
 
 .record-btn:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 4px;
 }
 
 .record-btn.recording {
-  background: var(--accent);
-  color: #111308;
-  box-shadow:
-    0 0 0 1px rgba(225, 252, 110, 0.5),
-    0 12px 24px rgba(0, 0, 0, 0.22);
+  background: var(--record);
+  color: var(--on-record);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(225, 252, 110, 0.5), 0 12px 24px rgba(0, 0, 0, 0.22); }
-  50%       { box-shadow: 0 0 0 10px rgba(225, 252, 110, 0), 0 12px 24px rgba(0, 0, 0, 0.22); }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.72; }
 }
 
 .recorder-label {
   font-size: 0.72rem;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #d0c69d;
+  color: var(--fg-muted);
   margin: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   text-align: center;
 }
 
@@ -154,22 +144,20 @@
   width: var(--import-button-size);
   height: var(--import-button-size);
   border-radius: 50%;
-  border: 1px solid rgba(255, 245, 209, 0.16);
-  background: rgba(0, 0, 0, 0.26);
-  color: #d0c69d;
+  border: none;
+  background: var(--surface);
+  color: var(--fg);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  transition: color 0.18s ease, background 0.18s ease;
   touch-action: manipulation;
   flex-shrink: 0;
 }
 
 .import-btn:hover:not(:disabled) {
-  color: var(--accent);
-  border-color: rgba(225, 252, 110, 0.4);
-  background: var(--accent-dim);
+  background: var(--surface-strong);
 }
 
 .import-btn:disabled {
@@ -178,7 +166,7 @@
 }
 
 .import-btn:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -209,13 +197,13 @@
   gap: 0.45rem;
   min-height: 44px;
   padding: 0.5rem 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--surface-border);
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface);
   color: var(--fg-muted);
   font-size: 0.64rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
   transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
@@ -225,13 +213,13 @@
 }
 
 .advanced-toggle:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--surface-border-strong);
+  background: var(--surface-strong);
   color: var(--fg);
 }
 
 .advanced-toggle:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -260,8 +248,8 @@
   width: min(100%, 24rem);
   padding: var(--space-md);
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-border);
 }
 
 .advanced-settings {
@@ -277,11 +265,12 @@
   gap: 0.4rem;
   padding: 0.38rem 0.75rem;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: var(--surface-soft);
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
   color: var(--fg-muted);
   font-size: 0.66rem;
-  letter-spacing: 0.08em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
@@ -290,8 +279,9 @@
 }
 
 .setting-toggle:has(input:checked) {
-  border-color: rgba(130, 98, 255, 0.35);
-  color: var(--fg);
+  border-color: var(--surface-border-strong);
+  background: var(--selected);
+  color: var(--on-selected);
 }
 
 .setting-toggle input {
@@ -323,35 +313,37 @@
   padding: 0.72rem 1.15rem;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
   cursor: pointer;
-  transition: filter 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease;
   touch-action: manipulation;
 }
 
 .analyze-btn:hover:not(:disabled) {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--accent) 88%, var(--fg));
 }
 
 .analyze-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-  transform: none;
 }
 
 .analyze-btn:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
 .analyze-btn--secondary {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface);
   color: var(--fg);
   border: 1px solid var(--surface-border);
+}
+
+.analyze-btn--secondary:hover:not(:disabled) {
+  background: var(--surface-strong);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -399,7 +391,8 @@
 .profile-panel__eyebrow {
   margin: 0;
   font-size: 0.62rem;
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
@@ -426,12 +419,12 @@
   justify-content: center;
   padding: 0.3rem 0.7rem;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: var(--surface-soft);
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
   color: var(--fg-muted);
   font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
@@ -451,13 +444,13 @@
 }
 
 .profile-pill.active {
-  border-color: rgba(130, 98, 255, 0.45);
-  color: var(--fg);
-  background: var(--accent-dim);
+  border-color: transparent;
+  color: var(--on-selected);
+  background: var(--selected);
 }
 
 .profile-pill:hover:not(.disabled):not(.active) {
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--surface-strong);
   color: var(--fg);
 }
 
@@ -467,6 +460,6 @@
 }
 
 .profile-pill:focus-within {
-  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }

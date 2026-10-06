@@ -25,7 +25,7 @@
 }
 
 .session-picker-trigger:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -62,10 +62,9 @@
   left: 0;
   right: 0;
   z-index: 50;
-  background: var(--surface-strong);
-  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  border: 1px solid var(--surface-border-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
   max-height: 280px;
   overflow-y: auto;
   padding: var(--space-xs);
@@ -92,11 +91,16 @@
 }
 
 .session-picker-item-row--active {
-  background: var(--accent-dim);
+  background: var(--selected);
 }
 
 .session-picker-item-row--active:hover {
-  background: var(--accent-dim);
+  background: var(--selected);
+}
+
+.session-picker-item-row--active .session-picker-item,
+.session-picker-item-row--active .session-picker-item__check {
+  color: var(--on-selected);
 }
 
 /* ── Load button (fills remaining space) ── */
@@ -119,14 +123,14 @@
 }
 
 .session-picker-item:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
 }
 
 .session-picker-item__check {
   width: 16px;
   flex-shrink: 0;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .session-picker-item__details {
@@ -179,7 +183,7 @@
 
 .session-picker-item__delete:focus-visible {
   opacity: 1;
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

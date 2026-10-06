@@ -8,8 +8,8 @@
   min-height: 100%;
   padding: 1.15rem;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--surface-soft);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
 }
 
 .chord-display--interactive {
@@ -18,31 +18,35 @@
   color: inherit;
   font: inherit;
   text-align: center;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .chord-display--interactive:hover {
-  border-color: rgba(130, 98, 255, 0.48);
-  background: linear-gradient(180deg, var(--surface-soft), rgba(130, 98, 255, 0.05));
-  transform: translateY(-1px);
+  border-color: var(--surface-border-strong);
+  background: var(--surface-strong);
 }
 
 .chord-display--interactive:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.82);
-  outline-offset: 3px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .chord-label {
+  font-family: var(--font-sans);
   font-size: 0.65rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.06em;
   color: var(--fg-muted);
 }
 
 .chord-name {
-  font-size: clamp(2.4rem, 4vw, 3.3rem);
-  font-weight: 700;
-  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  color: var(--accent-text);
   text-align: center;
   line-height: 1;
 }

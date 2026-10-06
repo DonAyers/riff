@@ -10,22 +10,27 @@ interface ChordFretboardProps {
 
 const FRET_COUNT = 5;
 const STRING_NUMBERS = [6, 5, 4, 3, 2, 1] as const;
+// Every colour is "currentColor" so the diagram follows the theme: svguitar
+// writes these into SVG fill/stroke attributes, and the container's CSS `color`
+// (var(--fg)) resolves them. Finger/barre fills and their labels are recoloured
+// with design tokens in ChordFretboard.css via svguitar's element classes.
+const DIAGRAM_COLOR = "currentColor";
 const BASE_DIAGRAM_SETTINGS: ChordSettings = {
   frets: FRET_COUNT,
   backgroundColor: "none",
   fixedDiagramPosition: true,
-  color: "rgba(255, 255, 255, 0.9)",
-  stringColor: "rgba(255, 255, 255, 0.45)",
-  fretColor: "rgba(255, 255, 255, 0.45)",
-  fingerColor: "rgba(130, 98, 255, 0.92)",
-  fingerTextColor: "#f5f7ff",
+  color: DIAGRAM_COLOR,
+  stringColor: DIAGRAM_COLOR,
+  fretColor: DIAGRAM_COLOR,
+  fingerColor: DIAGRAM_COLOR,
+  fingerTextColor: DIAGRAM_COLOR,
   fingerSize: 0.72,
   fingerTextSize: 24,
   strokeWidth: 2,
   sidePadding: 0.14,
   barreChordRadius: 0.9,
-  fingerStrokeColor: "rgba(255, 255, 255, 0.2)",
-  fingerStrokeWidth: 1.2,
+  fingerStrokeColor: DIAGRAM_COLOR,
+  fingerStrokeWidth: 0,
 };
 
 function toDiagramFret(fret: number, baseFret: number) {

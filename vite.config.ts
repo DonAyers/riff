@@ -36,7 +36,7 @@ export default defineConfig({
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
       manifest: false,
       workbox: {
-        globPatterns: ["**/*.{js,css,html,json,bin,png,svg}"],
+        globPatterns: ["**/*.{js,css,html,json,bin,png,svg,woff2}"],
         runtimeCaching: [
           {
             urlPattern: /assets\/.*\.(?:bin|json)$/,
