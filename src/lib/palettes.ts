@@ -54,7 +54,7 @@ export const PALETTES = [
     name: "Fairydust 8",
     author: "Yousurname",
     sourceUrl: "https://lospec.com/palette-list/fairydust-8",
-    themeColor: { light: "#f0f6e8", dark: "#3c2e4e" },
+    themeColor: { light: "#f0f6e8", dark: "#3d2f4e" },
     swatches: ["#f0f6e8", "#c45d9f", "#93d4b5", "#e39aac", "#634b7d"],
   },
   {

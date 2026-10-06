@@ -119,3 +119,30 @@ for (const theme of ["light", "dark"] as const) {
     });
   }
 }
+
+for (const theme of ["light", "dark"] as const) {
+  test(`browser theme colour matches the page background for every palette in ${theme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme });
+    await gotoApp(page);
+
+    for (const palette of PALETTE_IDS) {
+      await page.evaluate((id) => localStorage.setItem("riff:palette", id), palette);
+      await page.reload();
+      await expect(page.locator("html")).toHaveAttribute("data-palette", palette);
+
+      const { background, meta } = await page.evaluate(() => {
+        // Resolve the computed --bg (including color-mix output) to hex via a canvas.
+        const context = document.createElement("canvas").getContext("2d")!;
+        context.fillStyle = getComputedStyle(document.body).backgroundColor;
+        context.fillRect(0, 0, 1, 1);
+        const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
+        const hex = `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+        return {
+          background: hex,
+          meta: document.querySelector("meta[name='theme-color']")?.getAttribute("content"),
+        };
+      });
+      expect(meta, `${palette} ${theme}`).toBe(background);
+    }
+  });
+}

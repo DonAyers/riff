@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PALETTE_ID, PALETTES, getPalette, isPaletteId } from "./palettes";
 
-const css = readFileSync(resolve(__dirname, "../styles/palettes.css"), "utf8");
+const css = readFileSync(resolve(process.cwd(), "src/styles/palettes.css"), "utf8");
 
 /** Returns the custom property names declared in the block for `selector`. */
 function tokensFor(selector: string): string[] {
