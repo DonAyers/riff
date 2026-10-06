@@ -2,8 +2,8 @@
   width: 100%;
   padding: 1.15rem;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--surface-soft);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
 }
 
 .chord-fretboard__header {
@@ -16,8 +16,10 @@
 
 .chord-fretboard__label,
 .chord-fretboard__meta {
+  font-family: var(--font-sans);
   font-size: 0.65rem;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -26,15 +28,34 @@
 }
 
 .chord-fretboard__meta {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
+/* svguitar writes "currentColor" into its SVG attributes; this sets it. */
 .chord-fretboard__diagram {
   width: 100%;
+  color: var(--fg);
 }
 
 .chord-fretboard__diagram svg {
   width: 100%;
   height: auto;
   display: block;
+}
+
+/* CSS properties beat SVG presentation attributes, so tokens win here. */
+.chord-fretboard__diagram .string,
+.chord-fretboard__diagram .fret {
+  stroke: var(--fg-muted);
+}
+
+.chord-fretboard__diagram .finger:not(.finger-text),
+.chord-fretboard__diagram .barre {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.chord-fretboard__diagram .finger-text,
+.chord-fretboard__diagram .barre-text {
+  fill: var(--on-accent);
 }

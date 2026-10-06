@@ -3,12 +3,13 @@
 }
 
 .chord-timeline h2 {
+  font-family: var(--font-sans);
   font-size: 0.65rem;
   color: var(--fg-muted);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: var(--space-lg);
-  font-weight: 500;
+  font-weight: 700;
   text-align: left;
 }
 
@@ -16,9 +17,9 @@
   position: relative;
   min-height: 72px;
   padding: var(--space-md);
-  border: 1px solid var(--surface-soft);
+  border: 1px solid var(--surface-border);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.014));
+  background: var(--surface);
   overflow: hidden;
 }
 
@@ -27,7 +28,7 @@
   position: absolute;
   inset: 0.75rem;
   border-radius: var(--radius-md);
-  background: linear-gradient(90deg, rgba(130, 98, 255, 0.05), rgba(130, 98, 255, 0));
+  background: var(--surface-soft);
   pointer-events: none;
 }
 
@@ -38,8 +39,8 @@
   min-width: 74px;
   padding: 0.7rem 0.8rem;
   border-radius: var(--radius-md);
-  background: linear-gradient(180deg, rgba(130, 98, 255, 0.3), rgba(130, 98, 255, 0.14));
-  border: 1px solid rgba(130, 98, 255, 0.35);
+  background: color-mix(in srgb, var(--violet) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--violet) 45%, transparent);
   color: var(--fg);
   font-size: 0.78rem;
   font-weight: 700;
@@ -54,20 +55,21 @@
 
 .chord-timeline__event--interactive {
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .chord-timeline__event--interactive:hover {
-  border-color: rgba(130, 98, 255, 0.55);
-  background: linear-gradient(180deg, rgba(130, 98, 255, 0.4), rgba(130, 98, 255, 0.2));
+  border-color: color-mix(in srgb, var(--violet) 65%, transparent);
+  background: color-mix(in srgb, var(--violet) 34%, transparent);
 }
 
 .chord-timeline__event--interactive:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.82);
-  outline-offset: 3px;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .chord-timeline__event--selected {
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  background: var(--selected);
+  color: var(--on-selected);
+  border-color: var(--surface-border-strong);
 }

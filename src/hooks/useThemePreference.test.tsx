@@ -132,11 +132,11 @@ describe("useThemePreference", () => {
 
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(document.documentElement.style.colorScheme).toBe("light");
-    expect(meta).toHaveAttribute("content", "#f4ecd6");
+    expect(meta).toHaveAttribute("content", "#eedebe");
 
     applyDocumentTheme("dark");
 
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(meta).toHaveAttribute("content", "#0f0f0f");
+    expect(meta).toHaveAttribute("content", "#23222f");
   });
 });

@@ -6,6 +6,12 @@ interface MockDiagramSettings {
   position?: number;
   noPosition?: boolean;
   svgTitle?: string;
+  color?: string;
+  stringColor?: string;
+  fretColor?: string;
+  fingerColor?: string;
+  fingerTextColor?: string;
+  fingerStrokeColor?: string;
 }
 
 interface MockDiagramChord {
@@ -89,6 +95,17 @@ describe("ChordFretboard", () => {
         position: 1,
         noPosition: false,
         svgTitle: "Fretboard for C Major",
+      })
+    );
+    // Colours are theme-driven via CSS, so no literal colours reach svguitar.
+    expect(mockChartInstances[0].settings).toEqual(
+      expect.objectContaining({
+        color: "currentColor",
+        stringColor: "currentColor",
+        fretColor: "currentColor",
+        fingerColor: "currentColor",
+        fingerTextColor: "currentColor",
+        fingerStrokeColor: "currentColor",
       })
     );
     expect(mockChartInstances[0].chordData).toEqual(

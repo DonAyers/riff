@@ -53,12 +53,20 @@ test("light mode keeps analysis controls readable", async ({ page }) => {
   await importAndAnalyzeFixture(page);
 
   await expectTheme(page, "light");
-  await expect(page.locator(".lane-toggle__button.is-active")).toHaveCSS(
-    "background-color",
-    "rgb(95, 113, 0)"
-  );
-  await expect(page.locator(".lane-toggle__button.is-active")).toHaveCSS(
-    "color",
-    "rgb(255, 251, 234)"
-  );
+  // Compare against the light-theme tokens so the test follows the palette.
+  const expected = await page.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.style.background = "var(--selected)";
+    probe.style.color = "var(--on-selected)";
+    document.body.append(probe);
+    const style = getComputedStyle(probe);
+    const result = { background: style.backgroundColor, color: style.color };
+    probe.remove();
+    return result;
+  });
+  const activeLane = page.locator(".lane-toggle__button.is-active");
+  await expect(activeLane).toHaveCSS("background-color", expected.background);
+  await expect(activeLane).toHaveCSS("color", expected.color);
+  // Light paper ink, not the dark-theme text colour.
+  expect(expected.color).toBe("rgb(35, 34, 47)");
 });
