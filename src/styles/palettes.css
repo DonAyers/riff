@@ -1,0 +1,379 @@
+/* ── Colour palettes ──
+   Each palette maps a Lospec palette onto Riff's semantic colour tokens, in light and dark.
+   The default palette lives on bare :root; the others are opted into with
+   <html data-palette="…">, which usePalettePreference sets. Every block defines every
+   token so a dark block never inherits a colour from another palette's light block.
+   Add a palette here and in src/lib/palettes.ts together.
+*/
+
+/* Vanilla Milkshake by Space Sandwich (lospec.com/palette-list/vanilla-milkshake) */
+:root {
+  --bg: #fff7e4;
+  --body-bg: #fff7e4;
+  --surface: color-mix(in srgb, #ffe6c6 55%, #fff7e4);
+  --surface-strong: #ffe6c6;
+  --surface-soft: color-mix(in srgb, #ffe6c6 28%, #fff7e4);
+  --surface-border: #d9c8bf;
+  --surface-border-strong: color-mix(in srgb, #6c5671 55%, #d9c8bf);
+  --fg: #28282e;
+  --fg-muted: #6c5671;
+  --accent: #f98284;
+  --accent-text: color-mix(in srgb, #f98284 38%, #28282e);
+  --accent-dim: color-mix(in srgb, #f98284 22%, transparent);
+  --on-accent: #28282e;
+  --selected: #b3e3da;
+  --on-selected: #28282e;
+  --record: #f98284;
+  --on-record: #28282e;
+  --danger: color-mix(in srgb, #f98284 45%, #28282e);
+  --success: color-mix(in srgb, #87a889 70%, #28282e);
+  --ember: color-mix(in srgb, #dea38b 75%, #28282e);
+  --magnetic: color-mix(in srgb, #accce4 45%, #28282e);
+  --violet: color-mix(in srgb, #b0a9e4 55%, #28282e);
+  --focus-ring: #28282e;
+  --tint-1: #ffc384;
+  --tint-2: #feaae4;
+  --tint-3: #accce4;
+  --tint-4: #b0eb93;
+  --scrim: color-mix(in srgb, #28282e 50%, transparent);
+}
+:root[data-theme="dark"] {
+  --bg: #28282e;
+  --body-bg: #28282e;
+  --surface: color-mix(in srgb, #6c5671 30%, #28282e);
+  --surface-strong: color-mix(in srgb, #6c5671 48%, #28282e);
+  --surface-soft: color-mix(in srgb, #6c5671 16%, #28282e);
+  --surface-border: color-mix(in srgb, #6c5671 62%, #28282e);
+  --surface-border-strong: #d9c8bf;
+  --fg: #fff7e4;
+  --fg-muted: #d9c8bf;
+  --accent: #f98284;
+  --accent-text: #f98284;
+  --accent-dim: color-mix(in srgb, #f98284 26%, transparent);
+  --on-accent: #28282e;
+  --selected: color-mix(in srgb, #b3e3da 80%, #28282e);
+  --on-selected: #28282e;
+  --record: #f98284;
+  --on-record: #28282e;
+  --danger: #f98284;
+  --success: #b0eb93;
+  --ember: #ffc384;
+  --magnetic: #accce4;
+  --violet: #b0a9e4;
+  --focus-ring: #fff7e4;
+  --tint-1: color-mix(in srgb, #dea38b 40%, #28282e);
+  --tint-2: color-mix(in srgb, #feaae4 32%, #28282e);
+  --tint-3: color-mix(in srgb, #b0a9e4 36%, #28282e);
+  --tint-4: color-mix(in srgb, #87a889 42%, #28282e);
+  --scrim: color-mix(in srgb, #28282e 70%, transparent);
+}
+
+/* Slowshout16 by Phenomenician (lospec.com/palette-list/slowshout16) */
+:root[data-palette="slowshout"] {
+  --bg: #eedebe;
+  --body-bg: #eedebe;
+  --surface: color-mix(in srgb, #b9b595 30%, #eedebe);
+  --surface-strong: color-mix(in srgb, #b9b595 48%, #eedebe);
+  --surface-soft: color-mix(in srgb, #b9b595 16%, #eedebe);
+  --surface-border: color-mix(in srgb, #b9b595 80%, #eedebe);
+  --surface-border-strong: #8e9593;
+  --fg: #23222f;
+  --fg-muted: #52485f;
+  --accent: color-mix(in srgb, #a75141 55%, #754242);
+  --accent-text: #754242;
+  --accent-dim: color-mix(in srgb, #a75141 16%, transparent);
+  --on-accent: #eedebe;
+  --selected: color-mix(in srgb, #6a7d5f 38%, #eedebe);
+  --on-selected: #23222f;
+  --record: #a75141;
+  --on-record: #eedebe;
+  --danger: #754242;
+  --success: #6a7d5f;
+  --ember: #b97022;
+  --magnetic: #638691;
+  --violet: #4e5d79;
+  --focus-ring: #23222f;
+  --tint-1: color-mix(in srgb, #cf982e 42%, #eedebe);
+  --tint-2: color-mix(in srgb, #c18080 48%, #eedebe);
+  --tint-3: color-mix(in srgb, #638691 40%, #eedebe);
+  --tint-4: color-mix(in srgb, #6a7d5f 40%, #eedebe);
+  --scrim: color-mix(in srgb, #23222f 55%, transparent);
+}
+:root[data-palette="slowshout"][data-theme="dark"] {
+  --bg: #23222f;
+  --body-bg: #23222f;
+  --surface: color-mix(in srgb, #52485f 34%, #23222f);
+  --surface-strong: color-mix(in srgb, #52485f 52%, #23222f);
+  --surface-soft: color-mix(in srgb, #52485f 18%, #23222f);
+  --surface-border: color-mix(in srgb, #52485f 72%, #23222f);
+  --surface-border-strong: #8e9593;
+  --fg: #eedebe;
+  --fg-muted: #8e9593;
+  --accent: color-mix(in srgb, #a75141 55%, #754242);
+  --accent-text: #c18080;
+  --accent-dim: color-mix(in srgb, #a75141 24%, transparent);
+  --on-accent: #eedebe;
+  --selected: color-mix(in srgb, #6a7d5f 60%, #23222f);
+  --on-selected: #eedebe;
+  --record: #a75141;
+  --on-record: #eedebe;
+  --danger: #c18080;
+  --success: #6a7d5f;
+  --ember: #cf982e;
+  --magnetic: #638691;
+  --violet: color-mix(in srgb, #4e5d79 70%, #eedebe);
+  --focus-ring: #eedebe;
+  --tint-1: color-mix(in srgb, #b97022 45%, #23222f);
+  --tint-2: color-mix(in srgb, #754242 72%, #23222f);
+  --tint-3: color-mix(in srgb, #4e5d79 72%, #23222f);
+  --tint-4: color-mix(in srgb, #485a5c 80%, #23222f);
+  --scrim: color-mix(in srgb, #23222f 70%, transparent);
+}
+
+/* Chasm by dysphoriaa (lospec.com/palette-list/chasm) */
+:root[data-palette="chasm"] {
+  --bg: color-mix(in srgb, #f5daa7 28%, #ffffff);
+  --body-bg: color-mix(in srgb, #f5daa7 28%, #ffffff);
+  --surface: color-mix(in srgb, #f5daa7 50%, #ffffff);
+  --surface-strong: color-mix(in srgb, #f5daa7 72%, #ffffff);
+  --surface-soft: color-mix(in srgb, #f5daa7 38%, #ffffff);
+  --surface-border: color-mix(in srgb, #f3a787 50%, #ffffff);
+  --surface-border-strong: color-mix(in srgb, #5d4776 60%, #ffffff);
+  --fg: #32313b;
+  --fg-muted: #5d4776;
+  --accent: #855395;
+  --accent-text: #855395;
+  --accent-dim: color-mix(in srgb, #ab58a8 18%, transparent);
+  --on-accent: #ffffff;
+  --selected: color-mix(in srgb, #85daeb 55%, #ffffff);
+  --on-selected: #32313b;
+  --record: #ab58a8;
+  --on-record: #ffffff;
+  --danger: color-mix(in srgb, #ab58a8 70%, #32313b);
+  --success: #4593a5;
+  --ember: color-mix(in srgb, #f3a787 60%, #32313b);
+  --magnetic: #4c60aa;
+  --violet: #5d4776;
+  --focus-ring: #32313b;
+  --tint-1: color-mix(in srgb, #f3a787 50%, #ffffff);
+  --tint-2: color-mix(in srgb, #ca60ae 35%, #ffffff);
+  --tint-3: color-mix(in srgb, #85daeb 50%, #ffffff);
+  --tint-4: color-mix(in srgb, #8dd894 45%, #ffffff);
+  --scrim: color-mix(in srgb, #32313b 55%, transparent);
+}
+:root[data-palette="chasm"][data-theme="dark"] {
+  --bg: #32313b;
+  --body-bg: #32313b;
+  --surface: color-mix(in srgb, #463c5e 70%, #32313b);
+  --surface-strong: #463c5e;
+  --surface-soft: color-mix(in srgb, #463c5e 35%, #32313b);
+  --surface-border: #444774;
+  --surface-border-strong: color-mix(in srgb, #85daeb 55%, #32313b);
+  --fg: #f5daa7;
+  --fg-muted: #85daeb;
+  --accent: #ff5dcc;
+  --accent-text: color-mix(in srgb, #ff5dcc 60%, #ffffff);
+  --accent-dim: color-mix(in srgb, #ff5dcc 22%, transparent);
+  --on-accent: #32313b;
+  --selected: #5d4776;
+  --on-selected: #f5daa7;
+  --record: #ff5dcc;
+  --on-record: #32313b;
+  --danger: #f3a787;
+  --success: #8dd894;
+  --ember: #fdfe89;
+  --magnetic: #5fc9e7;
+  --violet: color-mix(in srgb, #ab58a8 70%, #ffffff);
+  --focus-ring: #fdfe89;
+  --tint-1: color-mix(in srgb, #4c60aa 75%, #32313b);
+  --tint-2: color-mix(in srgb, #855395 75%, #32313b);
+  --tint-3: color-mix(in srgb, #4593a5 55%, #32313b);
+  --tint-4: #444774;
+  --scrim: color-mix(in srgb, #32313b 70%, transparent);
+}
+
+/* Paper 8 by Frosty Rabbid (lospec.com/palette-list/paper-8) */
+:root[data-palette="paper-8"] {
+  --bg: color-mix(in srgb, #f6e79c 42%, #ffffff);
+  --body-bg: color-mix(in srgb, #f6e79c 42%, #ffffff);
+  --surface: color-mix(in srgb, #f6e79c 70%, #ffffff);
+  --surface-strong: #f6e79c;
+  --surface-soft: color-mix(in srgb, #f6e79c 55%, #ffffff);
+  --surface-border: color-mix(in srgb, #d1a67e 70%, #ffffff);
+  --surface-border-strong: color-mix(in srgb, #654053 70%, #d1a67e);
+  --fg: #1f244b;
+  --fg-muted: #654053;
+  --accent: color-mix(in srgb, #a8605d 80%, #654053);
+  --accent-text: color-mix(in srgb, #a8605d 55%, #654053);
+  --accent-dim: color-mix(in srgb, #a8605d 18%, transparent);
+  --on-accent: #ffffff;
+  --selected: #b6cf8e;
+  --on-selected: #1f244b;
+  --record: #a8605d;
+  --on-record: #1f244b;
+  --danger: color-mix(in srgb, #a8605d 55%, #654053);
+  --success: #3c6b64;
+  --ember: color-mix(in srgb, #d1a67e 60%, #654053);
+  --magnetic: #3c6b64;
+  --violet: #654053;
+  --focus-ring: #1f244b;
+  --tint-1: color-mix(in srgb, #d1a67e 65%, #ffffff);
+  --tint-2: color-mix(in srgb, #a8605d 38%, #ffffff);
+  --tint-3: color-mix(in srgb, #60ae7b 45%, #ffffff);
+  --tint-4: #b6cf8e;
+  --scrim: color-mix(in srgb, #1f244b 55%, transparent);
+}
+:root[data-palette="paper-8"][data-theme="dark"] {
+  --bg: #1f244b;
+  --body-bg: #1f244b;
+  --surface: color-mix(in srgb, #654053 35%, #1f244b);
+  --surface-strong: color-mix(in srgb, #654053 55%, #1f244b);
+  --surface-soft: color-mix(in srgb, #654053 18%, #1f244b);
+  --surface-border: color-mix(in srgb, #654053 75%, #1f244b);
+  --surface-border-strong: #d1a67e;
+  --fg: #f6e79c;
+  --fg-muted: #d1a67e;
+  --accent: #d1a67e;
+  --accent-text: #d1a67e;
+  --accent-dim: color-mix(in srgb, #d1a67e 22%, transparent);
+  --on-accent: #1f244b;
+  --selected: #3c6b64;
+  --on-selected: #f6e79c;
+  --record: #a8605d;
+  --on-record: #1f244b;
+  --danger: color-mix(in srgb, #a8605d 60%, #f6e79c);
+  --success: #b6cf8e;
+  --ember: #d1a67e;
+  --magnetic: #60ae7b;
+  --violet: color-mix(in srgb, #654053 50%, #f6e79c);
+  --focus-ring: #f6e79c;
+  --tint-1: color-mix(in srgb, #d1a67e 38%, #1f244b);
+  --tint-2: color-mix(in srgb, #a8605d 55%, #1f244b);
+  --tint-3: #3c6b64;
+  --tint-4: color-mix(in srgb, #654053 70%, #1f244b);
+  --scrim: color-mix(in srgb, #1f244b 70%, transparent);
+}
+
+/* Fairydust 8 by Yousurname (lospec.com/palette-list/fairydust-8) */
+:root[data-palette="fairydust-8"] {
+  --bg: #f0f6e8;
+  --body-bg: #f0f6e8;
+  --surface: color-mix(in srgb, #f0dab1 45%, #f0f6e8);
+  --surface-strong: color-mix(in srgb, #f0dab1 75%, #f0f6e8);
+  --surface-soft: color-mix(in srgb, #f0dab1 22%, #f0f6e8);
+  --surface-border: #f0dab1;
+  --surface-border-strong: color-mix(in srgb, #634b7d 55%, #f0f6e8);
+  --fg: color-mix(in srgb, #634b7d 70%, #16121f);
+  --fg-muted: #634b7d;
+  --accent: color-mix(in srgb, #c45d9f 60%, #634b7d);
+  --accent-text: color-mix(in srgb, #c45d9f 45%, #634b7d);
+  --accent-dim: color-mix(in srgb, #c45d9f 16%, transparent);
+  --on-accent: #f0f6e8;
+  --selected: #93d4b5;
+  --on-selected: color-mix(in srgb, #634b7d 70%, #16121f);
+  --record: #c45d9f;
+  --on-record: #f0f6e8;
+  --danger: color-mix(in srgb, #c45d9f 45%, #634b7d);
+  --success: color-mix(in srgb, #2ba9b4 75%, #634b7d);
+  --ember: color-mix(in srgb, #e39aac 60%, #634b7d);
+  --magnetic: color-mix(in srgb, #2ba9b4 75%, #634b7d);
+  --violet: #6461c2;
+  --focus-ring: #634b7d;
+  --tint-1: #f0dab1;
+  --tint-2: color-mix(in srgb, #e39aac 65%, #f0f6e8);
+  --tint-3: #93d4b5;
+  --tint-4: color-mix(in srgb, #6461c2 30%, #f0f6e8);
+  --scrim: color-mix(in srgb, #16121f 55%, transparent);
+}
+:root[data-palette="fairydust-8"][data-theme="dark"] {
+  --bg: color-mix(in srgb, #634b7d 50%, #16121f);
+  --body-bg: color-mix(in srgb, #634b7d 50%, #16121f);
+  --surface: color-mix(in srgb, #634b7d 75%, #16121f);
+  --surface-strong: #634b7d;
+  --surface-soft: color-mix(in srgb, #634b7d 62%, #16121f);
+  --surface-border: color-mix(in srgb, #6461c2 60%, #16121f);
+  --surface-border-strong: #e39aac;
+  --fg: #f0f6e8;
+  --fg-muted: #f0dab1;
+  --accent: #e39aac;
+  --accent-text: color-mix(in srgb, #e39aac 70%, #f0f6e8);
+  --accent-dim: color-mix(in srgb, #c45d9f 26%, transparent);
+  --on-accent: #16121f;
+  --selected: #6461c2;
+  --on-selected: #f0f6e8;
+  --record: #c45d9f;
+  --on-record: #f0f6e8;
+  --danger: #e39aac;
+  --success: #93d4b5;
+  --ember: #f0dab1;
+  --magnetic: #2ba9b4;
+  --violet: color-mix(in srgb, #6461c2 60%, #f0f6e8);
+  --focus-ring: #93d4b5;
+  --tint-1: color-mix(in srgb, #c45d9f 45%, #16121f);
+  --tint-2: color-mix(in srgb, #6461c2 55%, #16121f);
+  --tint-3: color-mix(in srgb, #2ba9b4 45%, #16121f);
+  --tint-4: #634b7d;
+  --scrim: color-mix(in srgb, #16121f 70%, transparent);
+}
+
+/* CL8UDS by _Nicola (lospec.com/palette-list/cl8uds) */
+:root[data-palette="cl8uds"] {
+  --bg: color-mix(in srgb, #a5b7d4 20%, #ffffff);
+  --body-bg: color-mix(in srgb, #a5b7d4 20%, #ffffff);
+  --surface: color-mix(in srgb, #a5b7d4 38%, #ffffff);
+  --surface-strong: color-mix(in srgb, #a5b7d4 58%, #ffffff);
+  --surface-soft: color-mix(in srgb, #a5b7d4 28%, #ffffff);
+  --surface-border: #9aabc9;
+  --surface-border-strong: color-mix(in srgb, #8fa0bf 55%, #1a1c2a);
+  --fg: color-mix(in srgb, #8fa0bf 18%, #1a1c2a);
+  --fg-muted: color-mix(in srgb, #b48d92 45%, #1a1c2a);
+  --accent: #ef9d7f;
+  --accent-text: color-mix(in srgb, #ef9d7f 40%, #1a1c2a);
+  --accent-dim: color-mix(in srgb, #ef9d7f 24%, transparent);
+  --on-accent: color-mix(in srgb, #8fa0bf 18%, #1a1c2a);
+  --selected: #9aabc9;
+  --on-selected: color-mix(in srgb, #8fa0bf 18%, #1a1c2a);
+  --record: #ef9d7f;
+  --on-record: color-mix(in srgb, #8fa0bf 18%, #1a1c2a);
+  --danger: color-mix(in srgb, #ef9d7f 40%, #1a1c2a);
+  --success: color-mix(in srgb, #8fa0bf 55%, #1a1c2a);
+  --ember: color-mix(in srgb, #ef9d7f 60%, #1a1c2a);
+  --magnetic: color-mix(in srgb, #8fa0bf 60%, #1a1c2a);
+  --violet: color-mix(in srgb, #b48d92 60%, #1a1c2a);
+  --focus-ring: #1a1c2a;
+  --tint-1: #fcb08c;
+  --tint-2: #d6938a;
+  --tint-3: #a5b7d4;
+  --tint-4: color-mix(in srgb, #a597a1 70%, #ffffff);
+  --scrim: color-mix(in srgb, #1a1c2a 55%, transparent);
+}
+:root[data-palette="cl8uds"][data-theme="dark"] {
+  --bg: color-mix(in srgb, #8fa0bf 22%, #15151f);
+  --body-bg: color-mix(in srgb, #8fa0bf 22%, #15151f);
+  --surface: color-mix(in srgb, #8fa0bf 34%, #15151f);
+  --surface-strong: color-mix(in srgb, #8fa0bf 46%, #15151f);
+  --surface-soft: color-mix(in srgb, #8fa0bf 28%, #15151f);
+  --surface-border: color-mix(in srgb, #8fa0bf 55%, #15151f);
+  --surface-border-strong: #a5b7d4;
+  --fg: color-mix(in srgb, #a5b7d4 28%, #ffffff);
+  --fg-muted: #a5b7d4;
+  --accent: #ef9d7f;
+  --accent-text: #fcb08c;
+  --accent-dim: color-mix(in srgb, #ef9d7f 24%, transparent);
+  --on-accent: #15151f;
+  --selected: color-mix(in srgb, #b48d92 55%, #15151f);
+  --on-selected: color-mix(in srgb, #a5b7d4 28%, #ffffff);
+  --record: #ef9d7f;
+  --on-record: #15151f;
+  --danger: #fcb08c;
+  --success: #a5b7d4;
+  --ember: #fcb08c;
+  --magnetic: #9aabc9;
+  --violet: #a597a1;
+  --focus-ring: #fcb08c;
+  --tint-1: color-mix(in srgb, #ef9d7f 40%, #15151f);
+  --tint-2: color-mix(in srgb, #b48d92 50%, #15151f);
+  --tint-3: color-mix(in srgb, #8fa0bf 52%, #15151f);
+  --tint-4: color-mix(in srgb, #a597a1 38%, #15151f);
+  --scrim: color-mix(in srgb, #15151f 70%, transparent);
+}

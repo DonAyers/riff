@@ -5,7 +5,8 @@ import "./AppTabBar.css";
 export type AppTab = "home" | "builder" | "tuner" | "looper";
 
 interface AppTabBarProps {
-  activeTab: AppTab;
+  /** null when the current page (such as Settings) isn't one of the tabs. */
+  activeTab: AppTab | null;
   navigate: (pathname: string) => void;
 }
 

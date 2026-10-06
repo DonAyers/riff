@@ -10,7 +10,17 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { FlaskConical, HelpCircle, Moon, RotateCcw, Sun, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
+import {
+  FlaskConical,
+  HelpCircle,
+  Moon,
+  RotateCcw,
+  Settings,
+  Sun,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+} from "lucide-react";
 import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
 import { LaneToggle, type Lane } from "./components/LaneToggle";
@@ -34,7 +44,9 @@ import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
 import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
 import { useGlobalKeyboardShortcuts } from "./hooks/useGlobalKeyboardShortcuts";
+import { usePalettePreference } from "./hooks/usePalettePreference";
 import { useThemePreference, type ThemeMode, type ThemeSource } from "./hooks/useThemePreference";
+import { SettingsPanel, type ThemeChoice } from "./components/SettingsPanel";
 import "./components/ChordFretboard.css";
 import "./components/ExportPanel.css";
 import "./components/SelectedChordDialog.css";
@@ -59,10 +71,11 @@ const HOME_PATH = "/";
 const TUNER_PATH = "/tuner";
 const BUILDER_PATH = "/builder";
 const LOOPER_PATH = "/looper";
+const SETTINGS_PATH = "/settings";
 const SKIP_DISCARD_CONFIRMATION_KEY = "riff:skip-discard-confirmation";
 
 type WorkspaceRoute = "home" | "builder";
-type AppRoute = WorkspaceRoute | "tuner" | "looper";
+type AppRoute = WorkspaceRoute | "tuner" | "looper" | "settings";
 type NavigateToRoute = (pathname: string) => void;
 type HomeStage = "record" | "approve" | "analyze";
 type AnalysisScreen = "summary" | "timeline" | "shape" | "export";
@@ -112,12 +125,14 @@ function resolveAppRoute(pathname: string): AppRoute {
   if (normalized === TUNER_PATH) return "tuner";
   if (normalized === BUILDER_PATH) return "builder";
   if (normalized === LOOPER_PATH) return "looper";
+  if (normalized === SETTINGS_PATH) return "settings";
   return "home";
 }
 
 function getRoutePathname(route: AppRoute): string {
   if (route === "builder") return BUILDER_PATH;
   if (route === "looper") return LOOPER_PATH;
+  if (route === "settings") return SETTINGS_PATH;
   return route === "tuner" ? TUNER_PATH : HOME_PATH;
 }
 
@@ -236,7 +251,7 @@ interface AppHeaderProps {
   onHelp?: () => void;
 }
 
-/** The one header every tab shares: wordmark on the left, theme and help on the right. */
+/** The one header every tab shares: wordmark on the left, theme, settings and help on the right. */
 function AppHeader({ navigate, themeControls, onHelp }: AppHeaderProps) {
   return (
     <header className="app-header">
@@ -244,6 +259,15 @@ function AppHeader({ navigate, themeControls, onHelp }: AppHeaderProps) {
         <AppTitle navigate={navigate} />
         <div className="app-header-actions">
           <ThemeToggleButton {...themeControls} />
+          <AppRouteLink
+            className="settings-btn"
+            to={SETTINGS_PATH}
+            navigate={navigate}
+            aria-label="Settings"
+            title="Settings"
+          >
+            <Settings size={16} strokeWidth={2} aria-hidden="true" />
+          </AppRouteLink>
           {onHelp && (
             <button className="help-btn" onClick={onHelp} aria-label="Help and about">
               <HelpCircle size={16} strokeWidth={2} aria-hidden="true" />
@@ -1193,6 +1217,15 @@ function ToolRoute({ navigate, themeControls, title, description, children }: To
 function App() {
   const { route, navigate } = useAppRoute();
   const themePreference = useThemePreference();
+  const { palette, setPalette } = usePalettePreference();
+  const { clearThemeOverride, setThemeOverride } = themePreference;
+  const handleThemeChoice = useCallback(
+    (choice: ThemeChoice) => {
+      if (choice === "system") clearThemeOverride();
+      else setThemeOverride(choice);
+    },
+    [clearThemeOverride, setThemeOverride]
+  );
   const themeControls: ThemeControls = {
     nextTheme: themePreference.nextTheme,
     onToggle: themePreference.toggleTheme,
@@ -1245,7 +1278,23 @@ function App() {
           <Looper />
         </ToolRoute>
       )}
-      <AppTabBar activeTab={route} navigate={navigate} />
+      {route === "settings" && (
+        <ToolRoute
+          navigate={navigate}
+          themeControls={themeControls}
+          title="Settings"
+          description="Choose how Riff looks on this device."
+        >
+          <SettingsPanel
+            palette={palette}
+            onPaletteChange={setPalette}
+            theme={themePreference.theme}
+            themeSource={themePreference.source}
+            onThemeChange={handleThemeChoice}
+          />
+        </ToolRoute>
+      )}
+      <AppTabBar activeTab={route === "settings" ? null : route} navigate={navigate} />
     </>
   );
 }

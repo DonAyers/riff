@@ -1,0 +1,141 @@
+.settings-panel {
+  width: min(100%, 34rem);
+  display: grid;
+  gap: var(--space-lg);
+  color: var(--fg);
+}
+
+.settings-panel__group {
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+}
+
+.settings-panel__legend {
+  float: left; /* keeps the legend inside the fieldset's grid instead of on its border */
+  width: 100%;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+}
+
+.settings-panel__modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  border-radius: var(--radius-full);
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-border);
+}
+
+.settings-panel__mode,
+.settings-panel__palette {
+  position: relative;
+  cursor: pointer;
+}
+
+/* Native radios stay focusable and announced; the label is the visible control. */
+.settings-panel__mode input,
+.settings-panel__palette input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.settings-panel__mode span {
+  display: block;
+  min-height: 2.5rem;
+  padding: var(--space-sm);
+  border-radius: var(--radius-full);
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--fg-muted);
+}
+
+.settings-panel__mode input:checked + span {
+  background: var(--selected);
+  color: var(--on-selected);
+}
+
+.settings-panel__mode input:focus-visible + span,
+.settings-panel__palette:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.settings-panel__palettes {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.settings-panel__palette {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "swatches name"
+    "swatches author";
+  column-gap: var(--space-md);
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-soft);
+}
+
+.settings-panel__palette:hover {
+  background: var(--surface-strong);
+}
+
+.settings-panel__palette:has(input:checked) {
+  border-color: var(--fg);
+  background: var(--selected);
+  color: var(--on-selected);
+}
+
+.settings-panel__swatches {
+  grid-area: swatches;
+  display: flex;
+  width: 5.5rem;
+  height: 2rem;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  border: 1px solid var(--surface-border-strong);
+}
+
+.settings-panel__swatches span {
+  flex: 1;
+}
+
+.settings-panel__palette-name {
+  grid-area: name;
+  font-weight: 700;
+}
+
+.settings-panel__palette-author {
+  grid-area: author;
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+}
+
+.settings-panel__palette:has(input:checked) .settings-panel__palette-author {
+  color: inherit;
+}
+
+.settings-panel__note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+}
+
+.settings-panel__note a {
+  color: var(--accent-text);
+}

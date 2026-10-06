@@ -67,6 +67,6 @@ test("light mode keeps analysis controls readable", async ({ page }) => {
   const activeLane = page.locator(".lane-toggle__button.is-active");
   await expect(activeLane).toHaveCSS("background-color", expected.background);
   await expect(activeLane).toHaveCSS("color", expected.color);
-  // Light paper ink, not the dark-theme text colour.
-  expect(expected.color).toBe("rgb(35, 34, 47)");
+  // Default palette's light-mode ink, not the dark-theme text colour.
+  expect(expected.color).toBe("rgb(40, 40, 46)");
 });

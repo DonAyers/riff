@@ -51,6 +51,7 @@ function installMatchMedia(initialLightMode: boolean) {
 
 function resetDocumentTheme() {
   document.documentElement.removeAttribute("data-theme");
+  document.documentElement.removeAttribute("data-palette");
   document.documentElement.style.colorScheme = "";
   document.querySelector("meta[name='theme-color']")?.remove();
 }
@@ -132,11 +133,26 @@ describe("useThemePreference", () => {
 
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(document.documentElement.style.colorScheme).toBe("light");
-    expect(meta).toHaveAttribute("content", "#eedebe");
+    // Default palette (Vanilla Milkshake) background for each mode.
+    expect(meta).toHaveAttribute("content", "#fff7e4");
 
     applyDocumentTheme("dark");
 
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(meta).toHaveAttribute("content", "#23222f");
+    expect(meta).toHaveAttribute("content", "#28282e");
+  });
+
+  it("matches the browser chrome colour to the selected palette", () => {
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    document.head.append(meta);
+    document.documentElement.dataset.palette = "chasm";
+
+    applyDocumentTheme("dark");
+    expect(meta).toHaveAttribute("content", "#32313b");
+
+    document.documentElement.dataset.palette = "not-a-palette";
+    applyDocumentTheme("dark");
+    expect(meta).toHaveAttribute("content", "#28282e");
   });
 });

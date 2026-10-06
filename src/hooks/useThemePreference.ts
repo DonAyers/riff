@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DEFAULT_PALETTE_ID, getPalette, isPaletteId } from "../lib/palettes";
 
 export type ThemeMode = "dark" | "light";
 export type ThemeSource = "system" | "override";
@@ -6,10 +7,6 @@ export type ThemeSource = "system" | "override";
 export const THEME_STORAGE_KEY = "riff:theme-preference";
 const LIGHT_QUERY = "(prefers-color-scheme: light)";
 const THEME_COLOR_META = "meta[name='theme-color']";
-const THEME_COLORS: Record<ThemeMode, string> = {
-  dark: "#23222f",
-  light: "#eedebe",
-};
 
 function canUseWindow(): boolean {
   return typeof window !== "undefined";
@@ -35,9 +32,18 @@ export function applyDocumentTheme(theme: ThemeMode): void {
 
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
+  syncThemeColorMeta();
+}
 
+/** Points the browser chrome colour at the current palette's background for the current mode. */
+export function syncThemeColorMeta(): void {
+  if (typeof document === "undefined") return;
+
+  const { palette, theme } = document.documentElement.dataset;
+  const mode: ThemeMode = theme === "light" ? "light" : "dark";
+  const paletteId = isPaletteId(palette) ? palette : DEFAULT_PALETTE_ID;
   const themeColor = document.querySelector<HTMLMetaElement>(THEME_COLOR_META);
-  themeColor?.setAttribute("content", THEME_COLORS[theme]);
+  themeColor?.setAttribute("content", getPalette(paletteId).themeColor[mode]);
 }
 
 export function initializeThemePreference(): void {
