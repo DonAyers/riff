@@ -80,3 +80,37 @@ test("the header looks the same on every tab", async ({ page }) => {
     expect(Math.round(box!.height)).toBe(Math.round(first!.height));
   }
 });
+
+for (const theme of ["light", "dark"] as const) {
+  test(`primary button labels meet WCAG AA contrast in ${theme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme });
+    await gotoApp(page);
+    await page.goto("/tuner");
+
+    const start = page.getByRole("button", { name: "Start tuner" });
+    await expect(start).toBeVisible();
+
+    const ratio = await start.evaluate((element) => {
+      // Resolve any CSS colour (including color-mix output) to sRGB via a canvas.
+      const toRgb = (color: string) => {
+        const context = document.createElement("canvas").getContext("2d")!;
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+      };
+      const luminance = (rgb: number[]) => {
+        const [r, g, b] = rgb.map((value) => {
+          const channel = value / 255;
+          return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const style = getComputedStyle(element);
+      const text = luminance(toRgb(style.color));
+      const fill = luminance(toRgb(style.backgroundColor));
+      return (Math.max(text, fill) + 0.05) / (Math.min(text, fill) + 0.05);
+    });
+
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+}
