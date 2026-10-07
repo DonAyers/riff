@@ -30,7 +30,17 @@ function describeLength(beats: number, beatsPerBar: number): string {
 }
 
 /** Edits as text and only applies on blur or Enter, so typing "120" never passes through 40. */
-function BpmInput({ bpm, disabled, onCommit }: { bpm: number; disabled: boolean; onCommit: (bpm: number) => void }) {
+function BpmInput({
+  id,
+  bpm,
+  disabled,
+  onCommit,
+}: {
+  id: string;
+  bpm: number;
+  disabled: boolean;
+  onCommit: (bpm: number) => void;
+}) {
   const [draft, setDraft] = useState<string | null>(null);
 
   const commit = () => {
@@ -40,6 +50,7 @@ function BpmInput({ bpm, disabled, onCommit }: { bpm: number; disabled: boolean;
 
   return (
     <input
+      id={id}
       type="number"
       inputMode="decimal"
       min={MIN_BPM}
@@ -85,16 +96,13 @@ export function LooperTempo({
   return (
     <fieldset className="looper-tempo" id="looper-metronome-settings">
       <legend>Metronome</legend>
-      <div className="looper-tempo__row">
-        <span className="looper-tempo__switch-label" id="looper-click-label">
-          Click
-        </span>
+      <div className="looper-tempo__top">
         <button
           type="button"
           role="switch"
           className="looper-tempo__switch"
           aria-checked={metronome.clickOn}
-          aria-labelledby="looper-click-label"
+          aria-label="Click"
           onClick={() => setClickOn(!metronome.clickOn)}
         >
           <span className="looper-tempo__switch-text">{metronome.clickOn ? "On" : "Off"}</span>
@@ -107,50 +115,62 @@ export function LooperTempo({
         </div>
       </div>
 
-      {grid ? (
-        <div className="looper-tempo__row">
-          <span className="looper-tempo__value" data-testid="loop-tempo">
-            {formatBpm(grid.bpm)} BPM · {describeLength(grid.beats, metronome.beatsPerBar)}
-          </span>
-          <div className="looper-tempo__actions">
-            <button
-              type="button"
-              className="looper__clear-all"
-              onClick={() => scaleTempo(0.5)}
-              disabled={grid.beats % 2 !== 0 || grid.bpm / 2 < MIN_BPM}
-              aria-label="Halve the tempo"
-            >
-              ÷2
-            </button>
-            <button
-              type="button"
-              className="looper__clear-all"
-              onClick={() => scaleTempo(2)}
-              disabled={grid.bpm * 2 > MAX_BPM}
-              aria-label="Double the tempo"
-            >
-              ×2
-            </button>
+      {hasLoop ? (
+        <div className="looper-tempo__grid">
+          <div className="looper-tempo__group">
+            <span className="looper-tempo__label">Loop tempo</span>
+            {grid ? (
+              <span className="looper-tempo__value" data-testid="loop-tempo">
+                {formatBpm(grid.bpm)} BPM · {describeLength(grid.beats, metronome.beatsPerBar)}
+              </span>
+            ) : (
+              <span className="looper-tempo__value">Played freely</span>
+            )}
+          </div>
+          <div className="looper-tempo__controls">
+            {grid ? (
+              <>
+                <button
+                  type="button"
+                  className="looper-tempo__button"
+                  onClick={() => scaleTempo(0.5)}
+                  disabled={grid.beats % 2 !== 0 || grid.bpm / 2 < MIN_BPM}
+                  aria-label="Halve the tempo"
+                >
+                  ÷2
+                </button>
+                <button
+                  type="button"
+                  className="looper-tempo__button"
+                  onClick={() => scaleTempo(2)}
+                  disabled={grid.bpm * 2 > MAX_BPM}
+                  aria-label="Double the tempo"
+                >
+                  ×2
+                </button>
+              </>
+            ) : (
+              <button type="button" className="looper-tempo__button" onClick={fitTempoToLoop}>
+                Fit tempo
+              </button>
+            )}
           </div>
         </div>
-      ) : hasLoop ? (
-        <div className="looper-tempo__row">
-          <span className="looper-tempo__value">Played freely</span>
-          <button type="button" className="looper__clear-all" onClick={fitTempoToLoop}>
-            Fit tempo
-          </button>
-        </div>
       ) : (
-        <div className="looper-tempo__row">
-          <label className="looper-tempo__field">
-            BPM
-            <BpmInput bpm={metronome.bpm} disabled={isLocked} onCommit={setBpm} />
-          </label>
-          <button type="button" className="looper__clear-all" onClick={tapTempo} disabled={isLocked}>
-            Tap
-          </button>
-          <label className="looper-tempo__field">
-            Beats
+        <div className="looper-tempo__grid">
+          <div className="looper-tempo__group">
+            <label className="looper-tempo__label" htmlFor="looper-bpm">
+              BPM
+            </label>
+            <div className="looper-tempo__controls">
+              <BpmInput id="looper-bpm" bpm={metronome.bpm} disabled={isLocked} onCommit={setBpm} />
+              <button type="button" className="looper-tempo__button" onClick={tapTempo} disabled={isLocked}>
+                Tap
+              </button>
+            </div>
+          </div>
+          <label className="looper-tempo__group">
+            <span className="looper-tempo__label">Beats per bar</span>
             <select
               value={metronome.beatsPerBar}
               disabled={isLocked}
@@ -169,7 +189,7 @@ export function LooperTempo({
 
       <div className="looper-tempo__footer">
         <p>Tap the metronome to turn the click on or off. Hold it to come back here.</p>
-        <button type="button" className="looper__clear-all" onClick={onClose}>
+        <button type="button" className="looper-tempo__button looper-tempo__done" onClick={onClose}>
           Done
         </button>
       </div>
