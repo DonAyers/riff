@@ -4,6 +4,7 @@ import {
   THEME_STORAGE_KEY,
   applyDocumentTheme,
   initializeThemePreference,
+  readThemeOverride,
   useThemePreference,
 } from "./useThemePreference";
 
@@ -65,6 +66,16 @@ describe("useThemePreference", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     resetDocumentTheme();
+  });
+
+  it("falls back to the system theme when storage is blocked", () => {
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+
+    expect(readThemeOverride()).toBeNull();
+    expect(() => initializeThemePreference()).not.toThrow();
+    getItem.mockRestore();
   });
 
   it("follows the OS theme and reacts to OS preference changes when no override exists", () => {

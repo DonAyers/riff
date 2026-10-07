@@ -16,8 +16,13 @@ function canUseWindow(): boolean {
 export function readThemeOverride(): ThemeMode | null {
   if (!canUseWindow()) return null;
 
-  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === "light" || stored === "dark" ? stored : null;
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return stored === "light" || stored === "dark" ? stored : null;
+  } catch {
+    // Storage can be blocked (private mode, site data disabled); follow the system theme.
+    return null;
+  }
 }
 
 export function getSystemTheme(): ThemeMode {
@@ -84,14 +89,22 @@ export function useThemePreference() {
   const setThemeOverride = useCallback((next: ThemeMode) => {
     if (!canUseWindow()) return;
 
-    window.localStorage.setItem(THEME_STORAGE_KEY, next);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch {
+      // Not saved when storage is blocked; still applies for this visit.
+    }
     setOverrideTheme(next);
   }, []);
 
   const clearThemeOverride = useCallback(() => {
     if (!canUseWindow()) return;
 
-    window.localStorage.removeItem(THEME_STORAGE_KEY);
+    try {
+      window.localStorage.removeItem(THEME_STORAGE_KEY);
+    } catch {
+      // Nothing saved to clear when storage is blocked.
+    }
     setOverrideTheme(null);
     setSystemTheme(getSystemTheme());
   }, []);

@@ -121,6 +121,22 @@ describe("useMidiPlayback", () => {
     });
   });
 
+  it("retries loading the sampler after a failed first load", async () => {
+    smplrMocks.constructor.mockImplementationOnce(() => {
+      throw new Error("chunk failed to load");
+    });
+    const { result } = renderHook(() => useMidiPlayback());
+
+    await expect(
+      result.current.previewNote({ midi: 57, amplitude: 0.3, durationS: 0.5 })
+    ).rejects.toThrow("chunk failed to load");
+
+    await act(async () => {
+      await result.current.previewNote({ midi: 57, amplitude: 0.3, durationS: 0.5 });
+    });
+    expect(smplrMocks.start).toHaveBeenCalledTimes(1);
+  });
+
   it("extends short note playback with a sustain floor and release tail", async () => {
     const { result } = renderHook(() => useMidiPlayback());
 

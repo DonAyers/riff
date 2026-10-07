@@ -88,10 +88,16 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
   const getSampler = useCallback(() => {
     if (!samplerPromiseRef.current) {
       const ctx = getAudioContext();
-      samplerPromiseRef.current = import("smplr").then(({ Soundfont: SoundfontPlayer }) => {
-        samplerRef.current = new SoundfontPlayer(ctx, { instrument: DEFAULT_INSTRUMENT });
-        return samplerRef.current;
-      });
+      samplerPromiseRef.current = import("smplr")
+        .then(({ Soundfont: SoundfontPlayer }) => {
+          samplerRef.current = new SoundfontPlayer(ctx, { instrument: DEFAULT_INSTRUMENT });
+          return samplerRef.current;
+        })
+        .catch((error: unknown) => {
+          // Let the next play try again (the chunk fetch can fail while offline).
+          samplerPromiseRef.current = null;
+          throw error;
+        });
     }
     return samplerPromiseRef.current;
   }, [getAudioContext]);
