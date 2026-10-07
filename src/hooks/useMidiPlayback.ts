@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Soundfont } from "smplr";
+import type { Soundfont } from "smplr";
 import { PROFILES, type ProfileId } from "../lib/instrumentProfiles";
 import type { MappedNote } from "../lib/noteMapper";
 import { extendStrumPlaybackDurations } from "../lib/guitarStrumPlayback";
@@ -83,14 +83,23 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
     return audioContextRef.current;
   }, []);
 
+  // smplr loads on first playback rather than with the app (research/spike-initial-load.md).
+  const samplerPromiseRef = useRef<Promise<Soundfont> | null>(null);
   const getSampler = useCallback(() => {
-    if (!samplerRef.current) {
+    if (!samplerPromiseRef.current) {
       const ctx = getAudioContext();
-      samplerRef.current = new Soundfont(ctx, {
-        instrument: DEFAULT_INSTRUMENT,
-      });
+      samplerPromiseRef.current = import("smplr")
+        .then(({ Soundfont: SoundfontPlayer }) => {
+          samplerRef.current = new SoundfontPlayer(ctx, { instrument: DEFAULT_INSTRUMENT });
+          return samplerRef.current;
+        })
+        .catch((error: unknown) => {
+          // Let the next play try again (the chunk fetch can fail while offline).
+          samplerPromiseRef.current = null;
+          throw error;
+        });
     }
-    return samplerRef.current;
+    return samplerPromiseRef.current;
   }, [getAudioContext]);
 
   const stopTimelineUpdates = useCallback(() => {
@@ -231,7 +240,7 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
     setPlaybackPlaying(true);
     setCurrentTimeS(0);
 
-    const sampler = getSampler();
+    const sampler = await getSampler();
     await sampler.load; // wait for instrument to be loaded if not already
 
     if (playbackId !== playbackIdRef.current) {
@@ -245,7 +254,7 @@ export function useMidiPlayback(profileId: ProfileId = "guitar"): UseMidiPlaybac
     const ctx = getAudioContext();
     await resumeAudioContext(ctx);
 
-    const sampler = getSampler();
+    const sampler = await getSampler();
 
     const velocity = getVelocity(note.amplitude, 20);
 

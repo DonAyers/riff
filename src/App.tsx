@@ -25,7 +25,6 @@ import { useRiffSession } from "./hooks/useRiffSession";
 import { Recorder } from "./components/Recorder";
 import { LaneToggle, type Lane } from "./components/LaneToggle";
 import { KeyDisplay } from "./components/KeyDisplay";
-import { ChordMapExplorer } from "./components/ChordMapExplorer";
 import { NoteDisplay } from "./components/NoteDisplay";
 import { ChordDisplay } from "./components/ChordDisplay";
 import { PianoRoll } from "./components/PianoRoll";
@@ -34,10 +33,7 @@ import { Playback } from "./components/Playback";
 import { SessionPicker } from "./components/SessionPicker";
 import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
-import { GuitarTuner } from "./components/GuitarTuner";
 import { AppTabBar } from "./components/AppTabBar";
-import { Looper } from "./components/Looper";
-import { SongBuilder } from "./components/SongBuilder";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
@@ -46,7 +42,7 @@ import { BUILDER_PATH, HOME_PATH, LOOPER_PATH, SETTINGS_PATH, TUNER_PATH } from 
 import { useGlobalKeyboardShortcuts } from "./hooks/useGlobalKeyboardShortcuts";
 import { usePalettePreference } from "./hooks/usePalettePreference";
 import { useThemePreference, type ThemeMode, type ThemeSource } from "./hooks/useThemePreference";
-import { SettingsPanel, type ThemeChoice } from "./components/SettingsPanel";
+import type { ThemeChoice } from "./components/SettingsPanel";
 import "./components/ChordFretboard.css";
 import "./components/ExportPanel.css";
 import "./components/SelectedChordDialog.css";
@@ -66,6 +62,43 @@ const LazySelectedChordDialog = lazy(async () => {
   const module = await import("./components/SelectedChordDialog");
   return { default: module.SelectedChordDialog };
 });
+
+// Each tab, and the analysis chord map, loads on first use so the Record screen's bundle
+// stays small (research/spike-initial-load.md). The service worker precaches every chunk,
+// so this costs nothing offline.
+const LazyChordMapExplorer = lazy(async () => {
+  const module = await import("./components/ChordMapExplorer");
+  return { default: module.ChordMapExplorer };
+});
+
+const LazySongBuilder = lazy(async () => {
+  const module = await import("./components/SongBuilder");
+  return { default: module.SongBuilder };
+});
+
+const LazyGuitarTuner = lazy(async () => {
+  const module = await import("./components/GuitarTuner");
+  return { default: module.GuitarTuner };
+});
+
+const LazyLooper = lazy(async () => {
+  const module = await import("./components/Looper");
+  return { default: module.Looper };
+});
+
+const LazySettingsPanel = lazy(async () => {
+  const module = await import("./components/SettingsPanel");
+  return { default: module.SettingsPanel };
+});
+
+/** Holds the space while a lazily loaded screen arrives, and tells assistive tech why. */
+function ScreenFallback() {
+  return (
+    <div className="screen-fallback" role="status" aria-live="polite">
+      <span className="screen-fallback__label">Loading…</span>
+    </div>
+  );
+}
 
 const SKIP_DISCARD_CONFIRMATION_KEY = "riff:skip-discard-confirmation";
 
@@ -789,14 +822,16 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
 
         <main className={`app-main ${activeRoute === "builder" ? "app-main--builder" : "app-main--flow"}`}>
           {activeRoute === "builder" ? (
-            <SongBuilder
-              chordTimeline={chordTimeline}
-              recorderProps={baseRecorderProps}
-              isLoading={isLoading}
-              progress={progress}
-              onLoadDemo={handleLoadDemoAnalysis}
-              showDemoFallback={Boolean(error && !hasResults)}
-            />
+            <Suspense fallback={<ScreenFallback />}>
+              <LazySongBuilder
+                chordTimeline={chordTimeline}
+                recorderProps={baseRecorderProps}
+                isLoading={isLoading}
+                progress={progress}
+                onLoadDemo={handleLoadDemoAnalysis}
+                showDemoFallback={Boolean(error && !hasResults)}
+              />
+            </Suspense>
           ) : (
             <section
               className={`riff-device riff-device--${homeStage}`}
@@ -967,11 +1002,13 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                                 <div className="results-song-stack">
                                   <KeyDisplay result={keyDetection} />
                                 </div>
-                                <ChordMapExplorer
-                                  events={chordTimeline}
-                                  fallbackChord={chord}
-                                  onOpenChord={handleChordSelect}
-                                />
+                                <Suspense fallback={<ScreenFallback />}>
+                                  <LazyChordMapExplorer
+                                    events={chordTimeline}
+                                    fallbackChord={chord}
+                                    onOpenChord={handleChordSelect}
+                                  />
+                                </Suspense>
                               </>
                             )}
 
@@ -1191,7 +1228,7 @@ function ToolRoute({ navigate, themeControls, title, description, children }: To
             <h2 className="workspace-pane__title">{title}</h2>
             <p className="workspace-pane__description">{description}</p>
           </div>
-          {children}
+          <Suspense fallback={<ScreenFallback />}>{children}</Suspense>
         </main>
 
       </div>
@@ -1250,7 +1287,7 @@ function App() {
           title="Guitar tuner"
           description="Pick a tuning, pluck one string, and follow the note."
         >
-          <GuitarTuner />
+          <LazyGuitarTuner />
         </ToolRoute>
       )}
       {route === "looper" && (
@@ -1260,7 +1297,7 @@ function App() {
           title="Looper"
           description="Lay down a loop, then stack up to three more parts on top."
         >
-          <Looper />
+          <LazyLooper />
         </ToolRoute>
       )}
       {route === "settings" && (
@@ -1270,7 +1307,7 @@ function App() {
           title="Settings"
           description="Choose how Riff looks on this device."
         >
-          <SettingsPanel
+          <LazySettingsPanel
             palette={palette}
             onPaletteChange={setPalette}
             theme={themePreference.theme}

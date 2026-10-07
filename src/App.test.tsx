@@ -390,7 +390,7 @@ describe("App mic permission fallback", () => {
     expect(localStorage.getItem("riff:skip-discard-confirmation")).toBe("true");
   });
 
-  it("renders the song builder route with the shared workspace session", () => {
+  it("renders the song builder route with the shared workspace session", async () => {
     window.history.replaceState(null, "", "/builder");
     useRiffSessionMock.mockReturnValue(
       createSessionState({
@@ -400,12 +400,12 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    expect(screen.getByTestId("song-builder")).toBeInTheDocument();
+    expect(await screen.findByTestId("song-builder")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: /analysis/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("guitar-tuner")).not.toBeInTheDocument();
   });
 
-  it("renders the looper on its own route and returns to recording from the tab bar", () => {
+  it("renders the looper on its own route and returns to recording from the tab bar", async () => {
     window.history.replaceState(null, "", "/looper");
     useRiffSessionMock.mockReturnValue(
       createSessionState() as ReturnType<typeof useRiffSession>
@@ -414,7 +414,10 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { level: 2, name: /looper/i })).toBeInTheDocument();
-    expect(screen.getByTestId("looper")).toBeInTheDocument();
+    // The tab's code loads on demand; the header stays put and a status explains the wait.
+    expect(screen.getByRole("status")).toHaveTextContent("Loading…");
+    expect(await screen.findByTestId("looper")).toBeInTheDocument();
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Looper" })).toHaveAttribute("aria-current", "page");
     expect(useRiffSessionMock).not.toHaveBeenCalled();
 
@@ -446,7 +449,7 @@ describe("App mic permission fallback", () => {
     }
   );
 
-  it("opens Settings from the header and applies the chosen palette", () => {
+  it("opens Settings from the header and applies the chosen palette", async () => {
     window.history.replaceState(null, "", "/tuner");
     useRiffSessionMock.mockReturnValue(
       createSessionState() as ReturnType<typeof useRiffSession>
@@ -462,7 +465,7 @@ describe("App mic permission fallback", () => {
       within(screen.getByRole("navigation", { name: "Primary" })).queryByRole("link", { current: "page" })
     ).toBeNull();
 
-    fireEvent.click(screen.getByRole("radio", { name: /chasm/i }));
+    fireEvent.click(await screen.findByRole("radio", { name: /chasm/i }));
     expect(document.documentElement.dataset.palette).toBe("chasm");
 
     fireEvent.click(screen.getByRole("radio", { name: "Light" }));
@@ -473,7 +476,7 @@ describe("App mic permission fallback", () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
   });
 
-  it("renders the guitar tuner only on its dedicated route", () => {
+  it("renders the guitar tuner only on its dedicated route", async () => {
     window.history.replaceState(null, "", "/tuner");
     useRiffSessionMock.mockReturnValue(
       createSessionState() as ReturnType<typeof useRiffSession>
@@ -482,7 +485,7 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { level: 2, name: /guitar tuner/i })).toBeInTheDocument();
-    expect(screen.getByTestId("guitar-tuner")).toBeInTheDocument();
+    expect(await screen.findByTestId("guitar-tuner")).toBeInTheDocument();
     expect(screen.queryByTestId("recorder")).not.toBeInTheDocument();
     expect(useRiffSessionMock).not.toHaveBeenCalled();
 
@@ -590,7 +593,7 @@ describe("App mic permission fallback", () => {
     render(<App />);
 
     expect(screen.queryByText(/ready for a take/i)).not.toBeInTheDocument();
-    expect(screen.getByTestId("chord-map-explorer")).toBeInTheDocument();
+    expect(await screen.findByTestId("chord-map-explorer")).toBeInTheDocument();
     expect(screen.getByTestId("key-display")).toBeInTheDocument();
     expect(screen.queryByTestId("note-display")).not.toBeInTheDocument();
     expect(screen.queryByTestId("chord-timeline")).not.toBeInTheDocument();

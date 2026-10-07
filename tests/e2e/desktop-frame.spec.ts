@@ -72,7 +72,9 @@ test("phones keep the full-screen layout with no frame", async ({ page }) => {
   const frame = page.locator(".app-frame");
   await expect(frame).toHaveCSS("border-radius", "0px");
   expect((await frame.boundingBox())!.width).toBe(390);
-  const tabBar = await page.getByRole("navigation", { name: "Primary" }).boundingBox();
+  const nav = page.getByRole("navigation", { name: "Primary" });
+  await expect(nav).toBeVisible();
+  const tabBar = await nav.boundingBox();
   expect(Math.round(tabBar!.y + tabBar!.height)).toBe(844);
 });
 

@@ -5,7 +5,7 @@ import App from "./App";
 import { initializePalettePreference } from "./hooks/usePalettePreference";
 import { initializeThemePreference } from "./hooks/useThemePreference";
 import { buildLabel } from "./lib/buildInfo";
-import "./styles/fonts";
+import "./styles/fonts.css";
 import "./styles/tokens.css";
 import "./styles/palettes.css";
 import "./styles/index.css";
