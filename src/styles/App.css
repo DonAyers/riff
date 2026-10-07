@@ -42,23 +42,6 @@
   display: none;
 }
 
-/* Build label: a plain muted line at the end of the shell, in normal flow. */
-.build-badge {
-  position: static;
-  justify-self: end;
-  pointer-events: none;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--fg-muted);
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1.4;
-  text-transform: uppercase;
-}
-
 /* ── Header ──
    One shared header on every route (/, /builder, /tuner, /looper):
    wordmark left, icon buttons right. No centred or per-route variants. */

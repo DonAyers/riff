@@ -279,7 +279,8 @@ describe("App mic permission fallback", () => {
 
     render(<App />);
 
-    expect(screen.getByLabelText(`Build ${buildLabel}`)).toBeInTheDocument();
+    // The version lives in the help sheet's About section, not under every screen.
+    expect(screen.queryByText(buildLabel)).not.toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: /capture/i })
     ).toBeInTheDocument();

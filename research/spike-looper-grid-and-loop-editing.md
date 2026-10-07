@@ -98,3 +98,7 @@ Seen across Loopy Pro, the Boss RC-505mkII (tap tempo, rhythm guide, "Mark Back"
 ## Decision (2026-10-07)
 
 Don picked item 1. Built as: 2 s pre/post-roll handles on the first take, start and end controls (±10 ms buttons and ±2 s sliders) shown only while the first take is the only track, a 10 ms equal-power seam crossfade, gapless player swaps while editing, and one level of undo for the last take. The metronome (item 2) is next.
+
+## Item 2 built (2026-10-07)
+
+Metronome and grid: a Click toggle, BPM (typed or tapped) and beats per bar. With the click on, a take starts after a one-bar count-in and closes on the nearest bar line, and it is shifted by the round-trip latency. The click is a looping buffer (one bar during the count-in, then the loop's length) started against the loop epoch. Bars are rounded to whole frames, so a recorded loop is an exact multiple of the bar. A loop played freely can "Fit tempo" (bar counts 1/2/4/8/16 aiming near 110 BPM within 70 to 160) with ×2 / ÷2 to fix the guess. On a grid the end edge snaps to whole beats and the start edge slides the downbeat. A beat light reads the audio clock minus output latency. Next: latency calibration (item 3).
