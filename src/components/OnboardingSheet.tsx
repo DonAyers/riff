@@ -1,5 +1,6 @@
 import { useCallback, useEffect, type MouseEvent } from "react";
 import { Mic2, Sparkles, Download, X } from "lucide-react";
+import { buildLabel } from "../lib/buildInfo";
 import { KEYBOARD_SHORTCUTS } from "../lib/keyboardShortcuts";
 import "./OnboardingSheet.css";
 
@@ -136,6 +137,15 @@ export function OnboardingSheet({ onClose, showStorageHint = false }: Onboarding
         <button type="button" className="onboarding-cta" onClick={handleClose}>
           Got it
         </button>
+
+        <section className="onboarding-about" aria-labelledby="onboarding-about-title">
+          <p id="onboarding-about-title" className="onboarding-shortcuts__title">
+            About
+          </p>
+          <p className="onboarding-shortcuts__hint">
+            Riff <span className="onboarding-about__version">{buildLabel}</span>
+          </p>
+        </section>
       </div>
     </div>
   );

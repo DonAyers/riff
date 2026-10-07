@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Circle, Minus, Pause, Play, Plus, Square, Trash2, Undo2, Volume2, VolumeX, X } from "lucide-react";
 import { useLooper, type LooperTrackState } from "../hooks/useLooper";
 import {
@@ -7,6 +7,8 @@ import {
   MIN_LATENCY_NUDGE_MS,
   TAKE_HANDLE_SECONDS,
 } from "../lib/looper";
+import { LooperTempo } from "./LooperTempo";
+import { MetronomeButton } from "./MetronomeButton";
 import "./Looper.css";
 
 const STATUS_COPY: Record<LooperTrackState["status"], string> = {
@@ -24,10 +26,30 @@ function getRecordLabel(track: LooperTrackState, trackNumber: number, hasLoop: b
 }
 
 const TRIM_LIMIT_MS = TAKE_HANDLE_SECONDS * 1000;
+const METRONOME_SET_UP_KEY = "riff:looper-metronome-set-up";
+
+function readMetronomeSetUp(): boolean {
+  try {
+    return localStorage.getItem(METRONOME_SET_UP_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
 const TRIM_NUDGE_MS = 10;
 
-function getHint(hasLoop: boolean, isRecordingFirst: boolean, canTrim: boolean): string {
+interface HintState {
+  hasLoop: boolean;
+  isCountingIn: boolean;
+  isRecordingFirst: boolean;
+  canTrim: boolean;
+  clickOn: boolean;
+}
+
+function getHint({ hasLoop, isCountingIn, isRecordingFirst, canTrim, clickOn }: HintState): string {
+  if (isCountingIn) return "Count-in: start playing on the next downbeat.";
+  if (isRecordingFirst && clickOn) return "Play your part, then tap again. The loop closes on the nearest bar line.";
   if (isRecordingFirst) return "Play your part, then tap again to close the loop.";
+  if (!hasLoop && clickOn) return "Tap record for a one-bar count-in, play, then tap again to close the loop.";
   if (!hasLoop) return "Tap record on any track, play, then tap again to set the loop length.";
   if (canTrim) return "Move the loop edges until it feels right, then record another track.";
   return "Other tracks start on the next loop and record one full pass.";
@@ -41,12 +63,16 @@ function formatOffsetMs(ms: number): string {
 interface TrimControlProps {
   edge: "start" | "end";
   valueMs: number;
+  /** One beat when the loop is on a tempo grid, so the end moves a whole beat at a time. */
+  beatMs?: number;
   onChange: (valueMs: number) => void;
 }
 
-function TrimControl({ edge, valueMs, onChange }: TrimControlProps) {
+function TrimControl({ edge, valueMs, beatMs, onChange }: TrimControlProps) {
   const label = edge === "start" ? "Start" : "End";
   const name = `loop ${edge}`;
+  const stepMs = beatMs ?? TRIM_NUDGE_MS;
+  const stepName = beatMs ? "one beat" : `${TRIM_NUDGE_MS} ms`;
 
   return (
     <div className="looper-trim__row">
@@ -56,9 +82,9 @@ function TrimControl({ edge, valueMs, onChange }: TrimControlProps) {
       <button
         type="button"
         className="looper-track__icon-button"
-        onClick={() => onChange(valueMs - TRIM_NUDGE_MS)}
+        onClick={() => onChange(valueMs - stepMs)}
         disabled={valueMs <= -TRIM_LIMIT_MS}
-        aria-label={`Move ${name} ${TRIM_NUDGE_MS} ms earlier`}
+        aria-label={`Move ${name} ${stepName} earlier`}
       >
         <Minus size={16} aria-hidden="true" />
       </button>
@@ -74,9 +100,9 @@ function TrimControl({ edge, valueMs, onChange }: TrimControlProps) {
       <button
         type="button"
         className="looper-track__icon-button"
-        onClick={() => onChange(valueMs + TRIM_NUDGE_MS)}
+        onClick={() => onChange(valueMs + stepMs)}
         disabled={valueMs >= TRIM_LIMIT_MS}
-        aria-label={`Move ${name} ${TRIM_NUDGE_MS} ms later`}
+        aria-label={`Move ${name} ${stepName} later`}
       >
         <Plus size={16} aria-hidden="true" />
       </button>
@@ -105,12 +131,39 @@ export function Looper() {
     setLoopTrim,
     resetLoopTrim,
     undoLastTake,
+    metronome,
+    grid,
+    setClickOn,
+    setBpm,
+    setBeatsPerBar,
+    tapTempo,
+    fitTempoToLoop,
+    scaleTempo,
+    getBeatPosition,
   } = useLooper();
   const progressRef = useRef<HTMLDivElement>(null);
+  const [isMetronomeOpen, setIsMetronomeOpen] = useState(false);
+  const [isMetronomeSetUp, setIsMetronomeSetUp] = useState(readMetronomeSetUp);
   const hasLoop = loopDurationS !== null;
+  const isCountingIn = !hasLoop && tracks.some((track) => track.status === "armed");
   const isRecordingFirst = !hasLoop && tracks.some((track) => track.status === "recording");
   const hasAnyAudio = tracks.some((track) => track.status !== "empty");
   const isAnyTrackBusy = tracks.some((track) => track.status === "armed" || track.status === "recording");
+
+  // The lights follow the click: with it off nothing pulses, even on a loop with a grid.
+  const isTicking =
+    metronome.clickOn && ((isPlaying && grid !== null) || isCountingIn || isRecordingFirst);
+
+  const closeMetronome = () => {
+    setIsMetronomeOpen(false);
+    // Once the settings have been seen, a tap on the icon toggles the click instead.
+    setIsMetronomeSetUp(true);
+    try {
+      localStorage.setItem(METRONOME_SET_UP_KEY, "true");
+    } catch {
+      // Not persisted in private mode.
+    }
+  };
 
   useEffect(() => {
     const progress = progressRef.current;
@@ -137,30 +190,43 @@ export function Looper() {
   return (
     <section className="looper" aria-label="Looper">
       <div className="looper__transport">
-        <div className="looper__progress" ref={progressRef} aria-hidden="true">
-          <span className="looper__progress-fill" />
-        </div>
-        <div className="looper__transport-row">
+        <div className="looper__status">
+          <div className="looper__progress" ref={progressRef} aria-hidden="true">
+            <span className="looper__progress-fill" />
+          </div>
           <p className="looper__length" data-testid="loop-length">
             {hasLoop ? `Loop ${formatLoopTime(loopDurationS)}` : "No loop yet"}
           </p>
+        </div>
+        {/* Three columns with equal sides keep the play button in the middle of the row. */}
+        <div className="looper__transport-row">
+          <div className="looper__transport-start">
+            <MetronomeButton
+              clickOn={metronome.clickOn}
+              isSetUp={isMetronomeSetUp}
+              isTicking={isTicking}
+              onToggle={() => setClickOn(!metronome.clickOn)}
+              onOpenSettings={() => setIsMetronomeOpen(true)}
+              getBeatPosition={getBeatPosition}
+            />
+          </div>
+          <button
+            type="button"
+            className="looper__play"
+            onClick={togglePlayback}
+            disabled={!hasLoop}
+            aria-label={isPlaying ? "Stop loop" : "Play loop"}
+          >
+            {isPlaying ? (
+              <Pause size={20} strokeWidth={2.2} aria-hidden="true" />
+            ) : (
+              <Play size={20} strokeWidth={2.2} aria-hidden="true" />
+            )}
+          </button>
           <div className="looper__transport-actions">
             <button
               type="button"
-              className="looper__play"
-              onClick={togglePlayback}
-              disabled={!hasLoop}
-              aria-label={isPlaying ? "Stop loop" : "Play loop"}
-            >
-              {isPlaying ? (
-                <Pause size={18} strokeWidth={2.2} aria-hidden="true" />
-              ) : (
-                <Play size={18} strokeWidth={2.2} aria-hidden="true" />
-              )}
-            </button>
-            <button
-              type="button"
-              className="looper-track__icon-button"
+              className="looper__undo"
               onClick={undoLastTake}
               disabled={!canUndo || isAnyTrackBusy}
               aria-label="Undo last take"
@@ -173,22 +239,54 @@ export function Looper() {
               className="looper__clear-all"
               onClick={clearAll}
               disabled={!hasAnyAudio}
+              aria-label="Clear all"
             >
-              Clear all
+              Clear
             </button>
           </div>
         </div>
       </div>
 
       <p className="looper__hint" role="status">
-        {isStarting ? "Opening the microphone…" : getHint(hasLoop, isRecordingFirst, loopTrim !== null)}
+        {isStarting
+          ? "Opening the microphone…"
+          : getHint({
+              hasLoop,
+              isCountingIn,
+              isRecordingFirst,
+              canTrim: loopTrim !== null,
+              clickOn: metronome.clickOn,
+            })}
       </p>
+
+      {isMetronomeOpen && (
+        <LooperTempo
+          metronome={metronome}
+          grid={grid}
+          hasLoop={hasLoop}
+          isBusy={isAnyTrackBusy}
+          isTicking={isTicking}
+          setClickOn={setClickOn}
+          setBpm={setBpm}
+          setBeatsPerBar={setBeatsPerBar}
+          tapTempo={tapTempo}
+          fitTempoToLoop={fitTempoToLoop}
+          scaleTempo={scaleTempo}
+          getBeatPosition={getBeatPosition}
+          onClose={closeMetronome}
+        />
+      )}
 
       {loopTrim && (
         <fieldset className="looper-trim">
           <legend>Loop edges</legend>
           <TrimControl edge="start" valueMs={loopTrim.startMs} onChange={(startMs) => setLoopTrim({ startMs })} />
-          <TrimControl edge="end" valueMs={loopTrim.endMs} onChange={(endMs) => setLoopTrim({ endMs })} />
+          <TrimControl
+            edge="end"
+            valueMs={loopTrim.endMs}
+            beatMs={grid ? (loopDurationS! * 1000) / grid.beats : undefined}
+            onChange={(endMs) => setLoopTrim({ endMs })}
+          />
           <div className="looper-trim__footer">
             <p>Relative to where you tapped. The edges lock once another track is recorded.</p>
             <button
@@ -208,7 +306,7 @@ export function Looper() {
         {tracks.map((track, index) => {
           const trackNumber = index + 1;
           const isBusy = track.status === "armed" || track.status === "recording";
-          const blockedByFirstTake = isRecordingFirst && track.status !== "recording";
+          const blockedByFirstTake = (isRecordingFirst || isCountingIn) && track.status === "empty";
 
           return (
             <li
@@ -236,7 +334,7 @@ export function Looper() {
                 <div className="looper-track__heading">
                   <span className="looper-track__name">Track {trackNumber}</span>
                   <span className="looper-track__status" data-testid={`track-${trackNumber}-status`}>
-                    {STATUS_COPY[track.status]}
+                    {track.status === "armed" && !hasLoop ? "Count-in" : STATUS_COPY[track.status]}
                   </span>
                 </div>
                 <div className="looper-track__wave" aria-hidden="true">

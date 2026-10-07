@@ -72,7 +72,9 @@ body {
     min-height: 0;
     overflow: hidden;
     contain: layout paint;
-    border: 1px solid var(--surface-border-strong);
+    /* A ring, not a border: a border would take 2px from #root, which is sized from
+       --app-height, and leave a scrollbar on every screen even when nothing overflows. */
+    box-shadow: 0 0 0 1px var(--surface-border-strong);
     border-radius: 2rem;
   }
 

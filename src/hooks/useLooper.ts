@@ -18,10 +18,25 @@ import {
   pruneChunks,
   renderLoopWindow,
   SEAM_CROSSFADE_SECONDS,
+  slipLoopWindow,
+  snapLoopWindowToBeats,
   TAKE_HANDLE_SECONDS,
   type CaptureChunk,
   type LoopWindow,
 } from "../lib/looper";
+import {
+  addTap,
+  BEATS_PER_BAR_OPTIONS,
+  clampBpm,
+  DEFAULT_BEATS_PER_BAR,
+  DEFAULT_BPM,
+  fitTempo,
+  getBarFrames,
+  getBeatInBar,
+  getTapTempo,
+  quantizeBars,
+  renderClickTrack,
+} from "../lib/metronome";
 
 export type LooperTrackStatus = "empty" | "armed" | "recording" | "playing";
 
@@ -45,6 +60,25 @@ export interface LoopTrim {
   endMs: number;
 }
 
+export interface MetronomeSettings {
+  /** With the click on, takes start after a one-bar count-in and close on a bar line. */
+  clickOn: boolean;
+  bpm: number;
+  beatsPerBar: number;
+}
+
+/** The loop's tempo, once it was recorded with the click or fitted afterwards. */
+export interface LoopGrid {
+  beats: number;
+  bpm: number;
+}
+
+export interface BeatPosition {
+  /** 0-based beat of the bar that is sounding now. */
+  beat: number;
+  beatsPerBar: number;
+}
+
 export interface UseLooperReturn {
   tracks: LooperTrackState[];
   /** Set while the first take is the only track, so its edges can still move. */
@@ -66,10 +100,20 @@ export interface UseLooperReturn {
   setLoopTrim: (patch: Partial<LoopTrim>) => void;
   resetLoopTrim: () => void;
   undoLastTake: () => void;
+  metronome: MetronomeSettings;
+  grid: LoopGrid | null;
+  setClickOn: (clickOn: boolean) => void;
+  setBpm: (bpm: number) => void;
+  setBeatsPerBar: (beatsPerBar: number) => void;
+  tapTempo: () => void;
+  fitTempoToLoop: () => void;
+  scaleTempo: (factor: 2 | 0.5) => void;
+  getBeatPosition: () => BeatPosition | null;
 }
 
 type RecordJob =
-  | { kind: "first"; startFrame: number; timers: number[] }
+  /** `barFrames` is set when the take runs on the click's grid. */
+  | { kind: "first"; startFrame: number; timers: number[]; barFrames?: number }
   | { kind: "overdub"; startFrame: number; timers: number[] };
 
 /** The first take's recording with handles on both sides, so its loop edges can move. */
@@ -101,6 +145,7 @@ interface LooperEngine {
   captureNode: AudioWorkletNode;
   captureSink: GainNode;
   trackGains: GainNode[];
+  clickGain: GainNode;
   inputLatencyS: number;
 }
 
@@ -111,6 +156,8 @@ type WakeLockNavigator = Navigator & {
 };
 
 const LATENCY_STORAGE_KEY = "riff:looper-latency-nudge-ms";
+const METRONOME_STORAGE_KEY = "riff:looper-metronome";
+const CLICK_GAIN = 0.8;
 const START_LOOKAHEAD_S = 0.03;
 const ARM_LOOKAHEAD_S = 0.1;
 const CAPTURE_POLL_MS = 25;
@@ -124,6 +171,48 @@ const LOOPER_MIC_CONSTRAINTS: MediaTrackConstraints = {
 
 function createEmptyTrack(): LooperTrackState {
   return { status: "empty", muted: false, volume: 0.9, peaks: [] };
+}
+
+function readStoredMetronome(): MetronomeSettings {
+  const fallback = { clickOn: false, bpm: DEFAULT_BPM, beatsPerBar: DEFAULT_BEATS_PER_BAR };
+  try {
+    const stored = JSON.parse(localStorage.getItem(METRONOME_STORAGE_KEY) ?? "null") as Partial<MetronomeSettings> | null;
+    if (!stored) return fallback;
+    return {
+      clickOn: stored.clickOn === true,
+      bpm: clampBpm(Number(stored.bpm)),
+      beatsPerBar: (BEATS_PER_BAR_OPTIONS as readonly number[]).includes(Number(stored.beatsPerBar))
+        ? Number(stored.beatsPerBar)
+        : DEFAULT_BEATS_PER_BAR,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+/** Stops a source now, or at `whenS` so a replacement can take over without a gap. */
+function stopSource(player: AudioBufferSourceNode | null, whenS?: number) {
+  if (!player) return;
+  player.onended = null;
+  try {
+    player.stop(whenS);
+  } catch {
+    // Already stopped.
+  }
+  if (whenS === undefined) {
+    player.disconnect();
+  } else {
+    player.onended = () => player.disconnect();
+  }
+}
+
+function getRoundTripLatencyS(engine: LooperEngine, nudgeMs: number): number {
+  return estimateRoundTripLatencySeconds({
+    baseLatency: engine.context.baseLatency,
+    outputLatency: engine.context.outputLatency,
+    inputLatency: engine.inputLatencyS,
+    nudgeMs,
+  });
 }
 
 function getTakeTrim(take: BaseTake, sampleRate: number): LoopTrim {
@@ -181,6 +270,8 @@ export function useLooper(): UseLooperReturn {
   const [latencyNudgeMs, setLatencyNudgeState] = useState(readStoredNudge);
   const [baseTrim, setBaseTrim] = useState<(LoopTrim & { trackIndex: number }) | null>(null);
   const [canUndo, setCanUndo] = useState(false);
+  const [metronome, setMetronome] = useState(readStoredMetronome);
+  const [grid, setGridState] = useState<LoopGrid | null>(null);
 
   const engineRef = useRef<LooperEngine | null>(null);
   const enginePromiseRef = useRef<Promise<LooperEngine> | null>(null);
@@ -198,6 +289,11 @@ export function useLooper(): UseLooperReturn {
   const baseTakeRef = useRef<BaseTake | null>(null);
   const undoRef = useRef<UndoSnapshot | null>(null);
   const onPostRollRef = useRef<(take: BaseTake) => void>(() => undefined);
+  const metronomeRef = useRef(metronome);
+  const gridRef = useRef<LoopGrid | null>(null);
+  const gridEpochRef = useRef(0);
+  const clickPlayerRef = useRef<AudioBufferSourceNode | null>(null);
+  const tapsRef = useRef<number[]>([]);
 
   useEffect(() => {
     tracksRef.current = tracks;
@@ -276,6 +372,9 @@ export function useLooper(): UseLooperReturn {
             gain.connect(context.destination);
             return gain;
           });
+          const clickGain = context.createGain();
+          clickGain.gain.value = CLICK_GAIN;
+          clickGain.connect(context.destination);
           const settings = stream.getAudioTracks()[0]?.getSettings() as
             | (MediaTrackSettings & { latency?: number })
             | undefined;
@@ -287,6 +386,7 @@ export function useLooper(): UseLooperReturn {
             captureNode,
             captureSink,
             trackGains,
+            clickGain,
             inputLatencyS: settings?.latency ?? 0,
           };
           if (!isMountedRef.current) {
@@ -332,21 +432,50 @@ export function useLooper(): UseLooperReturn {
 
   /** Stops a track's player now, or at `whenS` so a replacement can take over without a gap. */
   const stopPlayer = useCallback((index: number, whenS?: number) => {
-    const player = playersRef.current[index];
+    stopSource(playersRef.current[index], whenS);
     playersRef.current[index] = null;
-    if (!player) return;
+  }, []);
 
-    player.onended = null;
-    try {
-      player.stop(whenS);
-    } catch {
-      // Already stopped.
+  const setGrid = useCallback((next: LoopGrid | null) => {
+    gridRef.current = next;
+    setGridState(next);
+  }, []);
+
+  /**
+   * Starts, restarts or stops the click to match the transport. The click is a looping buffer
+   * as long as the loop (or one bar during the count-in) started against the same epoch as the
+   * tracks, so it stays sample-locked to them with no timers involved.
+   */
+  const syncClick = useCallback((whenS?: number) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    const { context } = engine;
+    const sampleRate = context.sampleRate;
+    const settings = metronomeRef.current;
+    const loopS = loopDurationRef.current;
+    const loopGrid = gridRef.current;
+    const gridJob = jobsRef.current.find((job) => job?.kind === "first" && job.barFrames);
+    let plan: { lengthFrames: number; beats: number; epochS: number } | null = null;
+
+    if (settings.clickOn && loopS && loopGrid && isPlayingRef.current) {
+      plan = { lengthFrames: Math.round(loopS * sampleRate), beats: loopGrid.beats, epochS: loopEpochRef.current };
+    } else if (settings.clickOn && !loopS && gridJob?.kind === "first" && gridJob.barFrames) {
+      plan = { lengthFrames: gridJob.barFrames, beats: settings.beatsPerBar, epochS: gridEpochRef.current };
     }
-    if (whenS === undefined) {
-      player.disconnect();
-    } else {
-      player.onended = () => player.disconnect();
-    }
+
+    const startAtS = whenS ?? context.currentTime + START_LOOKAHEAD_S;
+    stopSource(clickPlayerRef.current, plan ? startAtS : undefined);
+    clickPlayerRef.current = null;
+    if (!plan) return;
+
+    const samples = renderClickTrack(plan.lengthFrames, plan.beats, settings.beatsPerBar, sampleRate);
+    const player = context.createBufferSource();
+    player.buffer = createTrackBuffer(engine, samples);
+    player.loop = true;
+    player.connect(engine.clickGain);
+    player.start(startAtS, positiveModulo(startAtS - plan.epochS, samples.length / sampleRate));
+    clickPlayerRef.current = player;
   }, []);
 
   /** Starts a track's loop so its position matches the shared loop clock. */
@@ -465,7 +594,8 @@ export function useLooper(): UseLooperReturn {
     setLoopDurationS(durationS);
     setBaseTake(take);
     setTrackBuffer(take.trackIndex, createTrackBuffer(engine, samples), computePeaks(samples, PEAK_BINS));
-  }, [setBaseTake, setTrackBuffer]);
+    syncClick();
+  }, [setBaseTake, setTrackBuffer, syncClick]);
 
   const commitFirstTake = useCallback((index: number, startFrame: number, stopFrame: number) => {
     const engine = engineRef.current;
@@ -511,9 +641,30 @@ export function useLooper(): UseLooperReturn {
     const job = jobsRef.current[index];
     if (!engine || !job || job.kind !== "first") return;
 
-    const stopFrame = frameNow(engine);
+    const sampleRate = engine.context.sampleRate;
+    const pressFrame = frameNow(engine);
+    let stopFrame = pressFrame;
+    let latencyFrames = 0;
+
+    if (job.barFrames) {
+      if (pressFrame < job.startFrame) {
+        // Tapped again during the count-in: call the take off.
+        clearJob(index);
+        updateTrack(index, { status: "empty" });
+        syncClick();
+        return;
+      }
+
+      const { bpm, beatsPerBar } = metronomeRef.current;
+      const bars = quantizeBars(pressFrame - job.startFrame, job.barFrames);
+      stopFrame = job.startFrame + bars * job.barFrames;
+      setGrid({ beats: bars * beatsPerBar, bpm });
+      // The player answers the click they hear, which reaches the mic one round trip later.
+      latencyFrames = Math.round(getRoundTripLatencyS(engine, latencyNudgeRef.current) * sampleRate);
+    }
+
     const lengthFrames = stopFrame - job.startFrame;
-    const durationS = lengthFrames / engine.context.sampleRate;
+    const durationS = lengthFrames / sampleRate;
 
     if (durationS < MIN_LOOP_SECONDS) {
       clearJob(index);
@@ -522,19 +673,24 @@ export function useLooper(): UseLooperReturn {
       return;
     }
 
-    // The press that ends the first take is the loop's seam: position 0 plays right after it.
-    loopEpochRef.current = stopFrame / engine.context.sampleRate;
-    loopDurationRef.current = lengthFrames / engine.context.sampleRate;
+    // The end of the first take is the loop's seam: position 0 plays right after it.
+    loopEpochRef.current = stopFrame / sampleRate;
+    loopDurationRef.current = lengthFrames / sampleRate;
     setLoopDurationS(loopDurationRef.current);
     isPlayingRef.current = true;
     setIsPlaying(true);
     job.timers.forEach((timer) => window.clearTimeout(timer));
     job.timers = [];
 
-    // Wait for the seam crossfade's audio past the closing press too.
-    const crossfadeFrames = Math.ceil(SEAM_CROSSFADE_SECONDS * engine.context.sampleRate);
-    whenCaptured(index, stopFrame + crossfadeFrames, () => commitFirstTake(index, job.startFrame, stopFrame));
-  }, [clearJob, commitFirstTake, updateTrack, whenCaptured]);
+    // On the grid the click carries on from the bar loop into the loop-length click.
+    syncClick();
+
+    // Wait for the seam crossfade's audio past the end too.
+    const crossfadeFrames = Math.ceil(SEAM_CROSSFADE_SECONDS * sampleRate);
+    whenCaptured(index, stopFrame + latencyFrames + crossfadeFrames, () =>
+      commitFirstTake(index, job.startFrame + latencyFrames, stopFrame + latencyFrames)
+    );
+  }, [clearJob, commitFirstTake, setGrid, syncClick, updateTrack, whenCaptured]);
 
   const playAll = useCallback(() => {
     const engine = engineRef.current;
@@ -547,7 +703,8 @@ export function useLooper(): UseLooperReturn {
     });
     isPlayingRef.current = true;
     setIsPlaying(true);
-  }, [startPlayer]);
+    syncClick(startAtS);
+  }, [startPlayer, syncClick]);
 
   const cancelPendingTakes = useCallback(() => {
     jobsRef.current.forEach((job, index) => {
@@ -563,16 +720,19 @@ export function useLooper(): UseLooperReturn {
     setLoopDurationS(null);
     isPlayingRef.current = false;
     setIsPlaying(false);
-  }, []);
+    setGrid(null);
+    syncClick();
+  }, [setGrid, syncClick]);
 
   const stopAll = useCallback(() => {
     cancelPendingTakes();
     playersRef.current.forEach((_, index) => stopPlayer(index));
     isPlayingRef.current = false;
     setIsPlaying(false);
+    syncClick();
     // Stopping before the first take was committed leaves no audio: drop the loop too.
     resetLoopIfEmpty();
-  }, [cancelPendingTakes, resetLoopIfEmpty, stopPlayer]);
+  }, [cancelPendingTakes, resetLoopIfEmpty, stopPlayer, syncClick]);
 
   const startOverdub = useCallback((index: number, engine: LooperEngine) => {
     const durationS = loopDurationRef.current;
@@ -590,12 +750,7 @@ export function useLooper(): UseLooperReturn {
       durationS
     );
     const lengthFrames = buffersRef.current.find(Boolean)?.length ?? Math.round(durationS * sampleRate);
-    const latencyS = estimateRoundTripLatencySeconds({
-      baseLatency: context.baseLatency,
-      outputLatency: context.outputLatency,
-      inputLatency: engine.inputLatencyS,
-      nudgeMs: latencyNudgeRef.current,
-    });
+    const latencyS = getRoundTripLatencyS(engine, latencyNudgeRef.current);
     // What the player plays along to position 0 reaches the worklet one round trip later.
     const fromFrame = Math.round(boundaryS * sampleRate) + Math.round(latencyS * sampleRate);
     const job: RecordJob = { kind: "overdub", startFrame: fromFrame, timers: [] };
@@ -610,6 +765,28 @@ export function useLooper(): UseLooperReturn {
       }, msUntil(boundaryS + durationS + latencyS))
     );
   }, [commitTake, playAll, updateTrack, whenCaptured]);
+
+  /** Plays one bar of click, then records from the next downbeat. */
+  const startCountIn = useCallback((index: number, engine: LooperEngine) => {
+    const { context } = engine;
+    const sampleRate = context.sampleRate;
+    const { bpm, beatsPerBar } = metronomeRef.current;
+    const barFrames = getBarFrames(bpm, beatsPerBar, sampleRate);
+    const epochFrame = Math.round((context.currentTime + ARM_LOOKAHEAD_S) * sampleRate);
+    const startFrame = epochFrame + barFrames;
+    gridEpochRef.current = epochFrame / sampleRate;
+
+    const job: RecordJob = { kind: "first", startFrame, barFrames, timers: [] };
+    jobsRef.current[index] = job;
+    updateTrack(index, { status: "armed" });
+    syncClick(gridEpochRef.current);
+
+    const msUntil = (timeS: number) => Math.max(0, (timeS - context.currentTime) * 1000);
+    job.timers.push(
+      window.setTimeout(() => updateTrack(index, { status: "recording" }), msUntil(startFrame / sampleRate)),
+      window.setTimeout(() => finishFirstLoop(index), msUntil(startFrame / sampleRate + MAX_LOOP_SECONDS))
+    );
+  }, [finishFirstLoop, syncClick, updateTrack]);
 
   const toggleRecord = useCallback(async (index: number) => {
     const job = jobsRef.current[index];
@@ -652,12 +829,17 @@ export function useLooper(): UseLooperReturn {
       return;
     }
 
+    if (metronomeRef.current.clickOn) {
+      startCountIn(index, engine);
+      return;
+    }
+
     const startFrame = frameNow(engine);
     const firstJob: RecordJob = { kind: "first", startFrame, timers: [] };
     jobsRef.current[index] = firstJob;
     firstJob.timers.push(window.setTimeout(() => finishFirstLoop(index), MAX_LOOP_SECONDS * 1000));
     updateTrack(index, { status: "recording" });
-  }, [clearJob, ensureEngine, finishFirstLoop, startOverdub, updateTrack]);
+  }, [clearJob, ensureEngine, finishFirstLoop, startCountIn, startOverdub, updateTrack]);
 
   const applyGain = useCallback((index: number, track: LooperTrackState) => {
     const engine = engineRef.current;
@@ -721,24 +903,39 @@ export function useLooper(): UseLooperReturn {
     const sampleRate = engine.context.sampleRate;
     const toFrames = (ms: number) => Math.round((ms / 1000) * sampleRate);
     const handleFrames = Math.round(TAKE_HANDLE_SECONDS * sampleRate);
-    const next = clampLoopWindow(
-      {
-        startFrame: patch.startMs === undefined ? take.window.startFrame : toFrames(patch.startMs),
-        endFrame: patch.endMs === undefined ? take.window.endFrame : take.closeFrame + toFrames(patch.endMs),
-      },
-      {
-        minStartFrame: -handleFrames,
-        maxEndFrame: take.closeFrame + handleFrames,
-        minLengthFrames: Math.ceil(MIN_LOOP_SECONDS * sampleRate),
-      },
-      patch.startMs === undefined ? "end" : "start"
-    );
+    const limits = {
+      minStartFrame: -handleFrames,
+      maxEndFrame: take.closeFrame + handleFrames,
+      minLengthFrames: Math.ceil(MIN_LOOP_SECONDS * sampleRate),
+    };
+    const loopGrid = gridRef.current;
+    let next: LoopWindow;
+    let beats = loopGrid?.beats ?? 0;
+
+    if (loopGrid && patch.startMs !== undefined) {
+      // On a grid the start slides the downbeat and the loop keeps its beat count.
+      next = slipLoopWindow(take.window, toFrames(patch.startMs), limits);
+    } else {
+      next = clampLoopWindow(
+        {
+          startFrame: patch.startMs === undefined ? take.window.startFrame : toFrames(patch.startMs),
+          endFrame: patch.endMs === undefined ? take.window.endFrame : take.closeFrame + toFrames(patch.endMs),
+        },
+        limits,
+        patch.startMs === undefined ? "end" : "start"
+      );
+      if (loopGrid) {
+        const beatFrames = (take.window.endFrame - take.window.startFrame) / loopGrid.beats;
+        ({ window: next, beats } = snapLoopWindowToBeats(next, beatFrames, limits));
+      }
+    }
     if (next.startFrame === take.window.startFrame && next.endFrame === take.window.endFrame) return;
 
     // Undo restores a whole track buffer, which no longer fits once the loop length changes.
     forgetUndo();
+    if (loopGrid && beats !== loopGrid.beats) setGrid({ ...loopGrid, beats });
     applyLoopWindow(take, next);
-  }, [applyLoopWindow, forgetUndo, getTrimmableTake]);
+  }, [applyLoopWindow, forgetUndo, getTrimmableTake, setGrid]);
 
   const resetLoopTrim = useCallback(() => {
     setLoopTrim({ startMs: 0, endMs: 0 });
@@ -788,6 +985,8 @@ export function useLooper(): UseLooperReturn {
           // Already stopped.
         }
       });
+      stopSource(clickPlayerRef.current);
+      clickPlayerRef.current = null;
 
       disposeEngine(engineRef.current);
       engineRef.current = null;
@@ -795,6 +994,92 @@ export function useLooper(): UseLooperReturn {
       void wakeLockRef.current?.release().catch(() => undefined);
       wakeLockRef.current = null;
     };
+  }, []);
+
+  const updateMetronome = useCallback((patch: Partial<MetronomeSettings>) => {
+    const next = { ...metronomeRef.current, ...patch };
+    metronomeRef.current = next;
+    setMetronome(next);
+    try {
+      localStorage.setItem(METRONOME_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Not persisted in private mode.
+    }
+  }, []);
+
+  /** Tempo and meter are fixed while a loop or a take exists, since the audio cannot follow. */
+  const isTempoLocked = () => loopDurationRef.current !== null || jobsRef.current.some(Boolean);
+
+  const setClickOn = useCallback((clickOn: boolean) => {
+    updateMetronome({ clickOn });
+    syncClick();
+  }, [syncClick, updateMetronome]);
+
+  const setBpm = useCallback((bpm: number) => {
+    if (isTempoLocked()) return;
+    updateMetronome({ bpm: clampBpm(bpm) });
+  }, [updateMetronome]);
+
+  const setBeatsPerBar = useCallback((beatsPerBar: number) => {
+    if (isTempoLocked() || !(BEATS_PER_BAR_OPTIONS as readonly number[]).includes(beatsPerBar)) return;
+    updateMetronome({ beatsPerBar });
+  }, [updateMetronome]);
+
+  const tapTempo = useCallback(() => {
+    tapsRef.current = addTap(tapsRef.current, performance.now());
+    const bpm = getTapTempo(tapsRef.current);
+    if (bpm !== null) setBpm(bpm);
+  }, [setBpm]);
+
+  const applyGrid = useCallback((next: LoopGrid) => {
+    setGrid(next);
+    updateMetronome({ clickOn: true, bpm: clampBpm(next.bpm) });
+    syncClick();
+  }, [setGrid, syncClick, updateMetronome]);
+
+  /** Gives a freely played loop a tempo, so the click can join it on its beat. */
+  const fitTempoToLoop = useCallback(() => {
+    const loopS = loopDurationRef.current;
+    if (!loopS || gridRef.current) return;
+    applyGrid(fitTempo(loopS, metronomeRef.current.beatsPerBar));
+  }, [applyGrid]);
+
+  /** Fixes a fitted tempo that came out double or half: same loop, twice or half the beats. */
+  const scaleTempo = useCallback((factor: 2 | 0.5) => {
+    const loopS = loopDurationRef.current;
+    const current = gridRef.current;
+    if (!loopS || !current) return;
+
+    const beats = current.beats * factor;
+    const bpm = (beats * 60) / loopS;
+    if (!Number.isInteger(beats) || beats < 1 || clampBpm(bpm) !== Math.round(bpm * 10) / 10) return;
+    applyGrid({ beats, bpm });
+  }, [applyGrid]);
+
+  /** The beat being heard now (output latency taken off), for the beat light. */
+  const getBeatPosition = useCallback((): BeatPosition | null => {
+    const engine = engineRef.current;
+    if (!engine) return null;
+
+    const { context } = engine;
+    const { beatsPerBar } = metronomeRef.current;
+    const heardS = context.currentTime - (context.baseLatency || 0) - (context.outputLatency || 0);
+    const loopS = loopDurationRef.current;
+    const loopGrid = gridRef.current;
+
+    if (loopS && loopGrid && isPlayingRef.current) {
+      const positionS = getLoopPositionSeconds(heardS, loopEpochRef.current, loopS);
+      return { beat: getBeatInBar(positionS, loopS / loopGrid.beats, beatsPerBar), beatsPerBar };
+    }
+
+    const gridJob = jobsRef.current.find((job) => job?.kind === "first" && job.barFrames);
+    if (!loopS && gridJob?.kind === "first" && gridJob.barFrames) {
+      const beatS = gridJob.barFrames / context.sampleRate / beatsPerBar;
+      const beat = getBeatInBar(heardS - gridEpochRef.current, beatS, beatsPerBar);
+      return beat < 0 ? null : { beat, beatsPerBar };
+    }
+
+    return null;
   }, []);
 
   const loopTrim =
@@ -825,5 +1110,14 @@ export function useLooper(): UseLooperReturn {
     setLoopTrim,
     resetLoopTrim,
     undoLastTake,
+    metronome,
+    grid,
+    setClickOn,
+    setBpm,
+    setBeatsPerBar,
+    tapTempo,
+    fitTempoToLoop,
+    scaleTempo,
+    getBeatPosition,
   };
 }

@@ -34,7 +34,6 @@ import { SessionPicker } from "./components/SessionPicker";
 import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { AppTabBar } from "./components/AppTabBar";
-import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
@@ -305,14 +304,6 @@ function AppHeader({ navigate, themeControls, onHelp }: AppHeaderProps) {
         </div>
       </div>
     </header>
-  );
-}
-
-function BuildBadge() {
-  return (
-    <div className="build-badge" aria-label={`Build ${buildLabel}`} title={`Build ${buildLabel}`}>
-      {buildLabel}
-    </div>
   );
 }
 
@@ -1186,7 +1177,6 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
           )}
         </main>
 
-        <BuildBadge />
       </div>
 
       {showOnboarding && (
@@ -1241,7 +1231,6 @@ function ToolRoute({ navigate, themeControls, title, description, children }: To
           <Suspense fallback={<ScreenFallback />}>{children}</Suspense>
         </main>
 
-        <BuildBadge />
       </div>
     </div>
   );
