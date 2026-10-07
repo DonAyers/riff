@@ -2,7 +2,9 @@
    Single source of truth for spacing, radii, typography and transitions.
    The look is flat: no shadows, glows, gradients or blur. Separate surfaces with
    fills and 1px borders only.
-   Breakpoint constants (can't use vars in @media):
+   Layout breakpoints use `@container app (...)`, which measures the app's own width
+   (see .app-frame in index.css), and `cqi` instead of `vw`, so the desktop phone frame
+   gets the phone layout:
      tablet  →  600px   (min-width)
      laptop  →  960px   (min-width)
 */
@@ -42,7 +44,7 @@
   --text-md: 1rem;
   --text-lg: 1.25rem;
   --text-xl: 1.5rem;
-  --text-2xl: clamp(1.5rem, 2.6vw, 2rem);
+  --text-2xl: clamp(1.5rem, 2.6cqi, 2rem);
 
   /* ── Shadows: intentionally none. Kept as tokens so old call sites stay valid. ── */
   --shadow-sm: none;

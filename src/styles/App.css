@@ -1,5 +1,5 @@
 .app {
-  min-height: calc(100dvh - var(--tab-bar-space));
+  min-height: calc(var(--app-height) - var(--tab-bar-space));
   width: 100%;
   padding: max(1.25rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 1.5rem max(1rem, env(safe-area-inset-left));
   position: relative;
@@ -24,8 +24,8 @@
 }
 
 .app.app--builder {
-  height: calc(100dvh - var(--tab-bar-space));
-  min-height: calc(100dvh - var(--tab-bar-space));
+  height: calc(var(--app-height) - var(--tab-bar-space));
+  min-height: calc(var(--app-height) - var(--tab-bar-space));
   overflow: hidden;
   padding-bottom: 0.75rem;
 }
@@ -520,7 +520,7 @@
 }
 
 /* ── Breakpoints ── */
-@media (min-width: 600px) {
+@container app (min-width: 600px) {
   .app {
     padding-top: var(--space-2xl);
     padding-bottom: var(--space-2xl);
@@ -562,12 +562,12 @@
     align-items: start;
   }
 }
-@media (min-width: 960px) {
+@container app (min-width: 960px) {
   .app-shell {
     gap: var(--space-xl);
   }
 
-  @media (max-width: 640px) {
+  @container app (max-width: 640px) {
     .app:not(.app--flow) {
       padding: max(0.8rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) 1rem max(0.75rem, env(safe-area-inset-left));
     }
@@ -594,7 +594,7 @@
     .tuner-page__intro .workspace-pane__title {
       font-family: var(--font-display);
       font-weight: 400;
-      font-size: clamp(2rem, 10vw, 3rem);
+      font-size: clamp(2rem, 10cqi, 3rem);
       line-height: 1;
       letter-spacing: 0;
     }
@@ -725,8 +725,8 @@
 }
 
 .app--flow {
-  height: calc(100dvh - var(--tab-bar-space));
-  min-height: calc(100dvh - var(--tab-bar-space));
+  height: calc(var(--app-height) - var(--tab-bar-space));
+  min-height: calc(var(--app-height) - var(--tab-bar-space));
   padding-bottom: 0.75rem;
   overflow: hidden;
 }
@@ -761,7 +761,7 @@
 .riff-device__stage-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 8vw, 2rem);
+  font-size: clamp(1.5rem, 8cqi, 2rem);
   font-weight: 400;
   font-style: normal;
   line-height: 1.05;
@@ -806,13 +806,13 @@
 .riff-device .workspace-pane__description {
   max-width: 26ch;
   color: var(--fg-muted);
-  font-size: clamp(0.92rem, 4.1vw, 1.08rem);
+  font-size: clamp(0.92rem, 4.1cqi, 1.08rem);
 }
 
 /* Inner panels inside the device: soft fill, no border of their own. */
 .riff-device .recorder-card {
   align-self: start;
-  padding: clamp(0.75rem, 3.2vw, 1rem);
+  padding: clamp(0.75rem, 3.2cqi, 1rem);
   border-radius: 1.65rem;
   background: var(--surface-soft);
   border-color: transparent;
@@ -843,7 +843,7 @@
 }
 
 .take-card h2 {
-  font-size: clamp(2rem, 12vw, 3rem);
+  font-size: clamp(2rem, 12cqi, 3rem);
   line-height: 1;
 }
 
@@ -1098,7 +1098,7 @@
 }
 
 .riff-device .chord-name {
-  font-size: clamp(2rem, 14vw, 3rem);
+  font-size: clamp(2rem, 14cqi, 3rem);
 }
 
 .riff-device .note-display h2,
@@ -1260,7 +1260,7 @@
   bottom: calc(100% + var(--space-xs));
 }
 
-@media (min-width: 960px) {
+@container app (min-width: 960px) {
   .app-main--flow {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1274,7 +1274,7 @@
   }
 
   .riff-device__stage-title {
-    font-size: clamp(1rem, 7vw, 1.5rem);
+    font-size: clamp(1rem, 7cqi, 1.5rem);
   }
 
   .riff-device .workspace-pane__intro {

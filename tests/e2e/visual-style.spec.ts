@@ -131,9 +131,10 @@ for (const theme of ["light", "dark"] as const) {
       await expect(page.locator("html")).toHaveAttribute("data-palette", palette);
 
       const { background, meta } = await page.evaluate(() => {
-        // Resolve the computed --bg (including color-mix output) to hex via a canvas.
+        // Resolve the app background (including color-mix output) to hex via a canvas.
+        // On desktop the body is the backdrop, so read the phone frame instead.
         const context = document.createElement("canvas").getContext("2d")!;
-        context.fillStyle = getComputedStyle(document.body).backgroundColor;
+        context.fillStyle = getComputedStyle(document.querySelector(".app-frame")!).backgroundColor;
         context.fillRect(0, 0, 1, 1);
         const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
         const hex = `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;

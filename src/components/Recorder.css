@@ -1,5 +1,5 @@
 .recorder {
-  --record-button-size: clamp(128px, 44vw, 174px);
+  --record-button-size: clamp(128px, 44cqi, 174px);
   --record-import-gap: 0.8rem;
   --import-button-size: 46px;
 
@@ -19,7 +19,7 @@
 
 .recorder-timer {
   padding: 0.2rem 0.6rem;
-  font-size: clamp(2.15rem, 14vw, 3.3rem);
+  font-size: clamp(2.15rem, 14cqi, 3.3rem);
   font-weight: 400;
   font-family: var(--font-mono);
   letter-spacing: 0;

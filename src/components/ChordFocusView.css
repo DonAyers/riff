@@ -2,7 +2,7 @@
   width: 100%;
   display: grid;
   gap: var(--space-lg);
-  padding: clamp(1rem, 3vw, 1.35rem);
+  padding: clamp(1rem, 3cqi, 1.35rem);
   border-radius: var(--radius-xl);
   border: 1px solid var(--surface-border-strong);
   background: var(--surface);
@@ -36,7 +36,7 @@
 .chord-focus__hero h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(3rem, 14vw, 6rem);
+  font-size: clamp(3rem, 14cqi, 6rem);
   font-weight: 400;
   font-style: normal;
   line-height: 0.9;
@@ -354,14 +354,14 @@
   cursor: pointer;
 }
 
-@media (min-width: 760px) {
+@container app (min-width: 760px) {
   .chord-focus__body {
     grid-template-columns: minmax(0, 1.25fr) minmax(17rem, 0.75fr);
     align-items: start;
   }
 }
 
-@media (max-width: 520px) {
+@container app (max-width: 520px) {
   .chord-focus__hero {
     grid-template-columns: 1fr;
   }

@@ -65,7 +65,7 @@
   border-radius: var(--radius-sm);
 }
 
-@media (min-width: 960px) {
+@container app (min-width: 960px) {
   .app-tab-bar {
     left: 50%;
     right: auto;
