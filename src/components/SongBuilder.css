@@ -44,7 +44,7 @@
 }
 
 .song-builder__capture .recorder {
-  --record-button-size: clamp(7rem, 13vw, 9rem);
+  --record-button-size: clamp(7rem, 13cqi, 9rem);
 
   min-height: 0;
   gap: 0.55rem;
@@ -55,7 +55,7 @@
 }
 
 .song-builder__capture .recorder-timer {
-  font-size: clamp(1.75rem, 5vw, 2.6rem);
+  font-size: clamp(1.75rem, 5cqi, 2.6rem);
   font-weight: 400;
   letter-spacing: 0;
 }
@@ -399,7 +399,7 @@
 .song-builder__manual-copy h3 {
   color: var(--fg);
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: clamp(1.5rem, 4cqi, 2rem);
   font-weight: 400;
   font-style: normal;
   line-height: 1;
@@ -600,7 +600,7 @@
 }
 
 .song-builder-card {
-  flex: 0 0 min(15.5rem, 74vw);
+  flex: 0 0 min(15.5rem, 74cqi);
   min-height: 12rem;
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -835,7 +835,7 @@
   margin: 0.12rem 0 0;
   color: var(--fg);
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 7vw, 3rem);
+  font-size: clamp(1.5rem, 7cqi, 3rem);
   font-weight: 400;
   font-style: normal;
   line-height: 1;
@@ -896,8 +896,8 @@
   max-height: 100%;
   min-height: 0;
   overflow: hidden;
-  gap: clamp(0.55rem, 1.2vw, 0.9rem);
-  padding: clamp(0.75rem, 1.5vw, 1rem);
+  gap: clamp(0.55rem, 1.2cqi, 0.9rem);
+  padding: clamp(0.75rem, 1.5cqi, 1rem);
 }
 
 .song-builder__focus-panel .chord-focus__hero {
@@ -905,7 +905,7 @@
 }
 
 .song-builder__focus-panel .chord-focus__hero h2 {
-  font-size: clamp(2rem, 5.6vw, 4.5rem);
+  font-size: clamp(2rem, 5.6cqi, 4.5rem);
 }
 
 .song-builder__focus-panel .chord-focus__body,
@@ -947,7 +947,7 @@
   font-size: 0.7rem;
 }
 
-@media (min-width: 980px) {
+@container app (min-width: 980px) {
   .song-builder {
     grid-template-columns: minmax(18rem, 0.48fr) minmax(34rem, 1.2fr) minmax(24rem, 0.76fr);
     grid-template-rows: minmax(13rem, 0.42fr) minmax(0, 0.58fr);
@@ -1029,7 +1029,7 @@
 
   .song-builder__capture .workspace-pane__title,
   .song-builder__manual-copy h3 {
-    font-size: clamp(1.5rem, 1.9vw, 2rem);
+    font-size: clamp(1.5rem, 1.9cqi, 2rem);
   }
 
   .song-builder__capture .workspace-pane__description,
@@ -1056,7 +1056,7 @@
   }
 }
 
-@media (min-width: 1280px) {
+@container app (min-width: 1280px) {
   .song-builder {
     grid-template-columns: minmax(20rem, 0.45fr) minmax(42rem, 1.32fr) minmax(25rem, 0.72fr);
   }
@@ -1066,7 +1066,7 @@
   }
 }
 
-@media (max-width: 979px) and (min-width: 761px) {
+@container app (max-width: 979px) and (min-width: 761px) {
   .song-builder {
     grid-template-columns: minmax(17rem, 0.42fr) minmax(0, 1fr);
     grid-template-rows: minmax(12rem, 0.45fr) minmax(0, 0.55fr);
@@ -1101,7 +1101,7 @@
   }
 }
 
-@media (max-width: 760px) {
+@container app (max-width: 760px) {
   .song-builder__view-nav {
     position: fixed;
     left: max(1rem, env(safe-area-inset-left));
@@ -1140,8 +1140,10 @@
     display: flex;
     gap: 0.75rem;
     height: 100%;
-    width: calc(100vw - max(2rem, calc(env(safe-area-inset-left) + env(safe-area-inset-right))));
-    margin-inline: calc((100% - (100vw - max(2rem, calc(env(safe-area-inset-left) + env(safe-area-inset-right))))) / 2);
+    /* Keep pane content clear of the floating view nav above the tab bar. */
+    padding-bottom: 3rem;
+    width: calc(100cqi - max(2rem, calc(env(safe-area-inset-left) + env(safe-area-inset-right))));
+    margin-inline: calc((100% - (100cqi - max(2rem, calc(env(safe-area-inset-left) + env(safe-area-inset-right))))) / 2);
     overflow-x: auto;
     overflow-y: hidden;
     scroll-padding-inline: 0.1rem;
@@ -1192,7 +1194,7 @@
 
   .song-builder__capture .workspace-pane__title,
   .song-builder__arrangement .workspace-pane__title {
-    font-size: clamp(1.5rem, 9vw, 2rem);
+    font-size: clamp(1.5rem, 9cqi, 2rem);
     line-height: 1;
   }
 
@@ -1324,7 +1326,7 @@
   }
 
   .song-builder-card {
-    flex-basis: min(16.5rem, 82vw);
+    flex-basis: min(16.5rem, 82cqi);
     min-height: 12rem;
     padding: 0.85rem;
     border-radius: 1.25rem;
@@ -1347,6 +1349,19 @@
 
   .song-builder__focus-panel {
     gap: 0.8rem;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  /* One column on phones: let the chord lab scroll instead of squeezing its
+     panels on top of each other. */
+  .song-builder__focus-panel .chord-focus,
+  .song-builder__focus-panel .chord-focus__body,
+  .song-builder__focus-panel .chord-focus__categories,
+  .song-builder__focus-panel .chord-focus__panel {
+    max-height: none;
+    min-height: auto;
+    overflow: visible;
   }
 
   .song-builder__focus-bar {

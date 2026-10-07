@@ -73,7 +73,7 @@
   border: 1px solid var(--surface-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  height: clamp(220px, 34vw, 320px);
+  height: clamp(220px, 34cqi, 320px);
   background: var(--surface);
 }
 

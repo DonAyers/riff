@@ -17,7 +17,7 @@
 
 .onboarding-sheet {
   width: min(100%, 440px);
-  max-height: calc(100dvh - 2rem);
+  max-height: calc(var(--app-height) - 2rem);
   background: var(--surface);
   border: 1px solid var(--surface-border-strong);
   border-radius: var(--radius-xl);
@@ -237,7 +237,7 @@
   background: color-mix(in srgb, var(--accent) 85%, var(--fg));
 }
 
-@media (min-width: 600px) {
+@container app (min-width: 600px) {
   .onboarding-sheet {
     width: min(100%, 480px);
     padding: 1.75rem;

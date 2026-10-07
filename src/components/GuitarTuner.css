@@ -118,12 +118,12 @@
 }
 
 .guitar-tuner__note-name {
-  font-size: clamp(5rem, 28vw, 7rem);
+  font-size: clamp(5rem, 28cqi, 7rem);
   letter-spacing: 0;
 }
 
 .guitar-tuner__note-octave {
-  font-size: clamp(1.5rem, 7vw, 2rem);
+  font-size: clamp(1.5rem, 7cqi, 2rem);
   opacity: 0.7;
 }
 

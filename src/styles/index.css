@@ -6,6 +6,8 @@
 
 :root {
   color-scheme: light;
+  /* Height of the visible app area: the window on phones, the frame on desktop. */
+  --app-height: 100dvh;
 }
 
 :root[data-theme="dark"] {
@@ -17,6 +19,8 @@ html, body {
 }
 
 body {
+  /* Page colour around the desktop frame: the palette's background pulled toward its text colour. */
+  --backdrop: color-mix(in srgb, var(--bg) 84%, var(--fg));
   font-family: var(--font-sans);
   background: var(--body-bg);
   color: var(--fg);
@@ -25,10 +29,57 @@ body {
   overflow-x: hidden;
 }
 
+/* Wraps #root (see index.html). It is the query container for every @container rule,
+   so layouts follow the app's width rather than the window's. */
+.app-frame {
+  container: app / inline-size;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--body-bg);
+}
+
 #root {
+  flex: 1;
   min-height: 100%;
   /* Room for the fixed bottom tab bar (see AppTabBar.css). */
   padding-bottom: var(--tab-bar-space);
   display: flex;
   flex-direction: column;
+}
+
+/* ── Desktop: show the phone layout inside a frame ──
+   Riff is designed for phones. On wide screens the app sits in a phone-sized frame on a
+   backdrop tinted from the current palette, so the two never blend. The frame contains
+   layout, so fixed elements (tab bar, sheets, dialogs) position inside it, and #root
+   scrolls instead of the page. Keep 960px in sync with the frame check in
+   ChordMapExplorer.css. */
+@media (min-width: 960px) {
+  :root {
+    --app-height: min(56rem, 100dvh - 3rem);
+  }
+
+  body {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: var(--backdrop);
+  }
+
+  .app-frame {
+    width: 26.875rem;
+    height: var(--app-height);
+    min-height: 0;
+    overflow: hidden;
+    contain: layout paint;
+    border: 1px solid var(--surface-border-strong);
+    border-radius: 2rem;
+  }
+
+  #root {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
