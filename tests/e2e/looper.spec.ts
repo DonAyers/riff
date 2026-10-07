@@ -51,3 +51,40 @@ test("looper records a first loop and layers a second track in time", async ({ p
   await expect(looper.getByTestId("loop-length")).toHaveText("No loop yet");
   await expect(looper.getByTestId("track-1-status")).toHaveText("Empty");
 });
+
+test("looper trims the first loop and undoes a layer", async ({ page }) => {
+  await gotoApp(page);
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Looper" }).click();
+  const looper = page.getByRole("region", { name: "Looper" });
+
+  await looper.getByRole("button", { name: "Record track 1" }).click();
+  await expect(looper.getByTestId("track-1-status")).toHaveText("Recording");
+  await page.waitForTimeout(1200);
+  await looper.getByRole("button", { name: "Close loop on track 1" }).click();
+  await expect(looper.getByTestId("track-1-status")).toHaveText("Looping");
+
+  const edges = looper.getByRole("group", { name: "Loop edges" });
+  await expect(edges).toBeVisible();
+  await expect(looper.getByTestId("loop-end-offset")).toHaveText("0 ms");
+  const lengthBefore = await looper.getByTestId("loop-length").textContent();
+
+  await looper.getByRole("slider", { name: "Loop end offset in milliseconds" }).fill("500");
+  await expect(looper.getByTestId("loop-end-offset")).toHaveText("+500 ms");
+  await expect(looper.getByTestId("loop-length")).not.toHaveText(lengthBefore ?? "");
+
+  await looper.getByRole("button", { name: "Move loop start 10 ms earlier" }).click();
+  await expect(looper.getByTestId("loop-start-offset")).toHaveText("−10 ms");
+
+  await looper.getByRole("button", { name: "Reset loop edges" }).click();
+  await expect(looper.getByTestId("loop-end-offset")).toHaveText("0 ms");
+  await expect(looper.getByTestId("loop-start-offset")).toHaveText("0 ms");
+  await expect(looper.getByTestId("loop-length")).toHaveText(lengthBefore ?? "");
+
+  // A second layer locks the edges; undoing it unlocks them again.
+  await looper.getByRole("button", { name: "Record track 2" }).click();
+  await expect(edges).toBeHidden();
+  await expect(looper.getByTestId("track-2-status")).toHaveText("Looping", { timeout: 6000 });
+  await looper.getByRole("button", { name: "Undo last take" }).click();
+  await expect(looper.getByTestId("track-2-status")).toHaveText("Empty");
+  await expect(edges).toBeVisible();
+});

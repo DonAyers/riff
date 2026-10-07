@@ -3,6 +3,7 @@ import looperCaptureWorkletUrl from "../worklets/looper-capture.worklet?worker&u
 import {
   applyEdgeFades,
   clampLatencyNudgeMs,
+  clampLoopWindow,
   computePeaks,
   EDGE_FADE_SECONDS,
   estimateRoundTripLatencySeconds,
@@ -13,8 +14,13 @@ import {
   LOOPER_TRACK_COUNT,
   MAX_LOOP_SECONDS,
   MIN_LOOP_SECONDS,
+  positiveModulo,
   pruneChunks,
+  renderLoopWindow,
+  SEAM_CROSSFADE_SECONDS,
+  TAKE_HANDLE_SECONDS,
   type CaptureChunk,
+  type LoopWindow,
 } from "../lib/looper";
 
 export type LooperTrackStatus = "empty" | "armed" | "recording" | "playing";
@@ -31,8 +37,19 @@ export interface LoopPosition {
   durationS: number;
 }
 
+/** Loop edges relative to the presses that recorded the first take, in milliseconds. */
+export interface LoopTrim {
+  /** Negative starts the loop before the start press. */
+  startMs: number;
+  /** Positive ends the loop after the closing press. */
+  endMs: number;
+}
+
 export interface UseLooperReturn {
   tracks: LooperTrackState[];
+  /** Set while the first take is the only track, so its edges can still move. */
+  loopTrim: LoopTrim | null;
+  canUndo: boolean;
   loopDurationS: number | null;
   isPlaying: boolean;
   isStarting: boolean;
@@ -46,11 +63,36 @@ export interface UseLooperReturn {
   clearAll: () => void;
   togglePlayback: () => void;
   getLoopPosition: () => LoopPosition | null;
+  setLoopTrim: (patch: Partial<LoopTrim>) => void;
+  resetLoopTrim: () => void;
+  undoLastTake: () => void;
 }
 
 type RecordJob =
   | { kind: "first"; startFrame: number; timers: number[] }
   | { kind: "overdub"; startFrame: number; timers: number[] };
+
+/** The first take's recording with handles on both sides, so its loop edges can move. */
+interface BaseTake {
+  trackIndex: number;
+  /** Context frame of `source[0]`. */
+  sourceStartFrame: number;
+  /** Context frame of the start press: the take's frame 0. */
+  originFrame: number;
+  /** Frames from the start press to the closing press. */
+  closeFrame: number;
+  source: Float32Array;
+  window: LoopWindow;
+  /** Context frame the post-roll handle is complete at, until it has been collected. */
+  postRollUntilFrame: number | null;
+}
+
+interface UndoSnapshot {
+  trackIndex: number;
+  buffer: AudioBuffer | null;
+  peaks: number[];
+  baseTake: BaseTake | null;
+}
 
 interface LooperEngine {
   context: AudioContext;
@@ -84,6 +126,13 @@ function createEmptyTrack(): LooperTrackState {
   return { status: "empty", muted: false, volume: 0.9, peaks: [] };
 }
 
+function getTakeTrim(take: BaseTake, sampleRate: number): LoopTrim {
+  return {
+    startMs: Math.round((take.window.startFrame / sampleRate) * 1000),
+    endMs: Math.round(((take.window.endFrame - take.closeFrame) / sampleRate) * 1000),
+  };
+}
+
 function readStoredNudge(): number {
   try {
     return clampLatencyNudgeMs(Number(localStorage.getItem(LATENCY_STORAGE_KEY) ?? 0));
@@ -100,6 +149,13 @@ function disposeEngine(engine: LooperEngine | null) {
   engine.stream.getTracks().forEach((track) => track.stop());
   void engine.context.close().catch(() => undefined);
   setAudioSessionType("auto");
+}
+
+function createTrackBuffer(engine: LooperEngine, samples: Float32Array<ArrayBuffer>): AudioBuffer {
+  // Match the context rate exactly so looping never resamples or drifts.
+  const buffer = engine.context.createBuffer(1, samples.length, engine.context.sampleRate);
+  buffer.copyToChannel(samples, 0);
+  return buffer;
 }
 
 function setAudioSessionType(type: string) {
@@ -123,6 +179,8 @@ export function useLooper(): UseLooperReturn {
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [latencyNudgeMs, setLatencyNudgeState] = useState(readStoredNudge);
+  const [baseTrim, setBaseTrim] = useState<(LoopTrim & { trackIndex: number }) | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
 
   const engineRef = useRef<LooperEngine | null>(null);
   const enginePromiseRef = useRef<Promise<LooperEngine> | null>(null);
@@ -137,6 +195,9 @@ export function useLooper(): UseLooperReturn {
   const latencyNudgeRef = useRef(latencyNudgeMs);
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
   const isMountedRef = useRef(true);
+  const baseTakeRef = useRef<BaseTake | null>(null);
+  const undoRef = useRef<UndoSnapshot | null>(null);
+  const onPostRollRef = useRef<(take: BaseTake) => void>(() => undefined);
 
   useEffect(() => {
     tracksRef.current = tracks;
@@ -189,15 +250,23 @@ export function useLooper(): UseLooperReturn {
           captureSink.gain.value = 0;
           micSource.connect(captureNode).connect(captureSink).connect(context.destination);
 
+          const handleFrames = Math.round(TAKE_HANDLE_SECONDS * context.sampleRate);
           captureNode.port.onmessage = (event: MessageEvent<CaptureChunk>) => {
-            const activeJobs = jobsRef.current.filter((job): job is RecordJob => job !== null);
-            if (activeJobs.length === 0) {
-              chunksRef.current = [];
-              return;
-            }
+            const chunks = [...chunksRef.current, event.data];
+            const take = baseTakeRef.current;
+            const holds = jobsRef.current
+              .filter((job): job is RecordJob => job !== null)
+              .map((job) => job.startFrame);
+            if (take?.postRollUntilFrame != null) holds.push(take.originFrame);
 
-            const keepFrom = Math.min(...activeJobs.map((job) => job.startFrame));
-            chunksRef.current = pruneChunks([...chunksRef.current, event.data], keepFrom);
+            // Always keep a pre-roll handle, so a take's start can later move earlier.
+            const keepFrom =
+              (holds.length > 0 ? Math.min(...holds) : getCapturedEndFrame(chunks)) - handleFrames;
+            chunksRef.current = pruneChunks(chunks, keepFrom);
+
+            if (take?.postRollUntilFrame != null && getCapturedEndFrame(chunksRef.current) >= take.postRollUntilFrame) {
+              onPostRollRef.current(take);
+            }
           };
 
           const trackGains = Array.from({ length: LOOPER_TRACK_COUNT }, (_, index) => {
@@ -261,17 +330,22 @@ export function useLooper(): UseLooperReturn {
   const frameNow = (engine: LooperEngine) =>
     Math.round(engine.context.currentTime * engine.context.sampleRate);
 
-  const stopPlayer = useCallback((index: number) => {
+  /** Stops a track's player now, or at `whenS` so a replacement can take over without a gap. */
+  const stopPlayer = useCallback((index: number, whenS?: number) => {
     const player = playersRef.current[index];
     playersRef.current[index] = null;
-    if (player) {
-      player.onended = null;
-      try {
-        player.stop();
-      } catch {
-        // Already stopped.
-      }
+    if (!player) return;
+
+    player.onended = null;
+    try {
+      player.stop(whenS);
+    } catch {
+      // Already stopped.
+    }
+    if (whenS === undefined) {
       player.disconnect();
+    } else {
+      player.onended = () => player.disconnect();
     }
   }, []);
 
@@ -282,13 +356,13 @@ export function useLooper(): UseLooperReturn {
     const durationS = loopDurationRef.current;
     if (!engine || !buffer || !durationS) return;
 
-    stopPlayer(index);
+    const startAtS = whenS ?? engine.context.currentTime + START_LOOKAHEAD_S;
+    stopPlayer(index, startAtS);
     const player = engine.context.createBufferSource();
     player.buffer = buffer;
     player.loop = true;
     player.connect(engine.trackGains[index]);
 
-    const startAtS = whenS ?? engine.context.currentTime + START_LOOKAHEAD_S;
     const offsetS = getLoopPositionSeconds(startAtS, loopEpochRef.current, durationS);
     player.start(startAtS, offsetS);
     playersRef.current[index] = player;
@@ -313,21 +387,124 @@ export function useLooper(): UseLooperReturn {
     job.timers.push(window.setTimeout(() => whenCaptured(index, endFrame, onReady), CAPTURE_POLL_MS));
   }, []);
 
+  const forgetUndo = useCallback(() => {
+    undoRef.current = null;
+    setCanUndo(false);
+  }, []);
+
+  const setBaseTake = useCallback((take: BaseTake | null) => {
+    baseTakeRef.current = take;
+    const engine = engineRef.current;
+    setBaseTrim(take && engine ? { trackIndex: take.trackIndex, ...getTakeTrim(take, engine.context.sampleRate) } : null);
+  }, []);
+
+  /** Swaps a track's audio, keeping it in step with the loop if the loop is playing. */
+  const setTrackBuffer = useCallback((index: number, buffer: AudioBuffer | null, peaks: number[]) => {
+    buffersRef.current[index] = buffer;
+    if (!buffer) {
+      stopPlayer(index);
+      updateTrack(index, { status: "empty", peaks: [] });
+      return;
+    }
+
+    updateTrack(index, { status: "playing", peaks });
+    if (isPlayingRef.current) startPlayer(index);
+  }, [startPlayer, stopPlayer, updateTrack]);
+
+  /** Keeps what a take replaced, so "Undo" can put it back. */
+  const rememberForUndo = useCallback((index: number) => {
+    undoRef.current = {
+      trackIndex: index,
+      buffer: buffersRef.current[index],
+      peaks: tracksRef.current[index].peaks,
+      baseTake: baseTakeRef.current,
+    };
+    setCanUndo(true);
+  }, []);
+
   const commitTake = useCallback((index: number, fromFrame: number, lengthFrames: number) => {
     const engine = engineRef.current;
     if (!engine) return;
 
     const samples = extractFrames(chunksRef.current, fromFrame, lengthFrames);
     applyEdgeFades(samples, EDGE_FADE_SECONDS * engine.context.sampleRate);
-    // Match the context rate exactly so looping never resamples or drifts.
-    const buffer = engine.context.createBuffer(1, samples.length, engine.context.sampleRate);
-    buffer.copyToChannel(samples, 0);
-    buffersRef.current[index] = buffer;
     clearJob(index);
+    rememberForUndo(index);
+    // A new take on the first track replaces the recording its edges were trimmed from.
+    if (baseTakeRef.current?.trackIndex === index) setBaseTake(null);
+    setTrackBuffer(index, createTrackBuffer(engine, samples), computePeaks(samples, PEAK_BINS));
+  }, [clearJob, rememberForUndo, setBaseTake, setTrackBuffer]);
 
-    updateTrack(index, { status: "playing", peaks: computePeaks(samples, PEAK_BINS) });
-    startPlayer(index);
-  }, [clearJob, startPlayer, updateTrack]);
+  /** Renders the base take's current window and plays it from the same spot in the music. */
+  const applyLoopWindow = useCallback((take: BaseTake, next: LoopWindow) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    const { context } = engine;
+    const sampleRate = context.sampleRate;
+    const previous = take.window;
+    take.window = next;
+    const samples = renderLoopWindow(
+      take.source,
+      take.originFrame - take.sourceStartFrame,
+      next,
+      SEAM_CROSSFADE_SECONDS * sampleRate
+    );
+    const durationS = samples.length / sampleRate;
+    const previousDurationS = loopDurationRef.current;
+
+    if (isPlayingRef.current && previousDurationS) {
+      // Keep hearing the same moment of the take: moving the start shifts the loop position.
+      const nowS = context.currentTime;
+      const positionS = getLoopPositionSeconds(nowS, loopEpochRef.current, previousDurationS);
+      const shiftS = (next.startFrame - previous.startFrame) / sampleRate;
+      loopEpochRef.current = nowS - positiveModulo(positionS - shiftS, durationS);
+    }
+
+    loopDurationRef.current = durationS;
+    setLoopDurationS(durationS);
+    setBaseTake(take);
+    setTrackBuffer(take.trackIndex, createTrackBuffer(engine, samples), computePeaks(samples, PEAK_BINS));
+  }, [setBaseTake, setTrackBuffer]);
+
+  const commitFirstTake = useCallback((index: number, startFrame: number, stopFrame: number) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    const handleFrames = Math.round(TAKE_HANDLE_SECONDS * engine.context.sampleRate);
+    const sourceStartFrame = startFrame - handleFrames;
+    const sourceEndFrame = Math.min(getCapturedEndFrame(chunksRef.current), stopFrame + handleFrames);
+    const take: BaseTake = {
+      trackIndex: index,
+      sourceStartFrame,
+      originFrame: startFrame,
+      closeFrame: stopFrame - startFrame,
+      source: extractFrames(chunksRef.current, sourceStartFrame, sourceEndFrame - sourceStartFrame),
+      window: { startFrame: 0, endFrame: stopFrame - startFrame },
+      postRollUntilFrame: stopFrame + handleFrames,
+    };
+
+    clearJob(index);
+    rememberForUndo(index);
+    applyLoopWindow(take, take.window);
+  }, [applyLoopWindow, clearJob, rememberForUndo]);
+
+  useEffect(() => {
+    // Once the audio after the closing press has arrived, extending the loop plays it.
+    onPostRollRef.current = (take) => {
+      const engine = engineRef.current;
+      if (!engine) return;
+
+      const coveredUntil = take.sourceStartFrame + take.source.length - take.originFrame;
+      take.source = extractFrames(chunksRef.current, take.sourceStartFrame, take.postRollUntilFrame! - take.sourceStartFrame);
+      take.postRollUntilFrame = null;
+
+      const crossfadeFrames = Math.round(SEAM_CROSSFADE_SECONDS * engine.context.sampleRate);
+      if (baseTakeRef.current === take && take.window.endFrame + crossfadeFrames > coveredUntil) {
+        applyLoopWindow(take, take.window);
+      }
+    };
+  }, [applyLoopWindow]);
 
   const finishFirstLoop = useCallback((index: number) => {
     const engine = engineRef.current;
@@ -354,8 +531,10 @@ export function useLooper(): UseLooperReturn {
     job.timers.forEach((timer) => window.clearTimeout(timer));
     job.timers = [];
 
-    whenCaptured(index, stopFrame, () => commitTake(index, job.startFrame, lengthFrames));
-  }, [clearJob, commitTake, updateTrack, whenCaptured]);
+    // Wait for the seam crossfade's audio past the closing press too.
+    const crossfadeFrames = Math.ceil(SEAM_CROSSFADE_SECONDS * engine.context.sampleRate);
+    whenCaptured(index, stopFrame + crossfadeFrames, () => commitFirstTake(index, job.startFrame, stopFrame));
+  }, [clearJob, commitFirstTake, updateTrack, whenCaptured]);
 
   const playAll = useCallback(() => {
     const engine = engineRef.current;
@@ -510,8 +689,10 @@ export function useLooper(): UseLooperReturn {
     stopPlayer(index);
     buffersRef.current[index] = null;
     updateTrack(index, { status: "empty", peaks: [] });
+    if (baseTakeRef.current?.trackIndex === index) setBaseTake(null);
+    forgetUndo();
     resetLoopIfEmpty();
-  }, [clearJob, resetLoopIfEmpty, stopPlayer, updateTrack]);
+  }, [clearJob, forgetUndo, resetLoopIfEmpty, setBaseTake, stopPlayer, updateTrack]);
 
   const clearAll = useCallback(() => {
     for (let index = 0; index < LOOPER_TRACK_COUNT; index += 1) {
@@ -520,8 +701,58 @@ export function useLooper(): UseLooperReturn {
       buffersRef.current[index] = null;
     }
     setTracks((current) => current.map((track) => ({ ...track, status: "empty", peaks: [] })));
+    setBaseTake(null);
+    forgetUndo();
     resetLoopIfEmpty();
-  }, [clearJob, resetLoopIfEmpty, stopPlayer]);
+  }, [clearJob, forgetUndo, resetLoopIfEmpty, setBaseTake, stopPlayer]);
+
+  /** Edges can move only while the first take is the only audio, so no layer falls out of time. */
+  const getTrimmableTake = useCallback((): BaseTake | null => {
+    const take = baseTakeRef.current;
+    if (!take || jobsRef.current.some(Boolean)) return null;
+    return buffersRef.current.every((buffer, index) => !buffer || index === take.trackIndex) ? take : null;
+  }, []);
+
+  const setLoopTrim = useCallback((patch: Partial<LoopTrim>) => {
+    const engine = engineRef.current;
+    const take = getTrimmableTake();
+    if (!engine || !take) return;
+
+    const sampleRate = engine.context.sampleRate;
+    const toFrames = (ms: number) => Math.round((ms / 1000) * sampleRate);
+    const handleFrames = Math.round(TAKE_HANDLE_SECONDS * sampleRate);
+    const next = clampLoopWindow(
+      {
+        startFrame: patch.startMs === undefined ? take.window.startFrame : toFrames(patch.startMs),
+        endFrame: patch.endMs === undefined ? take.window.endFrame : take.closeFrame + toFrames(patch.endMs),
+      },
+      {
+        minStartFrame: -handleFrames,
+        maxEndFrame: take.closeFrame + handleFrames,
+        minLengthFrames: Math.ceil(MIN_LOOP_SECONDS * sampleRate),
+      },
+      patch.startMs === undefined ? "end" : "start"
+    );
+    if (next.startFrame === take.window.startFrame && next.endFrame === take.window.endFrame) return;
+
+    // Undo restores a whole track buffer, which no longer fits once the loop length changes.
+    forgetUndo();
+    applyLoopWindow(take, next);
+  }, [applyLoopWindow, forgetUndo, getTrimmableTake]);
+
+  const resetLoopTrim = useCallback(() => {
+    setLoopTrim({ startMs: 0, endMs: 0 });
+  }, [setLoopTrim]);
+
+  const undoLastTake = useCallback(() => {
+    const snapshot = undoRef.current;
+    if (!snapshot || jobsRef.current.some(Boolean)) return;
+
+    forgetUndo();
+    setBaseTake(snapshot.baseTake);
+    setTrackBuffer(snapshot.trackIndex, snapshot.buffer, snapshot.peaks);
+    resetLoopIfEmpty();
+  }, [forgetUndo, resetLoopIfEmpty, setBaseTake, setTrackBuffer]);
 
   const togglePlayback = useCallback(() => {
     if (isPlayingRef.current) {
@@ -566,8 +797,18 @@ export function useLooper(): UseLooperReturn {
     };
   }, []);
 
+  const loopTrim =
+    baseTrim &&
+    tracks.every((track, index) =>
+      index === baseTrim.trackIndex ? track.status === "playing" : track.status === "empty"
+    )
+      ? { startMs: baseTrim.startMs, endMs: baseTrim.endMs }
+      : null;
+
   return {
     tracks,
+    loopTrim,
+    canUndo,
     loopDurationS,
     isPlaying,
     isStarting,
@@ -581,5 +822,8 @@ export function useLooper(): UseLooperReturn {
     clearAll,
     togglePlayback,
     getLoopPosition,
+    setLoopTrim,
+    resetLoopTrim,
+    undoLastTake,
   };
 }

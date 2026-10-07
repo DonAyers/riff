@@ -1,7 +1,12 @@
 import { useEffect, useRef } from "react";
-import { Circle, Pause, Play, Square, Trash2, Volume2, VolumeX, X } from "lucide-react";
+import { Circle, Minus, Pause, Play, Plus, Square, Trash2, Undo2, Volume2, VolumeX, X } from "lucide-react";
 import { useLooper, type LooperTrackState } from "../hooks/useLooper";
-import { formatLoopTime, MAX_LATENCY_NUDGE_MS, MIN_LATENCY_NUDGE_MS } from "../lib/looper";
+import {
+  formatLoopTime,
+  MAX_LATENCY_NUDGE_MS,
+  MIN_LATENCY_NUDGE_MS,
+  TAKE_HANDLE_SECONDS,
+} from "../lib/looper";
 import "./Looper.css";
 
 const STATUS_COPY: Record<LooperTrackState["status"], string> = {
@@ -18,15 +23,72 @@ function getRecordLabel(track: LooperTrackState, trackNumber: number, hasLoop: b
   return `Record track ${trackNumber}`;
 }
 
-function getHint(hasLoop: boolean, isRecordingFirst: boolean): string {
+const TRIM_LIMIT_MS = TAKE_HANDLE_SECONDS * 1000;
+const TRIM_NUDGE_MS = 10;
+
+function getHint(hasLoop: boolean, isRecordingFirst: boolean, canTrim: boolean): string {
   if (isRecordingFirst) return "Play your part, then tap again to close the loop.";
   if (!hasLoop) return "Tap record on any track, play, then tap again to set the loop length.";
+  if (canTrim) return "Move the loop edges until it feels right, then record another track.";
   return "Other tracks start on the next loop and record one full pass.";
+}
+
+function formatOffsetMs(ms: number): string {
+  if (ms === 0) return "0 ms";
+  return `${ms > 0 ? "+" : "−"}${Math.abs(ms)} ms`;
+}
+
+interface TrimControlProps {
+  edge: "start" | "end";
+  valueMs: number;
+  onChange: (valueMs: number) => void;
+}
+
+function TrimControl({ edge, valueMs, onChange }: TrimControlProps) {
+  const label = edge === "start" ? "Start" : "End";
+  const name = `loop ${edge}`;
+
+  return (
+    <div className="looper-trim__row">
+      <span className="looper-trim__label">
+        {label} <output data-testid={`loop-${edge}-offset`}>{formatOffsetMs(valueMs)}</output>
+      </span>
+      <button
+        type="button"
+        className="looper-track__icon-button"
+        onClick={() => onChange(valueMs - TRIM_NUDGE_MS)}
+        disabled={valueMs <= -TRIM_LIMIT_MS}
+        aria-label={`Move ${name} ${TRIM_NUDGE_MS} ms earlier`}
+      >
+        <Minus size={16} aria-hidden="true" />
+      </button>
+      <input
+        type="range"
+        min={-TRIM_LIMIT_MS}
+        max={TRIM_LIMIT_MS}
+        step={5}
+        value={valueMs}
+        aria-label={`${label === "Start" ? "Loop start" : "Loop end"} offset in milliseconds`}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+      <button
+        type="button"
+        className="looper-track__icon-button"
+        onClick={() => onChange(valueMs + TRIM_NUDGE_MS)}
+        disabled={valueMs >= TRIM_LIMIT_MS}
+        aria-label={`Move ${name} ${TRIM_NUDGE_MS} ms later`}
+      >
+        <Plus size={16} aria-hidden="true" />
+      </button>
+    </div>
+  );
 }
 
 export function Looper() {
   const {
     tracks,
+    loopTrim,
+    canUndo,
     loopDurationS,
     isPlaying,
     isStarting,
@@ -40,11 +102,15 @@ export function Looper() {
     clearAll,
     togglePlayback,
     getLoopPosition,
+    setLoopTrim,
+    resetLoopTrim,
+    undoLastTake,
   } = useLooper();
   const progressRef = useRef<HTMLDivElement>(null);
   const hasLoop = loopDurationS !== null;
   const isRecordingFirst = !hasLoop && tracks.some((track) => track.status === "recording");
   const hasAnyAudio = tracks.some((track) => track.status !== "empty");
+  const isAnyTrackBusy = tracks.some((track) => track.status === "armed" || track.status === "recording");
 
   useEffect(() => {
     const progress = progressRef.current;
@@ -94,6 +160,16 @@ export function Looper() {
             </button>
             <button
               type="button"
+              className="looper-track__icon-button"
+              onClick={undoLastTake}
+              disabled={!canUndo || isAnyTrackBusy}
+              aria-label="Undo last take"
+              title="Undo last take"
+            >
+              <Undo2 size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
               className="looper__clear-all"
               onClick={clearAll}
               disabled={!hasAnyAudio}
@@ -105,8 +181,28 @@ export function Looper() {
       </div>
 
       <p className="looper__hint" role="status">
-        {isStarting ? "Opening the microphone…" : getHint(hasLoop, isRecordingFirst)}
+        {isStarting ? "Opening the microphone…" : getHint(hasLoop, isRecordingFirst, loopTrim !== null)}
       </p>
+
+      {loopTrim && (
+        <fieldset className="looper-trim">
+          <legend>Loop edges</legend>
+          <TrimControl edge="start" valueMs={loopTrim.startMs} onChange={(startMs) => setLoopTrim({ startMs })} />
+          <TrimControl edge="end" valueMs={loopTrim.endMs} onChange={(endMs) => setLoopTrim({ endMs })} />
+          <div className="looper-trim__footer">
+            <p>Relative to where you tapped. The edges lock once another track is recorded.</p>
+            <button
+              type="button"
+              className="looper__clear-all"
+              onClick={resetLoopTrim}
+              disabled={loopTrim.startMs === 0 && loopTrim.endMs === 0}
+              aria-label="Reset loop edges"
+            >
+              Reset
+            </button>
+          </div>
+        </fieldset>
+      )}
 
       <ol className="looper__tracks">
         {tracks.map((track, index) => {

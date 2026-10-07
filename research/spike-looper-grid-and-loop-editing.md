@@ -94,3 +94,7 @@ Seen across Loopy Pro, the Boss RC-505mkII (tap tempo, rhythm guide, "Mark Back"
 - MDN `AudioContext.outputLatency`: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/outputLatency
 - Signalsmith Stretch (web): https://unpkg.com/signalsmith-stretch@1.3.2/README.md
 - Sound On Sound, Boss RC-505mkII review: https://www.soundonsound.com/reviews/boss-rc-505-mkii
+
+## Decision (2026-10-07)
+
+Don picked item 1. Built as: 2 s pre/post-roll handles on the first take, start and end controls (±10 ms buttons and ±2 s sliders) shown only while the first take is the only track, a 10 ms equal-power seam crossfade, gapless player swaps while editing, and one level of undo for the last take. The metronome (item 2) is next.
