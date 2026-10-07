@@ -60,6 +60,30 @@ describe("Looper", () => {
   const metronomeButton = () => screen.getByRole("button", { name: "Metronome" });
   const openMetronome = () => fireEvent.contextMenu(metronomeButton());
 
+  it("only pulses the beat lights while the click is on", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+    const playingGrid = {
+      isPlaying: true,
+      loopDurationS: 2,
+      tracks: [track("playing"), track("empty"), track("empty"), track("empty")],
+      grid: { beats: 4, bpm: 120 },
+      getBeatPosition: vi.fn(() => ({ beat: 0, beatsPerBar: 4 })),
+    };
+    useLooperMock.mockReturnValue(
+      hookReturn({ ...playingGrid, metronome: { clickOn: false, bpm: 120, beatsPerBar: 4 } })
+    );
+    const { rerender } = render(<Looper />);
+    act(() => vi.advanceTimersByTime(50));
+    expect(metronomeButton()).not.toHaveAttribute("data-beat");
+
+    useLooperMock.mockReturnValue(
+      hookReturn({ ...playingGrid, metronome: { clickOn: true, bpm: 120, beatsPerBar: 4 } })
+    );
+    rerender(<Looper />);
+    act(() => vi.advanceTimersByTime(50));
+    expect(metronomeButton()).toHaveAttribute("data-beat", "down");
+  });
+
   it("starts empty with four record buttons and no transport", () => {
     render(<Looper />);
 

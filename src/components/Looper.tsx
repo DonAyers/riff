@@ -150,8 +150,9 @@ export function Looper() {
   const hasAnyAudio = tracks.some((track) => track.status !== "empty");
   const isAnyTrackBusy = tracks.some((track) => track.status === "armed" || track.status === "recording");
 
+  // The lights follow the click: with it off nothing pulses, even on a loop with a grid.
   const isTicking =
-    (isPlaying && grid !== null) || (metronome.clickOn && (isCountingIn || isRecordingFirst));
+    metronome.clickOn && ((isPlaying && grid !== null) || isCountingIn || isRecordingFirst);
 
   const closeMetronome = () => {
     setIsMetronomeOpen(false);
