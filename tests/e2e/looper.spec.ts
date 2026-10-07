@@ -88,3 +88,48 @@ test("looper trims the first loop and undoes a layer", async ({ page }) => {
   await expect(looper.getByTestId("track-2-status")).toHaveText("Empty");
   await expect(edges).toBeVisible();
 });
+
+test("looper counts in on the click and closes the loop on a bar line", async ({ page }) => {
+  await gotoApp(page);
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Looper" }).click();
+  const looper = page.getByRole("region", { name: "Looper" });
+
+  await looper.getByRole("button", { name: "Click" }).click();
+  await expect(looper.getByRole("button", { name: "Click" })).toHaveAttribute("aria-pressed", "true");
+  // 240 BPM in 4/4: one bar is exactly one second.
+  const bpm = looper.getByRole("spinbutton", { name: "Tempo in beats per minute" });
+  await bpm.fill("240");
+  await bpm.press("Enter");
+  await expect(bpm).toHaveValue("240");
+
+  await looper.getByRole("button", { name: "Record track 1" }).click();
+  await expect(looper.getByTestId("track-1-status")).toHaveText("Count-in");
+  await expect(looper.getByTestId("track-1-status")).toHaveText("Recording", { timeout: 3000 });
+  await page.waitForTimeout(1100);
+  await looper.getByRole("button", { name: "Close loop on track 1" }).click();
+
+  await expect(looper.getByTestId("track-1-status")).toHaveText("Looping", { timeout: 4000 });
+  await expect(looper.getByTestId("loop-length")).toHaveText(/^Loop 0:0[12]\.0$/);
+  await expect(looper.getByTestId("loop-tempo")).toHaveText(/^240 BPM · [12] bars?$/);
+
+  await looper.getByRole("button", { name: "Clear all" }).click();
+  await expect(looper.getByTestId("loop-length")).toHaveText("No loop yet");
+  await expect(bpm).toBeEnabled();
+});
+
+test("looper fits a tempo to a freely played loop", async ({ page }) => {
+  await gotoApp(page);
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Looper" }).click();
+  const looper = page.getByRole("region", { name: "Looper" });
+
+  await looper.getByRole("button", { name: "Record track 1" }).click();
+  await page.waitForTimeout(2000);
+  await looper.getByRole("button", { name: "Close loop on track 1" }).click();
+  await expect(looper.getByTestId("track-1-status")).toHaveText("Looping");
+
+  await looper.getByRole("button", { name: "Fit tempo" }).click();
+  await expect(looper.getByTestId("loop-tempo")).toHaveText(/BPM/);
+  await expect(looper.getByRole("button", { name: "Click" })).toHaveAttribute("aria-pressed", "true");
+  await looper.getByRole("button", { name: "Halve the tempo" }).click();
+  await expect(looper.getByTestId("loop-tempo")).toHaveText(/BPM/);
+});

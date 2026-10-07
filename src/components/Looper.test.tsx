@@ -32,6 +32,15 @@ function hookReturn(overrides: Partial<UseLooperReturn> = {}): UseLooperReturn {
     setLoopTrim: vi.fn(),
     resetLoopTrim: vi.fn(),
     undoLastTake: vi.fn(),
+    metronome: { clickOn: false, bpm: 100, beatsPerBar: 4 },
+    grid: null,
+    setClickOn: vi.fn(),
+    setBpm: vi.fn(),
+    setBeatsPerBar: vi.fn(),
+    tapTempo: vi.fn(),
+    fitTempoToLoop: vi.fn(),
+    scaleTempo: vi.fn(),
+    getBeatPosition: vi.fn(() => null),
     ...overrides,
   };
 }
@@ -167,5 +176,80 @@ describe("Looper", () => {
     useLooperMock.mockReturnValue({ ...hook, tracks: [track("playing"), track("playing"), track("armed"), track("empty")] });
     rerender(<Looper />);
     expect(screen.getByRole("button", { name: "Undo last take" })).toBeDisabled();
+  });
+
+  it("sets the click, tempo and meter before the first loop", () => {
+    const hook = hookReturn();
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Click" }));
+    expect(hook.setClickOn).toHaveBeenCalledWith(true);
+
+    const bpm = screen.getByRole("spinbutton", { name: "Tempo in beats per minute" });
+    fireEvent.change(bpm, { target: { value: "1" } });
+    expect(hook.setBpm).not.toHaveBeenCalled();
+    fireEvent.change(bpm, { target: { value: "126" } });
+    fireEvent.keyDown(bpm, { key: "Enter" });
+    expect(hook.setBpm).toHaveBeenCalledWith(126);
+
+    fireEvent.click(screen.getByRole("button", { name: "Tap" }));
+    expect(hook.tapTempo).toHaveBeenCalled();
+    fireEvent.change(screen.getByRole("combobox", { name: "Beats per bar" }), { target: { value: "3" } });
+    expect(hook.setBeatsPerBar).toHaveBeenCalledWith(3);
+  });
+
+  it("shows a count-in and locks the other tracks while it runs", () => {
+    useLooperMock.mockReturnValue(
+      hookReturn({
+        metronome: { clickOn: true, bpm: 100, beatsPerBar: 4 },
+        tracks: [track("armed"), track("empty"), track("empty"), track("empty")],
+      })
+    );
+    render(<Looper />);
+
+    expect(screen.getByTestId("track-1-status")).toHaveTextContent("Count-in");
+    expect(screen.getByText(/start playing on the next downbeat/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record track 2" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Click" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Tap" })).toBeDisabled();
+  });
+
+  it("offers to fit a tempo to a loop that was played freely", () => {
+    const hook = hookReturn({
+      loopDurationS: 2,
+      isPlaying: true,
+      tracks: [track("playing"), track("empty"), track("empty"), track("empty")],
+    });
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+
+    expect(screen.getByText("Played freely")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Fit tempo" }));
+    expect(hook.fitTempoToLoop).toHaveBeenCalled();
+  });
+
+  it("shows the loop's tempo, scales it and moves the loop end a beat at a time", () => {
+    const hook = hookReturn({
+      loopDurationS: 4,
+      isPlaying: true,
+      grid: { beats: 8, bpm: 120 },
+      loopTrim: { startMs: 0, endMs: 0 },
+      metronome: { clickOn: true, bpm: 120, beatsPerBar: 4 },
+      tracks: [track("playing"), track("empty"), track("empty"), track("empty")],
+    });
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+
+    expect(screen.getByTestId("loop-tempo")).toHaveTextContent("120 BPM · 2 bars");
+    fireEvent.click(screen.getByRole("button", { name: "Halve the tempo" }));
+    expect(hook.scaleTempo).toHaveBeenCalledWith(0.5);
+    fireEvent.click(screen.getByRole("button", { name: "Double the tempo" }));
+    expect(hook.scaleTempo).toHaveBeenCalledWith(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Move loop end one beat later" }));
+    expect(hook.setLoopTrim).toHaveBeenLastCalledWith({ endMs: 500 });
+    fireEvent.click(screen.getByRole("button", { name: "Move loop start 10 ms earlier" }));
+    expect(hook.setLoopTrim).toHaveBeenLastCalledWith({ startMs: -10 });
   });
 });

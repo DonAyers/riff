@@ -12,6 +12,8 @@ import {
   getNextLoopBoundarySeconds,
   pruneChunks,
   renderLoopWindow,
+  slipLoopWindow,
+  snapLoopWindowToBeats,
   type CaptureChunk,
 } from "./looper";
 
@@ -115,5 +117,29 @@ describe("looper helpers", () => {
     expect(output[4]).toBeCloseTo(24 * Math.SQRT1_2 + 64 * Math.SQRT1_2, 4);
     // After the crossfade the loop is untouched.
     expect(output[8]).toBe(28);
+  });
+
+  it("slides a loop window without changing its length, stopping at the handles", () => {
+    const limits = { minStartFrame: -100, maxEndFrame: 1100, minLengthFrames: 200 };
+
+    expect(slipLoopWindow({ startFrame: 0, endFrame: 1000 }, -50, limits)).toEqual({ startFrame: -50, endFrame: 950 });
+    expect(slipLoopWindow({ startFrame: 0, endFrame: 1000 }, 400, limits)).toEqual({ startFrame: 100, endFrame: 1100 });
+    expect(slipLoopWindow({ startFrame: 0, endFrame: 1000 }, -400, limits)).toEqual({ startFrame: -100, endFrame: 900 });
+  });
+
+  it("rounds a loop window to whole beats inside the handles", () => {
+    const limits = { minStartFrame: -100, maxEndFrame: 1100, minLengthFrames: 200 };
+
+    expect(snapLoopWindowToBeats({ startFrame: 0, endFrame: 760 }, 250, limits)).toEqual({
+      window: { startFrame: 0, endFrame: 750 },
+      beats: 3,
+    });
+    // Rounding up to 5 beats would pass the post-roll handle.
+    expect(snapLoopWindowToBeats({ startFrame: 0, endFrame: 1100 }, 250, limits)).toEqual({
+      window: { startFrame: 0, endFrame: 1000 },
+      beats: 4,
+    });
+    // One beat is shorter than the minimum loop, so it takes two.
+    expect(snapLoopWindowToBeats({ startFrame: 0, endFrame: 120 }, 150, limits).beats).toBe(2);
   });
 });
