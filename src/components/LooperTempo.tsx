@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { BeatPosition, LoopGrid, MetronomeSettings } from "../hooks/useLooper";
+import { useBeatLight } from "../hooks/useBeatLight";
 import { BEATS_PER_BAR_OPTIONS, formatBpm, MAX_BPM, MIN_BPM } from "../lib/metronome";
 
 interface LooperTempoProps {
@@ -17,6 +18,7 @@ interface LooperTempoProps {
   fitTempoToLoop: () => void;
   scaleTempo: (factor: 2 | 0.5) => void;
   getBeatPosition: () => BeatPosition | null;
+  onClose: () => void;
 }
 
 function describeLength(beats: number, beatsPerBar: number): string {
@@ -68,34 +70,21 @@ export function LooperTempo({
   fitTempoToLoop,
   scaleTempo,
   getBeatPosition,
+  onClose,
 }: LooperTempoProps) {
   const beatsRef = useRef<HTMLDivElement>(null);
   const isLocked = hasLoop || isBusy;
 
-  useEffect(() => {
+  const showBeat = useCallback((beat: number) => {
     const lights = beatsRef.current;
-    if (!lights || !isTicking) return;
-
-    // Light the beat being heard straight from the audio clock, without re-rendering React.
-    let lastBeat = -2;
-    let frame = requestAnimationFrame(function draw() {
-      const beat = getBeatPosition()?.beat ?? -1;
-      if (beat !== lastBeat) {
-        Array.from(lights.children).forEach((light, index) => light.classList.toggle("is-on", index === beat));
-        lastBeat = beat;
-      }
-      frame = requestAnimationFrame(draw);
-    });
-
-    return () => {
-      cancelAnimationFrame(frame);
-      Array.from(lights.children).forEach((light) => light.classList.remove("is-on"));
-    };
-  }, [getBeatPosition, isTicking]);
+    if (!lights) return;
+    Array.from(lights.children).forEach((light, index) => light.classList.toggle("is-on", index === beat));
+  }, []);
+  useBeatLight(getBeatPosition, isTicking, showBeat);
 
   return (
-    <fieldset className="looper-tempo">
-      <legend>Tempo</legend>
+    <fieldset className="looper-tempo" id="looper-metronome-settings">
+      <legend>Metronome</legend>
       <div className="looper-tempo__row">
         <button
           type="button"
@@ -171,6 +160,13 @@ export function LooperTempo({
           </label>
         </div>
       )}
+
+      <div className="looper-tempo__footer">
+        <p>Tap the metronome to turn the click on or off. Hold it to come back here.</p>
+        <button type="button" className="looper__clear-all" onClick={onClose}>
+          Done
+        </button>
+      </div>
     </fieldset>
   );
 }

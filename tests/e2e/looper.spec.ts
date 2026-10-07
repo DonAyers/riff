@@ -94,13 +94,32 @@ test("looper counts in on the click and closes the loop on a bar line", async ({
   await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Looper" }).click();
   const looper = page.getByRole("region", { name: "Looper" });
 
-  await looper.getByRole("button", { name: "Click" }).click();
-  await expect(looper.getByRole("button", { name: "Click" })).toHaveAttribute("aria-pressed", "true");
+  // The first tap on the metronome opens its settings.
+  const metronome = looper.getByRole("button", { name: "Metronome" });
+  await metronome.click();
+  const settings = looper.getByRole("group", { name: "Metronome" });
+  await settings.getByRole("button", { name: "Click", exact: true }).click();
+  await expect(metronome).toHaveAttribute("aria-pressed", "true");
   // 240 BPM in 4/4: one bar is exactly one second.
-  const bpm = looper.getByRole("spinbutton", { name: "Tempo in beats per minute" });
+  const bpm = settings.getByRole("spinbutton", { name: "Tempo in beats per minute" });
   await bpm.fill("240");
   await bpm.press("Enter");
   await expect(bpm).toHaveValue("240");
+  await settings.getByRole("button", { name: "Done" }).click();
+  await expect(settings).toBeHidden();
+
+  // After that, a tap toggles the click and a long press opens the settings again.
+  await metronome.click();
+  await expect(metronome).toHaveAttribute("aria-pressed", "false");
+  await metronome.click();
+  await expect(metronome).toHaveAttribute("aria-pressed", "true");
+  const box = await metronome.boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await page.mouse.up();
+  await expect(settings).toBeVisible();
+  await expect(metronome).toHaveAttribute("aria-pressed", "true");
 
   await looper.getByRole("button", { name: "Record track 1" }).click();
   await expect(looper.getByTestId("track-1-status")).toHaveText("Count-in");
@@ -110,7 +129,7 @@ test("looper counts in on the click and closes the loop on a bar line", async ({
 
   await expect(looper.getByTestId("track-1-status")).toHaveText("Looping", { timeout: 4000 });
   await expect(looper.getByTestId("loop-length")).toHaveText(/^Loop 0:0[12]\.0$/);
-  await expect(looper.getByTestId("loop-tempo")).toHaveText(/^240 BPM · [12] bars?$/);
+  await expect(settings.getByTestId("loop-tempo")).toHaveText(/^240 BPM · [12] bars?$/);
 
   await looper.getByRole("button", { name: "Clear all" }).click();
   await expect(looper.getByTestId("loop-length")).toHaveText("No loop yet");
@@ -127,9 +146,10 @@ test("looper fits a tempo to a freely played loop", async ({ page }) => {
   await looper.getByRole("button", { name: "Close loop on track 1" }).click();
   await expect(looper.getByTestId("track-1-status")).toHaveText("Looping");
 
+  await looper.getByRole("button", { name: "Metronome" }).click();
   await looper.getByRole("button", { name: "Fit tempo" }).click();
   await expect(looper.getByTestId("loop-tempo")).toHaveText(/BPM/);
-  await expect(looper.getByRole("button", { name: "Click" })).toHaveAttribute("aria-pressed", "true");
+  await expect(looper.getByRole("button", { name: "Metronome" })).toHaveAttribute("aria-pressed", "true");
   await looper.getByRole("button", { name: "Halve the tempo" }).click();
   await expect(looper.getByTestId("loop-tempo")).toHaveText(/BPM/);
 });

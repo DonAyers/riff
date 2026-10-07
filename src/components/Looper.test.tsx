@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Looper } from "./Looper";
 import { useLooper, type LooperTrackState, type UseLooperReturn } from "../hooks/useLooper";
 
@@ -48,8 +49,16 @@ function hookReturn(overrides: Partial<UseLooperReturn> = {}): UseLooperReturn {
 describe("Looper", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     useLooperMock.mockReturnValue(hookReturn());
   });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const metronomeButton = () => screen.getByRole("button", { name: "Metronome" });
+  const openMetronome = () => fireEvent.contextMenu(metronomeButton());
 
   it("starts empty with four record buttons and no transport", () => {
     render(<Looper />);
@@ -178,10 +187,45 @@ describe("Looper", () => {
     expect(screen.getByRole("button", { name: "Undo last take" })).toBeDisabled();
   });
 
+  it("opens the metronome settings on the first tap, then taps toggle the click and a hold opens them", () => {
+    vi.useFakeTimers();
+    const hook = hookReturn();
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+
+    expect(screen.queryByRole("group", { name: "Metronome" })).not.toBeInTheDocument();
+    fireEvent.click(metronomeButton());
+    expect(hook.setClickOn).not.toHaveBeenCalled();
+    expect(screen.getByRole("group", { name: "Metronome" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("group", { name: "Metronome" })).not.toBeInTheDocument();
+    expect(localStorage.getItem("riff:looper-metronome-set-up")).toBe("true");
+
+    fireEvent.click(metronomeButton());
+    expect(hook.setClickOn).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole("group", { name: "Metronome" })).not.toBeInTheDocument();
+
+    // Holding the button opens the settings and the release does not toggle the click.
+    fireEvent.pointerDown(metronomeButton(), { button: 0 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.pointerUp(metronomeButton());
+    fireEvent.click(metronomeButton());
+    expect(hook.setClickOn).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("group", { name: "Metronome" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.keyDown(metronomeButton(), { key: "Enter", shiftKey: true });
+    expect(screen.getByRole("group", { name: "Metronome" })).toBeInTheDocument();
+  });
+
   it("sets the click, tempo and meter before the first loop", () => {
     const hook = hookReturn();
     useLooperMock.mockReturnValue(hook);
     render(<Looper />);
+    openMetronome();
 
     fireEvent.click(screen.getByRole("button", { name: "Click" }));
     expect(hook.setClickOn).toHaveBeenCalledWith(true);
@@ -211,7 +255,8 @@ describe("Looper", () => {
     expect(screen.getByTestId("track-1-status")).toHaveTextContent("Count-in");
     expect(screen.getByText(/start playing on the next downbeat/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Record track 2" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Click" })).toHaveAttribute("aria-pressed", "true");
+    expect(metronomeButton()).toHaveAttribute("aria-pressed", "true");
+    openMetronome();
     expect(screen.getByRole("button", { name: "Tap" })).toBeDisabled();
   });
 
@@ -223,6 +268,7 @@ describe("Looper", () => {
     });
     useLooperMock.mockReturnValue(hook);
     render(<Looper />);
+    openMetronome();
 
     expect(screen.getByText("Played freely")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Fit tempo" }));
@@ -240,6 +286,7 @@ describe("Looper", () => {
     });
     useLooperMock.mockReturnValue(hook);
     render(<Looper />);
+    openMetronome();
 
     expect(screen.getByTestId("loop-tempo")).toHaveTextContent("120 BPM · 2 bars");
     fireEvent.click(screen.getByRole("button", { name: "Halve the tempo" }));

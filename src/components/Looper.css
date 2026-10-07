@@ -32,17 +32,84 @@
   transform-origin: left center;
 }
 
-.looper__transport-row {
+.looper__status {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-md);
+}
+
+.looper__status .looper__progress {
+  flex: 1;
+}
+
+/* Equal outer columns keep the play button centred whatever sits beside it. */
+.looper__transport-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.looper__transport-start {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.looper__undo {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-soft);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.looper__undo:hover:not(:disabled) {
+  background: var(--surface-strong);
+}
+
+.looper__metronome {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-soft);
+  color: var(--fg);
+  cursor: pointer;
+  /* Holding the button opens settings, so keep iOS from selecting text or showing a callout. */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.looper__metronome:hover {
+  background: var(--surface-strong);
+}
+
+.looper__metronome[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--selected);
+  color: var(--on-selected);
+}
+
+.looper__metronome[data-beat="beat"] {
+  box-shadow: 0 0 0 2px var(--fg);
+}
+
+.looper__metronome[data-beat="down"] {
+  box-shadow: 0 0 0 3px var(--ember);
 }
 
 .looper__length {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 1.3rem;
+  font-size: 1rem;
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1;
@@ -51,7 +118,8 @@
 
 .looper__transport-actions {
   display: flex;
-  gap: var(--space-sm);
+  justify-content: flex-end;
+  gap: var(--space-xs);
 }
 
 .looper__play,
@@ -77,6 +145,8 @@
 }
 
 .looper__play {
+  width: 3rem;
+  height: 3rem;
   border-color: transparent;
   background: var(--fg);
   color: var(--bg);
@@ -88,6 +158,7 @@
 
 .looper__clear-all {
   padding: 0 var(--space-lg);
+  white-space: nowrap;
 }
 
 .looper button:disabled {
@@ -375,6 +446,19 @@
   gap: var(--space-sm);
 }
 
+.looper-tempo__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.looper-tempo__footer p {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+}
+
 .looper-tempo__click {
   min-height: 2.75rem;
   padding: 0 var(--space-lg);
@@ -459,4 +543,14 @@
 .looper-tempo input:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+/* Secondary transport buttons stay smaller than play. */
+.looper__transport-actions .looper__clear-all {
+  min-height: 2.25rem;
+  padding: 0 var(--space-md);
+}
+
+.looper__transport-actions {
+  align-items: center;
 }
