@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_PALETTE_ID, getPalette, isPaletteId } from "../lib/palettes";
+import { THEME_STORAGE_KEY } from "../lib/themeBoot";
+
+export { THEME_STORAGE_KEY };
 
 export type ThemeMode = "dark" | "light";
 export type ThemeSource = "system" | "override";
-
-export const THEME_STORAGE_KEY = "riff:theme-preference";
 const LIGHT_QUERY = "(prefers-color-scheme: light)";
 const THEME_COLOR_META = "meta[name='theme-color']";
 

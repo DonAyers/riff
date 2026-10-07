@@ -1281,3 +1281,18 @@
     padding-top: clamp(0.7rem, 4vh, 1.6rem);
   }
 }
+
+/* Placeholder while a lazily loaded screen arrives. It only shows on a slow first visit;
+   the label is for screen readers, the space keeps the tab bar from jumping. */
+.screen-fallback {
+  min-height: 12rem;
+}
+
+.screen-fallback__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

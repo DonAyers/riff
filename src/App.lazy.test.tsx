@@ -319,7 +319,7 @@ describe("App lazy analysis surfaces", () => {
     );
 
     await renderApp();
-    fireEvent.click(screen.getByRole("button", { name: /open c major/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /open c major/i }));
 
     const dialog = screen.getByRole("dialog", { name: /selected guitar chord/i });
     expect(dialog).toBeInTheDocument();
