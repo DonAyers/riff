@@ -220,6 +220,7 @@ describe("App mic permission fallback", () => {
     window.history.replaceState(null, "", "/");
     localStorage.removeItem("riff:skip-discard-confirmation");
     localStorage.removeItem(THEME_STORAGE_KEY);
+    localStorage.removeItem("riff:palette");
     useRiffSessionMock.mockReset();
     lookupVoicingsMock.mockReset();
     lookupVoicingsMock.mockImplementation((chordName) => {
@@ -422,7 +423,7 @@ describe("App mic permission fallback", () => {
     expect(screen.queryByTestId("looper")).not.toBeInTheDocument();
   });
 
-  it.each(["/", "/builder", "/tuner", "/looper"])(
+  it.each(["/", "/builder", "/tuner", "/looper", "/settings"])(
     "renders the same shared header on %s",
     (path) => {
       window.history.replaceState(null, "", path);
@@ -439,9 +440,37 @@ describe("App mic permission fallback", () => {
       const header = headers[0] as HTMLElement;
       expect(within(header).getByRole("heading", { level: 1, name: /riff/i })).toBeInTheDocument();
       expect(within(header).getByRole("button", { name: /switch to (light|dark) mode/i })).toBeInTheDocument();
+      expect(within(header).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
       expect(container.querySelector(".riff-device__meter")).toBeNull();
     }
   );
+
+  it("opens Settings from the header and applies the chosen palette", () => {
+    window.history.replaceState(null, "", "/tuner");
+    useRiffSessionMock.mockReturnValue(
+      createSessionState() as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("link", { name: "Settings" }));
+
+    expect(window.location.pathname).toBe("/settings");
+    expect(screen.getByRole("heading", { level: 2, name: "Settings" })).toBeInTheDocument();
+    // Settings isn't a tab, so no tab is marked current.
+    expect(
+      within(screen.getByRole("navigation", { name: "Primary" })).queryByRole("link", { current: "page" })
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: /chasm/i }));
+    expect(document.documentElement.dataset.palette).toBe("chasm");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Light" }));
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+
+    fireEvent.click(screen.getByRole("radio", { name: "Match system" }));
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+  });
 
   it("renders the guitar tuner only on its dedicated route", () => {
     window.history.replaceState(null, "", "/tuner");

@@ -1,5 +1,5 @@
 /* ── Design tokens ──
-   Single source of truth for colour, spacing, radii, typography and transitions.
+   Single source of truth for spacing, radii, typography and transitions.
    The look is flat: no shadows, glows, gradients or blur. Separate surfaces with
    fills and 1px borders only.
    Breakpoint constants (can't use vars in @media):
@@ -8,60 +8,7 @@
 */
 
 :root {
-  /* ── Palette: Slowshout16 by Phenomenician (lospec.com/palette-list/slowshout16) ──
-     Components should use the semantic tokens below, not these directly. */
-  --ss-ink: #23222f;
-  --ss-plum: #37242c;
-  --ss-brick: #754242;
-  --ss-rust: #a75141;
-  --ss-dusk: #52485f;
-  --ss-olive: #544a36;
-  --ss-copper: #b97022;
-  --ss-amber: #cf982e;
-  --ss-slate: #4e5d79;
-  --ss-pine: #485a5c;
-  --ss-sage: #6a7d5f;
-  --ss-rose: #c18080;
-  --ss-teal: #638691;
-  --ss-stone: #8e9593;
-  --ss-sand: #b9b595;
-  --ss-paper: #eedebe;
-
-  /* ── Colors (light theme is the default) ── */
-  --bg: var(--ss-paper);
-  --body-bg: var(--ss-paper);
-  --surface: color-mix(in srgb, var(--ss-sand) 30%, var(--ss-paper));
-  --surface-strong: color-mix(in srgb, var(--ss-sand) 48%, var(--ss-paper));
-  --surface-soft: color-mix(in srgb, var(--ss-sand) 16%, var(--ss-paper));
-  --surface-border: color-mix(in srgb, var(--ss-sand) 80%, var(--ss-paper));
-  --surface-border-strong: var(--ss-stone);
-  --fg: var(--ss-ink);
-  --fg-muted: var(--ss-dusk);
-  /* Fill colour for primary actions. Rust alone is ~4.1:1 against paper text, so it is
-     deepened toward brick to keep button labels at WCAG AA (>= 4.5:1). */
-  --accent: color-mix(in srgb, var(--ss-rust) 55%, var(--ss-brick));
-  /* Text/icon colour when the accent sits on --bg or a surface (AA contrast). */
-  --accent-text: var(--ss-brick);
-  --accent-dim: color-mix(in srgb, var(--ss-rust) 16%, transparent);
-  --on-accent: var(--ss-paper);
-  /* Selected/active pill fill (tab bar, string buttons, toggles). */
-  --selected: color-mix(in srgb, var(--ss-sage) 38%, var(--ss-paper));
-  --on-selected: var(--ss-ink);
-  --record: var(--ss-rust);
-  --on-record: var(--ss-paper);
-  --danger: var(--ss-brick);
-  --success: var(--ss-sage);
-  --ember: var(--ss-copper);
-  --magnetic: var(--ss-teal);
-  --violet: var(--ss-slate);
-  --focus-ring: var(--ss-ink);
-  /* Track / lane tints for looper tracks and chord lanes. */
-  --tint-1: color-mix(in srgb, var(--ss-amber) 42%, var(--ss-paper));
-  --tint-2: color-mix(in srgb, var(--ss-rose) 48%, var(--ss-paper));
-  --tint-3: color-mix(in srgb, var(--ss-teal) 40%, var(--ss-paper));
-  --tint-4: color-mix(in srgb, var(--ss-sage) 40%, var(--ss-paper));
-  /* Overlay behind dialogs and sheets. */
-  --scrim: color-mix(in srgb, var(--ss-ink) 55%, transparent);
+  /* Colours live in palettes.css: one set of semantic colour tokens per palette and mode. */
 
   /* ── Spacing (4px base) ── */
   --space-2xs: 0.125rem;
@@ -108,35 +55,4 @@
   --duration-fast: 0.15s;
   --duration-normal: 0.22s;
   --duration-slow: 0.32s;
-}
-
-:root[data-theme="dark"] {
-  --bg: var(--ss-ink);
-  --body-bg: var(--ss-ink);
-  --surface: color-mix(in srgb, var(--ss-dusk) 34%, var(--ss-ink));
-  --surface-strong: color-mix(in srgb, var(--ss-dusk) 52%, var(--ss-ink));
-  --surface-soft: color-mix(in srgb, var(--ss-dusk) 18%, var(--ss-ink));
-  --surface-border: color-mix(in srgb, var(--ss-dusk) 72%, var(--ss-ink));
-  --surface-border-strong: var(--ss-stone);
-  --fg: var(--ss-paper);
-  --fg-muted: var(--ss-stone);
-  --accent: color-mix(in srgb, var(--ss-rust) 55%, var(--ss-brick));
-  --accent-text: var(--ss-rose);
-  --accent-dim: color-mix(in srgb, var(--ss-rust) 24%, transparent);
-  --on-accent: var(--ss-paper);
-  --selected: color-mix(in srgb, var(--ss-sage) 60%, var(--ss-ink));
-  --on-selected: var(--ss-paper);
-  --record: var(--ss-rust);
-  --on-record: var(--ss-paper);
-  --danger: var(--ss-rose);
-  --success: var(--ss-sage);
-  --ember: var(--ss-amber);
-  --magnetic: var(--ss-teal);
-  --violet: color-mix(in srgb, var(--ss-slate) 70%, var(--ss-paper));
-  --focus-ring: var(--ss-paper);
-  --tint-1: color-mix(in srgb, var(--ss-copper) 45%, var(--ss-ink));
-  --tint-2: color-mix(in srgb, var(--ss-brick) 72%, var(--ss-ink));
-  --tint-3: color-mix(in srgb, var(--ss-slate) 72%, var(--ss-ink));
-  --tint-4: color-mix(in srgb, var(--ss-pine) 80%, var(--ss-ink));
-  --scrim: color-mix(in srgb, var(--ss-ink) 70%, transparent);
 }

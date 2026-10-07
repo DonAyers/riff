@@ -125,8 +125,9 @@
   flex-shrink: 0;
 }
 
-/* Theme toggle and help share one icon-button shape. */
+/* Theme toggle, settings and help share one icon-button shape. */
 .theme-toggle,
+.settings-btn,
 .help-btn {
   width: 2rem;
   height: 2rem;
@@ -145,11 +146,13 @@
 }
 
 .theme-toggle:hover,
+.settings-btn:hover,
 .help-btn:hover {
   background: var(--surface-strong);
 }
 
 .theme-toggle:focus-visible,
+.settings-btn:focus-visible,
 .help-btn:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
