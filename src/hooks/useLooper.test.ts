@@ -106,7 +106,8 @@ describe("useLooper", () => {
 
   async function recordFirstLoop(
     mocks: ReturnType<typeof createAudioMocks>,
-    result: { current: ReturnType<typeof useLooper> }
+    result: { current: ReturnType<typeof useLooper> },
+    captureFromS = 1
   ) {
     mocks.context.currentTime = 1;
     await act(async () => {
@@ -117,12 +118,32 @@ describe("useLooper", () => {
       await result.current.toggleRecord(0);
     });
     act(() => {
-      mocks.deliverFrames(1 * SAMPLE_RATE, 3 * SAMPLE_RATE + 2048);
+      mocks.deliverFrames(captureFromS * SAMPLE_RATE, 3 * SAMPLE_RATE + 2048);
     });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30);
     });
   }
+
+  async function recordOverdub(
+    mocks: ReturnType<typeof createAudioMocks>,
+    result: { current: ReturnType<typeof useLooper> },
+    index: number
+  ) {
+    mocks.context.currentTime = 3.5;
+    await act(async () => {
+      await result.current.toggleRecord(index);
+    });
+    mocks.context.currentTime = 7.1;
+    act(() => {
+      mocks.deliverFrames(3 * SAMPLE_RATE + 2048, 8 * SAMPLE_RATE);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000);
+    });
+  }
+
+  const lastSource = (mocks: ReturnType<typeof createAudioMocks>) => mocks.sources[mocks.sources.length - 1];
 
   it("opens a raw microphone and sets the loop length from the first take", async () => {
     const mocks = createAudioMocks();
@@ -349,5 +370,131 @@ describe("useLooper", () => {
 
     expect(stopTrack).toHaveBeenCalled();
     expect(mocks.context.close).toHaveBeenCalled();
+  });
+
+  it("extends the loop end into the audio captured after the closing press", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+    expect(result.current.loopTrim).toEqual({ startMs: 0, endMs: 0 });
+
+    act(() => {
+      result.current.setLoopTrim({ endMs: 500 });
+    });
+    expect(result.current.loopTrim).toEqual({ startMs: 0, endMs: 500 });
+    expect(result.current.loopDurationS).toBe(2.5);
+    // The audio after the press has not been captured yet, so the extension is silent for now.
+    expect(lastSource(mocks).buffer?.length).toBe(2.5 * SAMPLE_RATE);
+    expect(lastSource(mocks).buffer?.data[Math.round(2.2 * SAMPLE_RATE)]).toBe(0);
+
+    // Once the post-roll arrives, the loop is rebuilt with the real audio.
+    act(() => {
+      mocks.deliverFrames(3 * SAMPLE_RATE + 2048, 5 * SAMPLE_RATE + 2048);
+    });
+    expect(lastSource(mocks).buffer?.data[Math.round(2.2 * SAMPLE_RATE)]).toBeCloseTo((3.2 * SAMPLE_RATE) / 1e6, 6);
+  });
+
+  it("moves the loop start into the audio before the start press and keeps the playhead on the music", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result, 0.5);
+    const firstPlayer = lastSource(mocks);
+
+    mocks.context.currentTime = 3.5;
+    act(() => {
+      result.current.setLoopTrim({ startMs: -250 });
+    });
+
+    expect(result.current.loopDurationS).toBe(2.25);
+    const player = lastSource(mocks);
+    expect(player).not.toBe(firstPlayer);
+    expect(player.buffer?.data[SAMPLE_RATE]).toBeCloseTo((1.75 * SAMPLE_RATE) / 1e6, 6);
+    // The new player takes over exactly when the old one stops, with no gap.
+    const [whenS, offsetS] = player.start.mock.calls[0] as [number, number];
+    expect(firstPlayer.stop).toHaveBeenCalledWith(whenS);
+    // 0.53 s into the old loop is 0.78 s into the new one, which starts 0.25 s earlier.
+    expect(whenS).toBeCloseTo(3.53, 6);
+    expect(offsetS).toBeCloseTo(0.78, 6);
+  });
+
+  it("never trims the loop below the minimum length", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+
+    act(() => {
+      result.current.setLoopTrim({ endMs: -1900 });
+    });
+
+    expect(result.current.loopTrim).toEqual({ startMs: 0, endMs: -1500 });
+    expect(result.current.loopDurationS).toBe(0.5);
+
+    act(() => {
+      result.current.resetLoopTrim();
+    });
+    expect(result.current.loopTrim).toEqual({ startMs: 0, endMs: 0 });
+    expect(result.current.loopDurationS).toBe(2);
+  });
+
+  it("locks the loop edges once another track is recorded and unlocks them when it is undone", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+    await recordOverdub(mocks, result, 1);
+
+    expect(result.current.tracks[1].status).toBe("playing");
+    expect(result.current.loopTrim).toBeNull();
+    act(() => {
+      result.current.setLoopTrim({ endMs: 300 });
+    });
+    expect(result.current.loopDurationS).toBe(2);
+
+    expect(result.current.canUndo).toBe(true);
+    act(() => {
+      result.current.undoLastTake();
+    });
+    expect(result.current.tracks[1].status).toBe("empty");
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.loopTrim).toEqual({ startMs: 0, endMs: 0 });
+  });
+
+  it("undoes a re-recorded track back to its previous take", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+    const originalBuffer = lastSource(mocks).buffer;
+    const originalPeaks = result.current.tracks[0].peaks;
+
+    await recordOverdub(mocks, result, 0);
+    expect(lastSource(mocks).buffer).not.toBe(originalBuffer);
+    // The re-recorded take has no handles to trim from.
+    expect(result.current.loopTrim).toBeNull();
+
+    act(() => {
+      result.current.undoLastTake();
+    });
+    expect(lastSource(mocks).buffer).toBe(originalBuffer);
+    expect(result.current.tracks[0].peaks).toEqual(originalPeaks);
+    expect(result.current.loopTrim).toEqual({ startMs: 0, endMs: 0 });
+  });
+
+  it("undoing the first take clears the loop, and trimming forgets the undo", async () => {
+    const mocks = createAudioMocks();
+    const { result } = renderHook(() => useLooper());
+    await recordFirstLoop(mocks, result);
+
+    expect(result.current.canUndo).toBe(true);
+    act(() => {
+      result.current.undoLastTake();
+    });
+    expect(result.current.loopDurationS).toBeNull();
+    expect(result.current.isPlaying).toBe(false);
+    expect(result.current.tracks[0].status).toBe("empty");
+
+    await recordFirstLoop(mocks, result);
+    act(() => {
+      result.current.setLoopTrim({ endMs: 100 });
+    });
+    expect(result.current.canUndo).toBe(false);
   });
 });

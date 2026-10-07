@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyEdgeFades,
   clampLatencyNudgeMs,
+  clampLoopWindow,
   computePeaks,
   estimateRoundTripLatencySeconds,
   extractFrames,
@@ -10,6 +11,7 @@ import {
   getLoopPositionSeconds,
   getNextLoopBoundarySeconds,
   pruneChunks,
+  renderLoopWindow,
   type CaptureChunk,
 } from "./looper";
 
@@ -74,5 +76,44 @@ describe("looper helpers", () => {
   it("formats loop lengths", () => {
     expect(formatLoopTime(4.23)).toBe("0:04.2");
     expect(formatLoopTime(65)).toBe("1:05.0");
+  });
+
+  it("keeps a loop window inside the handles and at least the minimum length", () => {
+    const limits = { minStartFrame: -100, maxEndFrame: 1100, minLengthFrames: 200 };
+
+    expect(clampLoopWindow({ startFrame: -500, endFrame: 5000 }, limits)).toEqual({ startFrame: -100, endFrame: 1100 });
+    // Moving the end too close to the start pushes the end back out.
+    expect(clampLoopWindow({ startFrame: 300, endFrame: 350 }, limits, "end")).toEqual({ startFrame: 300, endFrame: 500 });
+    // Moving the start too close to the end pushes the start back.
+    expect(clampLoopWindow({ startFrame: 300, endFrame: 350 }, limits, "start")).toEqual({ startFrame: 150, endFrame: 350 });
+    expect(clampLoopWindow({ startFrame: 2000, endFrame: 2100 }, limits, "start")).toEqual({ startFrame: 900, endFrame: 1100 });
+    expect(clampLoopWindow({ startFrame: 10.4, endFrame: 600.6 }, limits)).toEqual({ startFrame: 10, endFrame: 601 });
+  });
+
+  it("renders a loop window with silence past the captured audio", () => {
+    // Frame f of the take is source[originIndex + f] = 1000 + f.
+    const source = Float32Array.from({ length: 50 }, (_, i) => 1000 + i - 10);
+    const output = renderLoopWindow(source, 10, { startFrame: -5, endFrame: 45 }, 0);
+
+    expect(output).toHaveLength(50);
+    expect(output[0]).toBe(995);
+    expect(output[5]).toBe(1000);
+    expect(output[44]).toBe(1039);
+    // Past the end of the source the loop is padded with silence.
+    expect(output[45]).toBe(0);
+    expect(output[49]).toBe(0);
+  });
+
+  it("crossfades the audio after the loop end into the loop start so the seam is continuous", () => {
+    const source = Float32Array.from({ length: 100 }, (_, i) => i);
+    const output = renderLoopWindow(source, 0, { startFrame: 20, endFrame: 60 }, 8);
+
+    // Playback wraps from frame 59 to what followed it in the recording (frame 60).
+    expect(output[output.length - 1]).toBe(59);
+    expect(output[0]).toBeCloseTo(60, 6);
+    // Halfway through, both sides are at equal power.
+    expect(output[4]).toBeCloseTo(24 * Math.SQRT1_2 + 64 * Math.SQRT1_2, 4);
+    // After the crossfade the loop is untouched.
+    expect(output[8]).toBe(28);
   });
 });

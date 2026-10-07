@@ -14,6 +14,8 @@ function track(status: LooperTrackState["status"], patch: Partial<LooperTrackSta
 function hookReturn(overrides: Partial<UseLooperReturn> = {}): UseLooperReturn {
   return {
     tracks: [track("empty"), track("empty"), track("empty"), track("empty")],
+    loopTrim: null,
+    canUndo: false,
     loopDurationS: null,
     isPlaying: false,
     isStarting: false,
@@ -27,6 +29,9 @@ function hookReturn(overrides: Partial<UseLooperReturn> = {}): UseLooperReturn {
     clearAll: vi.fn(),
     togglePlayback: vi.fn(),
     getLoopPosition: vi.fn(() => null),
+    setLoopTrim: vi.fn(),
+    resetLoopTrim: vi.fn(),
+    undoLastTake: vi.fn(),
     ...overrides,
   };
 }
@@ -108,5 +113,59 @@ describe("Looper", () => {
 
     expect(setLatencyNudgeMs).toHaveBeenCalledWith(120);
     expect(screen.getByRole("alert")).toHaveTextContent("Microphone unavailable.");
+  });
+
+  it("hides the loop edges until there is a first take to trim", () => {
+    render(<Looper />);
+
+    expect(screen.queryByRole("group", { name: "Loop edges" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo last take" })).toBeDisabled();
+  });
+
+  it("moves the loop edges with the nudge buttons and sliders", () => {
+    const hook = hookReturn({
+      loopDurationS: 2.03,
+      isPlaying: true,
+      loopTrim: { startMs: -20, endMs: 50 },
+      tracks: [track("playing"), track("empty"), track("empty"), track("empty")],
+    });
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+
+    const edges = screen.getByRole("group", { name: "Loop edges" });
+    expect(screen.getByTestId("loop-start-offset")).toHaveTextContent("−20 ms");
+    expect(screen.getByTestId("loop-end-offset")).toHaveTextContent("+50 ms");
+    expect(screen.getByText(/move the loop edges/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Move loop start 10 ms earlier" }));
+    expect(hook.setLoopTrim).toHaveBeenLastCalledWith({ startMs: -30 });
+    fireEvent.click(screen.getByRole("button", { name: "Move loop end 10 ms later" }));
+    expect(hook.setLoopTrim).toHaveBeenLastCalledWith({ endMs: 60 });
+    fireEvent.change(screen.getByRole("slider", { name: "Loop end offset in milliseconds" }), {
+      target: { value: "-400" },
+    });
+    expect(hook.setLoopTrim).toHaveBeenLastCalledWith({ endMs: -400 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset loop edges" }));
+    expect(hook.resetLoopTrim).toHaveBeenCalled();
+    expect(edges).toBeInTheDocument();
+  });
+
+  it("undoes the last take unless a take is in progress", () => {
+    const hook = hookReturn({
+      loopDurationS: 2,
+      isPlaying: true,
+      canUndo: true,
+      tracks: [track("playing"), track("playing"), track("empty"), track("empty")],
+    });
+    useLooperMock.mockReturnValue(hook);
+    const { rerender } = render(<Looper />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo last take" }));
+    expect(hook.undoLastTake).toHaveBeenCalled();
+
+    useLooperMock.mockReturnValue({ ...hook, tracks: [track("playing"), track("playing"), track("armed"), track("empty")] });
+    rerender(<Looper />);
+    expect(screen.getByRole("button", { name: "Undo last take" })).toBeDisabled();
   });
 });

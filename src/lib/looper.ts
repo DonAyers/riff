@@ -10,6 +10,9 @@ export const MAX_LOOP_SECONDS = 60;
 export const EDGE_FADE_SECONDS = 0.004;
 export const MIN_LATENCY_NUDGE_MS = -100;
 export const MAX_LATENCY_NUDGE_MS = 300;
+/** Audio kept before the first take's start press and after its closing press, for trimming. */
+export const TAKE_HANDLE_SECONDS = 2;
+export const SEAM_CROSSFADE_SECONDS = 0.01;
 
 export interface CaptureChunk {
   /** Context frame of the first sample in `samples`. */
@@ -87,6 +90,78 @@ export function applyEdgeFades<T extends Float32Array>(samples: T, fadeFrames: n
   }
 
   return samples;
+}
+
+/** Loop edges in frames, relative to the first take's start press (frame 0). */
+export interface LoopWindow {
+  startFrame: number;
+  endFrame: number;
+}
+
+export interface LoopWindowLimits {
+  /** Earliest allowed start (negative: inside the pre-roll handle). */
+  minStartFrame: number;
+  /** Latest allowed end (past the closing press: inside the post-roll handle). */
+  maxEndFrame: number;
+  minLengthFrames: number;
+}
+
+/**
+ * Keeps a loop window inside the captured handles and at least the minimum length. When a
+ * change would make the loop too short, the edge that was not moved wins.
+ */
+export function clampLoopWindow(
+  window: LoopWindow,
+  { minStartFrame, maxEndFrame, minLengthFrames }: LoopWindowLimits,
+  moved: "start" | "end" = "end"
+): LoopWindow {
+  let startFrame = Math.round(Math.max(minStartFrame, Math.min(window.startFrame, maxEndFrame - minLengthFrames)));
+  let endFrame = Math.round(Math.min(maxEndFrame, Math.max(window.endFrame, minStartFrame + minLengthFrames)));
+
+  if (endFrame - startFrame < minLengthFrames) {
+    if (moved === "start") {
+      startFrame = endFrame - minLengthFrames;
+    } else {
+      endFrame = startFrame + minLengthFrames;
+    }
+  }
+
+  return { startFrame, endFrame };
+}
+
+/**
+ * Renders the loop buffer for a window over a take's source audio. `originIndex` is the index in
+ * `source` of the take's frame 0; frames outside `source` are silence, which is how extending
+ * past the captured audio adds space.
+ *
+ * The seam is an equal-power crossfade: the audio that followed the loop end (a ringing chord)
+ * fades out over the first frames while the loop start fades in. Playback runs from the last
+ * frame straight into what came after it in the recording, so the wrap does not click.
+ */
+export function renderLoopWindow(
+  source: Float32Array,
+  originIndex: number,
+  { startFrame, endFrame }: LoopWindow,
+  crossfadeFrames: number
+): Float32Array<ArrayBuffer> {
+  const length = Math.max(0, endFrame - startFrame);
+  const output = new Float32Array(length);
+  const read = (frame: number) => {
+    const index = originIndex + frame;
+    return index >= 0 && index < source.length ? source[index] : 0;
+  };
+
+  for (let i = 0; i < length; i += 1) {
+    output[i] = read(startFrame + i);
+  }
+
+  const fadeFrames = Math.min(Math.floor(crossfadeFrames), Math.floor(length / 2));
+  for (let i = 0; i < fadeFrames; i += 1) {
+    const angle = (i / fadeFrames) * (Math.PI / 2);
+    output[i] = output[i] * Math.sin(angle) + read(endFrame + i) * Math.cos(angle);
+  }
+
+  return output;
 }
 
 /** Peak amplitude per bin, for drawing a small waveform. */
