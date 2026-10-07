@@ -86,13 +86,19 @@ export function LooperTempo({
     <fieldset className="looper-tempo" id="looper-metronome-settings">
       <legend>Metronome</legend>
       <div className="looper-tempo__row">
+        <span className="looper-tempo__switch-label" id="looper-click-label">
+          Click
+        </span>
         <button
           type="button"
-          className="looper-tempo__click"
-          aria-pressed={metronome.clickOn}
+          role="switch"
+          className="looper-tempo__switch"
+          aria-checked={metronome.clickOn}
+          aria-labelledby="looper-click-label"
           onClick={() => setClickOn(!metronome.clickOn)}
         >
-          Click
+          <span className="looper-tempo__switch-text">{metronome.clickOn ? "On" : "Off"}</span>
+          <span className="looper-tempo__switch-thumb" aria-hidden="true" />
         </button>
         <div className="looper-tempo__lights" ref={beatsRef} aria-hidden="true">
           {Array.from({ length: metronome.beatsPerBar }, (_, index) => (

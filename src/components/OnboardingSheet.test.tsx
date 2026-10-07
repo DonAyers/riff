@@ -1,10 +1,20 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { buildLabel } from "../lib/buildInfo";
 import { OnboardingSheet, hasSeenOnboarding } from "./OnboardingSheet";
 
 describe("OnboardingSheet", () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  it("shows the app version in an About section at the bottom", () => {
+    render(<OnboardingSheet onClose={vi.fn()} />);
+
+    const about = screen.getByRole("region", { name: "About" });
+    expect(about).toHaveTextContent(buildLabel);
+    const sections = screen.getByRole("dialog").querySelectorAll("section");
+    expect(sections[sections.length - 1]).toBe(about);
   });
 
   it("keeps the close button visible in the help surface", () => {

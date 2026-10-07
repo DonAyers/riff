@@ -38,7 +38,6 @@ import { GuitarTuner } from "./components/GuitarTuner";
 import { AppTabBar } from "./components/AppTabBar";
 import { Looper } from "./components/Looper";
 import { SongBuilder } from "./components/SongBuilder";
-import { buildLabel } from "./lib/buildInfo";
 import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
@@ -272,14 +271,6 @@ function AppHeader({ navigate, themeControls, onHelp }: AppHeaderProps) {
         </div>
       </div>
     </header>
-  );
-}
-
-function BuildBadge() {
-  return (
-    <div className="build-badge" aria-label={`Build ${buildLabel}`} title={`Build ${buildLabel}`}>
-      {buildLabel}
-    </div>
   );
 }
 
@@ -1149,7 +1140,6 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
           )}
         </main>
 
-        <BuildBadge />
       </div>
 
       {showOnboarding && (
@@ -1204,7 +1194,6 @@ function ToolRoute({ navigate, themeControls, title, description, children }: To
           {children}
         </main>
 
-        <BuildBadge />
       </div>
     </div>
   );

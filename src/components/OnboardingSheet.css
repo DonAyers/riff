@@ -218,6 +218,21 @@
   font-family: inherit;
 }
 
+/* Quiet footer under the button: who made this build, for bug reports. */
+.onboarding-about {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--surface-border);
+}
+
+.onboarding-about__version {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 .onboarding-cta {
   border: none;
   border-radius: var(--radius-full);

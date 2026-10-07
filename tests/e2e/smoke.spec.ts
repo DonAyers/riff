@@ -5,7 +5,7 @@ test("landing page behaves like a record-first app flow", async ({ page }) => {
   await gotoApp(page);
 
   await expect(page.getByRole("heading", { level: 1, name: /riff/i })).toBeVisible();
-  await expect(page.getByLabel(/^Build /)).toBeVisible();
+  await expect(page.getByLabel(/^Build /)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Builder" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Tuner" })).toBeVisible();
   await expect(page.getByRole("button", { name: /help and about/i })).toBeVisible();

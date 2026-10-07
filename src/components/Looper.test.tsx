@@ -227,7 +227,10 @@ describe("Looper", () => {
     render(<Looper />);
     openMetronome();
 
-    fireEvent.click(screen.getByRole("button", { name: "Click" }));
+    const click = screen.getByRole("switch", { name: "Click" });
+    expect(click).toHaveAttribute("aria-checked", "false");
+    expect(click).toHaveTextContent("Off");
+    fireEvent.click(click);
     expect(hook.setClickOn).toHaveBeenCalledWith(true);
 
     const bpm = screen.getByRole("spinbutton", { name: "Tempo in beats per minute" });

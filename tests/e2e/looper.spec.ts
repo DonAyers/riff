@@ -98,7 +98,11 @@ test("looper counts in on the click and closes the loop on a bar line", async ({
   const metronome = looper.getByRole("button", { name: "Metronome" });
   await metronome.click();
   const settings = looper.getByRole("group", { name: "Metronome" });
-  await settings.getByRole("button", { name: "Click", exact: true }).click();
+  const clickSwitch = settings.getByRole("switch", { name: "Click" });
+  await expect(clickSwitch).toHaveText("Off");
+  await clickSwitch.click();
+  await expect(clickSwitch).toHaveAttribute("aria-checked", "true");
+  await expect(clickSwitch).toHaveText("On");
   await expect(metronome).toHaveAttribute("aria-pressed", "true");
   // 240 BPM in 4/4: one bar is exactly one second.
   const bpm = settings.getByRole("spinbutton", { name: "Tempo in beats per minute" });
@@ -152,4 +156,22 @@ test("looper fits a tempo to a freely played loop", async ({ page }) => {
   await expect(looper.getByRole("button", { name: "Metronome" })).toHaveAttribute("aria-pressed", "true");
   await looper.getByRole("button", { name: "Halve the tempo" }).click();
   await expect(looper.getByTestId("loop-tempo")).toHaveText(/BPM/);
+});
+
+test("metronome panel buttons keep their labels centred", async ({ page }) => {
+  await gotoApp(page);
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Looper" }).click();
+  const looper = page.getByRole("region", { name: "Looper" });
+  await looper.getByRole("button", { name: "Metronome" }).click();
+
+  const done = looper.getByRole("button", { name: "Done" });
+  await expect(done).toBeVisible();
+  const offset = await done.evaluate((button) => {
+    const range = document.createRange();
+    range.selectNodeContents(button);
+    const text = range.getBoundingClientRect();
+    const box = button.getBoundingClientRect();
+    return Math.abs(text.left + text.width / 2 - (box.left + box.width / 2));
+  });
+  expect(offset).toBeLessThan(1);
 });
