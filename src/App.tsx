@@ -43,6 +43,7 @@ import { lookupVoicings } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
 import type { ChordEvent } from "./lib/chordDetector";
 import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
+import { BUILDER_PATH, HOME_PATH, LOOPER_PATH, SETTINGS_PATH, TUNER_PATH } from "./lib/routes";
 import { useGlobalKeyboardShortcuts } from "./hooks/useGlobalKeyboardShortcuts";
 import { usePalettePreference } from "./hooks/usePalettePreference";
 import { useThemePreference, type ThemeMode, type ThemeSource } from "./hooks/useThemePreference";
@@ -67,11 +68,6 @@ const LazySelectedChordDialog = lazy(async () => {
   return { default: module.SelectedChordDialog };
 });
 
-const HOME_PATH = "/";
-const TUNER_PATH = "/tuner";
-const BUILDER_PATH = "/builder";
-const LOOPER_PATH = "/looper";
-const SETTINGS_PATH = "/settings";
 const SKIP_DISCARD_CONFIRMATION_KEY = "riff:skip-discard-confirmation";
 
 type WorkspaceRoute = "home" | "builder";

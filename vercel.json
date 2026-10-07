@@ -20,6 +20,22 @@
     {
       "source": "/builder/:path*",
       "destination": "/"
+    },
+    {
+      "source": "/looper",
+      "destination": "/"
+    },
+    {
+      "source": "/looper/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/settings",
+      "destination": "/"
+    },
+    {
+      "source": "/settings/:path*",
+      "destination": "/"
     }
   ]
 }
