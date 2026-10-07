@@ -96,3 +96,19 @@ test("phone Builder chord lab scrolls instead of stacking its panels", async ({ 
   const viewNav = await page.getByRole("navigation", { name: /builder mobile views/i }).boundingBox();
   expect(deleteButton!.y + deleteButton!.height).toBeLessThanOrEqual(viewNav!.y);
 });
+
+test("help sheet stays inside the frame on a short desktop window", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 620 });
+  await gotoApp(page, { onboardingSeen: false });
+
+  const frame = (await page.locator(".app-frame").boundingBox())!;
+  expect(frame.height).toBeLessThanOrEqual(620 - 48);
+
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toBeVisible();
+  const box = (await sheet.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(frame.x);
+  expect(box.y).toBeGreaterThanOrEqual(frame.y);
+  expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(frame.y + frame.height);
+});

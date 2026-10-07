@@ -132,7 +132,7 @@ for (const theme of ["light", "dark"] as const) {
 
       const { background, meta } = await page.evaluate(() => {
         // Resolve the app background (including color-mix output) to hex via a canvas.
-        // On desktop the body is the backdrop, so read the phone frame instead.
+        // On desktop the body is the backdrop, so read the app frame, which carries the app background at every width.
         const context = document.createElement("canvas").getContext("2d")!;
         context.fillStyle = getComputedStyle(document.querySelector(".app-frame")!).backgroundColor;
         context.fillRect(0, 0, 1, 1);
