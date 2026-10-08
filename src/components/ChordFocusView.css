@@ -304,13 +304,14 @@
 }
 
 .chord-focus-note-lane__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 3.4rem;
   border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger);
-  font: inherit;
-  font-size: 1.35rem;
   cursor: pointer;
 }
 

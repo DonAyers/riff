@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Minus } from "lucide-react";
 import { Chord } from "tonal";
 import {
   getChordSuggestions,
@@ -239,7 +240,7 @@ export function ChordFocusView({
                       onClick={() => handleRemoveNote(note.id)}
                       aria-label={`Remove note ${note.label}`}
                     >
-                      −
+                      <Minus size={20} aria-hidden="true" />
                     </button>
                   </div>
                 ))}
