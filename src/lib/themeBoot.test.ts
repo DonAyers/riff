@@ -92,6 +92,19 @@ describe("theme boot script", () => {
 
     expect(document.documentElement.dataset.palette).toBe(DEFAULT_PALETTE_ID);
     expect(document.getElementById("riff-custom-palette")).toBeNull();
+
+    const themeColor = { light: "#ffffff", dark: "#000000" };
+    for (const css of [
+      "body { display: none }",
+      ':root[data-palette="custom"] { --bg: url(https://example.com/x.png); }',
+      ':root[data-palette="custom"] {} @import "https://example.com/x.css";',
+      ':root[data-palette="custom"] {} </style><script>alert(1)</script>',
+    ]) {
+      localStorage.setItem(CUSTOM_PALETTE_STORAGE_KEY, JSON.stringify({ css, themeColor }));
+      bootTheme(getThemeBootConfig());
+      expect(document.documentElement.dataset.palette, css).toBe(DEFAULT_PALETTE_ID);
+      expect(document.getElementById("riff-custom-palette"), css).toBeNull();
+    }
   });
 
   it("still sets a theme when storage is blocked", () => {

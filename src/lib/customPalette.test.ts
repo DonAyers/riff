@@ -39,7 +39,9 @@ function expectReadable(tokens: TokenSet, label: string) {
   expect(contrast(tokens["--on-accent"], tokens["--accent"]), `${label} button label`).toBeGreaterThanOrEqual(4.5);
   expect(contrast(tokens["--on-record"], tokens["--record"]), `${label} record icon`).toBeGreaterThanOrEqual(4.5);
   expect(contrast(tokens["--on-selected"], tokens["--selected"]), `${label} selected`).toBeGreaterThanOrEqual(4.5);
-  expect(contrast(tokens["--surface-border-strong"], tokens["--bg"]), `${label} strong border`).toBeGreaterThanOrEqual(3);
+  for (const surface of surfaces) {
+    expect(contrast(tokens["--surface-border-strong"], surface), `${label} strong border`).toBeGreaterThanOrEqual(3);
+  }
   for (const tint of ["--tint-1", "--tint-2", "--tint-3", "--tint-4"] as const) {
     expect(contrast(tokens["--fg"], tokens[tint]), `${label} text on ${tint}`).toBeGreaterThanOrEqual(4.5);
   }

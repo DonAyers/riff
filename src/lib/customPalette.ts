@@ -329,7 +329,7 @@ function deriveMode(roles: RoleMap, mode: "light" | "dark"): TokenSet {
     "--surface-strong": surfaceStrong,
     "--surface-soft": surfaceSoft,
     "--surface-border": mix(bg, roles.muted, weights[3]),
-    "--surface-border-strong": ensureContrast(roles.muted, fg, [bg], 3),
+    "--surface-border-strong": ensureContrast(roles.muted, fg, surfaces, 3),
     "--fg": fg,
     "--fg-muted": textOn(roles.muted),
     "--accent": roles.accent,

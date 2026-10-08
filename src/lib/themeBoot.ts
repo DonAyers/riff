@@ -53,6 +53,9 @@ export function bootTheme(config: ThemeBootConfig): void {
     palette === config.custom.id &&
     custom &&
     typeof custom.css === "string" &&
+    // Only CSS the app generated: custom-palette rules with plain colour values, nothing that loads or escapes.
+    custom.css.indexOf(':root[data-palette="' + config.custom.id + '"]') === 0 &&
+    !/[<@\\]|url\(/i.test(custom.css) &&
     isColor(custom.themeColor?.light) &&
     isColor(custom.themeColor?.dark)
   ) {

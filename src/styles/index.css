@@ -99,4 +99,19 @@ body {
     scrollbar-width: thin;
     scrollbar-color: var(--surface-border-strong) transparent;
   }
+
+  /* The same for Safari before 18.2. Browsers with scrollbar-color ignore these. */
+  #root *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  #root *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  #root *::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: var(--surface-border-strong);
+  }
 }
