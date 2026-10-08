@@ -83,5 +83,20 @@ body {
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
+    /* Phones draw no scrollbar until you scroll, so the frame doesn't either. On Windows a
+       classic scrollbar otherwise sits inside the phone on every screen taller than the
+       frame (Looper, and Tuner/Settings on short windows). Wheel, trackpad and keys still
+       scroll it. */
+    scrollbar-width: none;
+  }
+
+  #root::-webkit-scrollbar {
+    display: none; /* Safari before 18.2, which lacks scrollbar-width. */
+  }
+
+  /* Inner scroll areas (sheets, the Builder panes) keep a thin scrollbar in the palette's colours. */
+  #root * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-border-strong) transparent;
   }
 }
