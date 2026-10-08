@@ -1239,7 +1239,7 @@ function ToolRoute({ navigate, themeControls, title, description, children }: To
 function App() {
   const { route, navigate } = useAppRoute();
   const themePreference = useThemePreference();
-  const { palette, setPalette } = usePalettePreference();
+  const { palette, setPalette, customPalette, setCustomPalette } = usePalettePreference();
   const { clearThemeOverride, setThemeOverride } = themePreference;
   const handleThemeChoice = useCallback(
     (choice: ThemeChoice) => {
@@ -1310,6 +1310,8 @@ function App() {
           <LazySettingsPanel
             palette={palette}
             onPaletteChange={setPalette}
+            customPalette={customPalette}
+            onCustomPaletteChange={setCustomPalette}
             theme={themePreference.theme}
             themeSource={themePreference.source}
             onThemeChange={handleThemeChoice}

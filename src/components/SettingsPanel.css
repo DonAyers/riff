@@ -141,3 +141,181 @@
 .settings-panel__note a {
   color: var(--accent-text);
 }
+
+/* ── Your own palette ── */
+.custom-palette__import,
+.custom-palette__editor {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.custom-palette__label {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.custom-palette__import-row {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.custom-palette__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border-strong);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+
+.custom-palette__input::placeholder {
+  color: var(--fg-muted);
+}
+
+.custom-palette__button {
+  flex-shrink: 0;
+  min-height: 2.75rem;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.custom-palette__button--quiet {
+  justify-self: start;
+  background: var(--surface-soft);
+  border-color: var(--surface-border-strong);
+  color: var(--fg);
+}
+
+.custom-palette__button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.custom-palette__input:focus-visible,
+.custom-palette__button:focus-visible,
+.custom-palette__role:focus-visible,
+.custom-palette__chip:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.custom-palette__error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.custom-palette__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+.custom-palette__name {
+  font-weight: 700;
+}
+
+.custom-palette__source {
+  font-size: var(--text-sm);
+  color: var(--accent-text);
+}
+
+.custom-palette__roles {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-xs);
+}
+
+.custom-palette__role {
+  width: 100%;
+  min-height: 2.75rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "swatch label"
+    "swatch hint";
+  column-gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-soft);
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.custom-palette__role[aria-pressed="true"] {
+  border-color: var(--fg);
+  background: var(--selected);
+  color: var(--on-selected);
+}
+
+.custom-palette__role-swatch {
+  grid-area: swatch;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--surface-border-strong);
+}
+
+.custom-palette__role-label {
+  grid-area: label;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.custom-palette__role-hint {
+  grid-area: hint;
+  font-size: var(--text-xs);
+  line-height: 1.2;
+  color: var(--fg-muted);
+}
+
+.custom-palette__role[aria-pressed="true"] .custom-palette__role-hint {
+  color: inherit;
+}
+
+.custom-palette__picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-border);
+}
+
+.custom-palette__chip {
+  position: relative;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--surface-border-strong);
+  cursor: pointer;
+}
+
+.custom-palette__chip input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* A two-tone ring so the chosen chip shows on any colour. */
+.custom-palette__chip:has(input:checked) {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--fg);
+}

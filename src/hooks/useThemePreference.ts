@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_PALETTE_ID, getPalette, isPaletteId } from "../lib/palettes";
+import { CUSTOM_PALETTE_ID, CUSTOM_PALETTE_STYLE_ID } from "../lib/customPalette";
 import { THEME_STORAGE_KEY } from "../lib/themeBoot";
 
 export { THEME_STORAGE_KEY };
@@ -47,8 +48,15 @@ export function syncThemeColorMeta(): void {
 
   const { palette, theme } = document.documentElement.dataset;
   const mode: ThemeMode = theme === "light" ? "light" : "dark";
-  const paletteId = isPaletteId(palette) ? palette : DEFAULT_PALETTE_ID;
   const themeColor = document.querySelector<HTMLMetaElement>(THEME_COLOR_META);
+  if (palette === CUSTOM_PALETTE_ID) {
+    const custom = document.getElementById(CUSTOM_PALETTE_STYLE_ID)?.dataset[mode];
+    if (custom) {
+      themeColor?.setAttribute("content", custom);
+      return;
+    }
+  }
+  const paletteId = isPaletteId(palette) ? palette : DEFAULT_PALETTE_ID;
   themeColor?.setAttribute("content", getPalette(paletteId).themeColor[mode]);
 }
 

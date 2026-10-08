@@ -133,3 +133,16 @@ test("the version lives in the help sheet's About section", async ({ page }) => 
   const about = page.getByRole("dialog", { name: /help and about riff/i }).getByRole("region", { name: "About" });
   await expect(about).toContainText(/v\d+\.\d+\.\d+/);
 });
+
+test("the frame never draws its own scrollbar, but tall screens still scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await gotoApp(page);
+  await page.goto("/looper");
+
+  const root = page.locator("#root");
+  await expect(root).toHaveCSS("scrollbar-width", "none");
+  // The looper loads lazily; wait until its content makes the frame overflow.
+  await expect.poll(() => root.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(0);
+  await root.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  expect(await root.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+});
