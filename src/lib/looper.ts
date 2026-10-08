@@ -130,6 +130,36 @@ export function clampLoopWindow(
 }
 
 /**
+ * Moves the whole window so it starts at `startFrame`, keeping its length (a loop on a tempo
+ * grid keeps its beat count while its downbeat slides). Stops at the handles.
+ */
+export function slipLoopWindow(
+  window: LoopWindow,
+  startFrame: number,
+  { minStartFrame, maxEndFrame }: LoopWindowLimits
+): LoopWindow {
+  const length = window.endFrame - window.startFrame;
+  const start = Math.round(Math.min(maxEndFrame - length, Math.max(minStartFrame, startFrame)));
+  return { startFrame: start, endFrame: start + length };
+}
+
+/**
+ * Rounds a window's length to whole beats, keeping its start. Returns the beat count with it.
+ * Falls back a beat when rounding up would run past the post-roll handle.
+ */
+export function snapLoopWindowToBeats(
+  window: LoopWindow,
+  beatFrames: number,
+  { maxEndFrame, minLengthFrames }: LoopWindowLimits
+): { window: LoopWindow; beats: number } {
+  const endFor = (beats: number) => window.startFrame + Math.round(beats * beatFrames);
+  let beats = Math.max(1, Math.round((window.endFrame - window.startFrame) / beatFrames));
+  while (beats > 1 && endFor(beats) > maxEndFrame) beats -= 1;
+  while (endFor(beats) - window.startFrame < minLengthFrames) beats += 1;
+  return { window: { startFrame: window.startFrame, endFrame: endFor(beats) }, beats };
+}
+
+/**
  * Renders the loop buffer for a window over a take's source audio. `originIndex` is the index in
  * `source` of the take's frame 0; frames outside `source` are silence, which is how extending
  * past the captured audio adds space.

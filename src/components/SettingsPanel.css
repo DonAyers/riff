@@ -51,7 +51,9 @@
 }
 
 .settings-panel__mode span {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 2.5rem;
   padding: var(--space-sm);
   border-radius: var(--radius-full);

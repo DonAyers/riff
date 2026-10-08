@@ -497,4 +497,176 @@ describe("useLooper", () => {
     });
     expect(result.current.canUndo).toBe(false);
   });
+
+  describe("metronome", () => {
+    const BAR = 2 * SAMPLE_RATE; // One bar of 4/4 at 120 BPM.
+
+    function useClick(bpm = 120) {
+      localStorage.setItem("riff:looper-metronome", JSON.stringify({ clickOn: true, bpm, beatsPerBar: 4 }));
+    }
+
+    /** Sources playing into the click's gain node (created after the four track gains). */
+    const clickSources = (mocks: ReturnType<typeof createAudioMocks>) =>
+      mocks.sources.filter((source) => source.connect.mock.calls[0]?.[0] === mocks.gains[5]);
+
+    it("counts in one bar, closes on the nearest bar line and shifts the take by the round trip", async () => {
+      useClick();
+      const mocks = createAudioMocks();
+      const { result } = renderHook(() => useLooper());
+
+      mocks.context.currentTime = 1;
+      await act(async () => {
+        await result.current.toggleRecord(0);
+      });
+      expect(result.current.tracks[0].status).toBe("armed");
+      // The click starts on the count-in downbeat, 100 ms ahead, with a one-bar buffer.
+      const [countIn] = clickSources(mocks);
+      expect(countIn.buffer?.length).toBe(BAR);
+      expect(countIn.start).toHaveBeenCalledWith(expect.closeTo(1.1, 6), 0);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2100);
+      });
+      expect(result.current.tracks[0].status).toBe("recording");
+
+      // Recording began at 3.1 s; a press 2.15 bars later closes the loop on bar 2.
+      mocks.context.currentTime = 7.4;
+      await act(async () => {
+        await result.current.toggleRecord(0);
+      });
+      expect(result.current.grid).toEqual({ beats: 8, bpm: 120 });
+      expect(result.current.loopDurationS).toBe(4);
+
+      const startFrame = Math.round(1.1 * SAMPLE_RATE) + BAR;
+      const latencyFrames = Math.round(0.03 * SAMPLE_RATE);
+      act(() => {
+        mocks.deliverFrames(startFrame - BAR, startFrame + 2 * BAR + latencyFrames + 4096);
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30);
+      });
+
+      expect(result.current.tracks[0].status).toBe("playing");
+      const track = mocks.sources.find((source) => source.connect.mock.calls[0]?.[0] === mocks.gains[1]);
+      expect(track?.buffer?.length).toBe(2 * BAR);
+      expect(track?.buffer?.data[1000]).toBeCloseTo((startFrame + latencyFrames + 1000) / 1e6, 6);
+
+      // The click now loops at the loop's length, in step with the loop epoch (7.1 s).
+      const click = clickSources(mocks).slice(-1)[0]!;
+      expect(click.buffer?.length).toBe(2 * BAR);
+      const [whenS, offsetS] = click.start.mock.calls[0] as [number, number];
+      expect(offsetS).toBeCloseTo((((whenS - 7.1) % 4) + 4) % 4, 6);
+    });
+
+    it("calls the take off when tapped again during the count-in", async () => {
+      useClick();
+      const mocks = createAudioMocks();
+      const { result } = renderHook(() => useLooper());
+
+      mocks.context.currentTime = 1;
+      await act(async () => {
+        await result.current.toggleRecord(0);
+      });
+      mocks.context.currentTime = 2;
+      await act(async () => {
+        await result.current.toggleRecord(0);
+      });
+
+      expect(result.current.tracks[0].status).toBe("empty");
+      expect(result.current.loopDurationS).toBeNull();
+      expect(clickSources(mocks)[0].stop).toHaveBeenCalled();
+    });
+
+    it("fits a tempo to a free loop and lets the guess be doubled or halved", async () => {
+      const mocks = createAudioMocks();
+      const { result } = renderHook(() => useLooper());
+      await recordFirstLoop(mocks, result);
+      expect(result.current.grid).toBeNull();
+      expect(clickSources(mocks)).toHaveLength(0);
+
+      act(() => {
+        result.current.fitTempoToLoop();
+      });
+      expect(result.current.grid).toEqual({ beats: 4, bpm: 120 });
+      expect(result.current.metronome.clickOn).toBe(true);
+      expect(clickSources(mocks).slice(-1)[0]?.buffer?.length).toBe(BAR);
+
+      act(() => {
+        result.current.scaleTempo(2);
+      });
+      expect(result.current.grid).toEqual({ beats: 8, bpm: 240 });
+      act(() => {
+        result.current.scaleTempo(2);
+      });
+      // 480 BPM is out of range.
+      expect(result.current.grid).toEqual({ beats: 8, bpm: 240 });
+      act(() => {
+        result.current.scaleTempo(0.5);
+        result.current.scaleTempo(0.5);
+      });
+      expect(result.current.grid).toEqual({ beats: 2, bpm: 60 });
+
+      // Tempo is fixed while a loop exists.
+      act(() => {
+        result.current.setBpm(90);
+      });
+      expect(result.current.metronome.bpm).toBe(60);
+    });
+
+    it("snaps the loop end to whole beats and slides the start on a grid", async () => {
+      const mocks = createAudioMocks();
+      const { result } = renderHook(() => useLooper());
+      await recordFirstLoop(mocks, result);
+      act(() => {
+        result.current.fitTempoToLoop();
+      });
+
+      act(() => {
+        result.current.setLoopTrim({ endMs: 300 });
+      });
+      // 2.3 s rounds to 5 beats of 0.5 s.
+      expect(result.current.loopTrim).toEqual({ startMs: 0, endMs: 500 });
+      expect(result.current.grid?.beats).toBe(5);
+      expect(result.current.loopDurationS).toBe(2.5);
+
+      act(() => {
+        result.current.setLoopTrim({ startMs: -100 });
+      });
+      expect(result.current.loopTrim).toEqual({ startMs: -100, endMs: 400 });
+      expect(result.current.loopDurationS).toBe(2.5);
+    });
+
+    it("sets the tempo by tapping and stops the click with the loop", async () => {
+      const now = vi.spyOn(performance, "now");
+      const mocks = createAudioMocks();
+      const { result } = renderHook(() => useLooper());
+
+      for (const timeMs of [0, 600, 1200]) {
+        now.mockReturnValue(timeMs);
+        act(() => {
+          result.current.tapTempo();
+        });
+      }
+      expect(result.current.metronome.bpm).toBe(100);
+
+      act(() => {
+        result.current.setBeatsPerBar(3);
+        result.current.setBeatsPerBar(9);
+      });
+      expect(result.current.metronome.beatsPerBar).toBe(3);
+      expect(JSON.parse(localStorage.getItem("riff:looper-metronome") ?? "{}")).toMatchObject({ bpm: 100, beatsPerBar: 3 });
+
+      await recordFirstLoop(mocks, result);
+      act(() => {
+        result.current.fitTempoToLoop();
+      });
+      const click = clickSources(mocks).slice(-1)[0]!;
+      act(() => {
+        result.current.togglePlayback();
+      });
+      expect(click.stop).toHaveBeenCalled();
+      expect(result.current.getBeatPosition()).toBeNull();
+      now.mockRestore();
+    });
+  });
 });

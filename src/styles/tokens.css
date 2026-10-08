@@ -33,7 +33,7 @@
   /* ── Typography ──
      Silkscreen and VT323 are pixel fonts: use them for headings and numbers
      only, and keep body copy in Atkinson Hyperlegible. Fonts are self-hosted
-     via @fontsource (see src/styles/fonts.ts) so the PWA works offline. */
+     via @fontsource (see src/styles/fonts.css) so the PWA works offline. */
   --font-sans: "Atkinson Hyperlegible", "Helvetica Neue", Arial, sans-serif;
   --font-display: "Silkscreen", "Courier New", monospace;
   /* VT323 renders small; size numeric readouts ~1.3x what a normal mono needs. */

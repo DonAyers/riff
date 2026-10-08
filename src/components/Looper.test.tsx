@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Looper } from "./Looper";
 import { useLooper, type LooperTrackState, type UseLooperReturn } from "../hooks/useLooper";
 
@@ -32,6 +33,15 @@ function hookReturn(overrides: Partial<UseLooperReturn> = {}): UseLooperReturn {
     setLoopTrim: vi.fn(),
     resetLoopTrim: vi.fn(),
     undoLastTake: vi.fn(),
+    metronome: { clickOn: false, bpm: 100, beatsPerBar: 4 },
+    grid: null,
+    setClickOn: vi.fn(),
+    setBpm: vi.fn(),
+    setBeatsPerBar: vi.fn(),
+    tapTempo: vi.fn(),
+    fitTempoToLoop: vi.fn(),
+    scaleTempo: vi.fn(),
+    getBeatPosition: vi.fn(() => null),
     ...overrides,
   };
 }
@@ -39,7 +49,39 @@ function hookReturn(overrides: Partial<UseLooperReturn> = {}): UseLooperReturn {
 describe("Looper", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     useLooperMock.mockReturnValue(hookReturn());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const metronomeButton = () => screen.getByRole("button", { name: "Metronome" });
+  const openMetronome = () => fireEvent.contextMenu(metronomeButton());
+
+  it("only pulses the beat lights while the click is on", () => {
+    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+    const playingGrid = {
+      isPlaying: true,
+      loopDurationS: 2,
+      tracks: [track("playing"), track("empty"), track("empty"), track("empty")],
+      grid: { beats: 4, bpm: 120 },
+      getBeatPosition: vi.fn(() => ({ beat: 0, beatsPerBar: 4 })),
+    };
+    useLooperMock.mockReturnValue(
+      hookReturn({ ...playingGrid, metronome: { clickOn: false, bpm: 120, beatsPerBar: 4 } })
+    );
+    const { rerender } = render(<Looper />);
+    act(() => vi.advanceTimersByTime(50));
+    expect(metronomeButton()).not.toHaveAttribute("data-beat");
+
+    useLooperMock.mockReturnValue(
+      hookReturn({ ...playingGrid, metronome: { clickOn: true, bpm: 120, beatsPerBar: 4 } })
+    );
+    rerender(<Looper />);
+    act(() => vi.advanceTimersByTime(50));
+    expect(metronomeButton()).toHaveAttribute("data-beat", "down");
   });
 
   it("starts empty with four record buttons and no transport", () => {
@@ -167,5 +209,121 @@ describe("Looper", () => {
     useLooperMock.mockReturnValue({ ...hook, tracks: [track("playing"), track("playing"), track("armed"), track("empty")] });
     rerender(<Looper />);
     expect(screen.getByRole("button", { name: "Undo last take" })).toBeDisabled();
+  });
+
+  it("opens the metronome settings on the first tap, then taps toggle the click and a hold opens them", () => {
+    vi.useFakeTimers();
+    const hook = hookReturn();
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+
+    expect(screen.queryByRole("group", { name: "Metronome" })).not.toBeInTheDocument();
+    fireEvent.click(metronomeButton());
+    expect(hook.setClickOn).not.toHaveBeenCalled();
+    expect(screen.getByRole("group", { name: "Metronome" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("group", { name: "Metronome" })).not.toBeInTheDocument();
+    expect(localStorage.getItem("riff:looper-metronome-set-up")).toBe("true");
+
+    fireEvent.click(metronomeButton());
+    expect(hook.setClickOn).toHaveBeenCalledWith(true);
+    expect(screen.queryByRole("group", { name: "Metronome" })).not.toBeInTheDocument();
+
+    // Holding the button opens the settings and the release does not toggle the click.
+    fireEvent.pointerDown(metronomeButton(), { button: 0 });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    fireEvent.pointerUp(metronomeButton());
+    fireEvent.click(metronomeButton());
+    expect(hook.setClickOn).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("group", { name: "Metronome" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.keyDown(metronomeButton(), { key: "Enter", shiftKey: true });
+    expect(screen.getByRole("group", { name: "Metronome" })).toBeInTheDocument();
+  });
+
+  it("sets the click, tempo and meter before the first loop", () => {
+    const hook = hookReturn();
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+    openMetronome();
+
+    const click = screen.getByRole("switch", { name: "Click" });
+    expect(click).toHaveAttribute("aria-checked", "false");
+    expect(click).toHaveTextContent("Off");
+    fireEvent.click(click);
+    expect(hook.setClickOn).toHaveBeenCalledWith(true);
+
+    const bpm = screen.getByRole("spinbutton", { name: "Tempo in beats per minute" });
+    fireEvent.change(bpm, { target: { value: "1" } });
+    expect(hook.setBpm).not.toHaveBeenCalled();
+    fireEvent.change(bpm, { target: { value: "126" } });
+    fireEvent.keyDown(bpm, { key: "Enter" });
+    expect(hook.setBpm).toHaveBeenCalledWith(126);
+
+    fireEvent.click(screen.getByRole("button", { name: "Tap" }));
+    expect(hook.tapTempo).toHaveBeenCalled();
+    fireEvent.change(screen.getByRole("combobox", { name: "Beats per bar" }), { target: { value: "3" } });
+    expect(hook.setBeatsPerBar).toHaveBeenCalledWith(3);
+  });
+
+  it("shows a count-in and locks the other tracks while it runs", () => {
+    useLooperMock.mockReturnValue(
+      hookReturn({
+        metronome: { clickOn: true, bpm: 100, beatsPerBar: 4 },
+        tracks: [track("armed"), track("empty"), track("empty"), track("empty")],
+      })
+    );
+    render(<Looper />);
+
+    expect(screen.getByTestId("track-1-status")).toHaveTextContent("Count-in");
+    expect(screen.getByText(/start playing on the next downbeat/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record track 2" })).toBeDisabled();
+    expect(metronomeButton()).toHaveAttribute("aria-pressed", "true");
+    openMetronome();
+    expect(screen.getByRole("button", { name: "Tap" })).toBeDisabled();
+  });
+
+  it("offers to fit a tempo to a loop that was played freely", () => {
+    const hook = hookReturn({
+      loopDurationS: 2,
+      isPlaying: true,
+      tracks: [track("playing"), track("empty"), track("empty"), track("empty")],
+    });
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+    openMetronome();
+
+    expect(screen.getByText("Played freely")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Fit tempo" }));
+    expect(hook.fitTempoToLoop).toHaveBeenCalled();
+  });
+
+  it("shows the loop's tempo, scales it and moves the loop end a beat at a time", () => {
+    const hook = hookReturn({
+      loopDurationS: 4,
+      isPlaying: true,
+      grid: { beats: 8, bpm: 120 },
+      loopTrim: { startMs: 0, endMs: 0 },
+      metronome: { clickOn: true, bpm: 120, beatsPerBar: 4 },
+      tracks: [track("playing"), track("empty"), track("empty"), track("empty")],
+    });
+    useLooperMock.mockReturnValue(hook);
+    render(<Looper />);
+    openMetronome();
+
+    expect(screen.getByTestId("loop-tempo")).toHaveTextContent("120 BPM · 2 bars");
+    fireEvent.click(screen.getByRole("button", { name: "Halve the tempo" }));
+    expect(hook.scaleTempo).toHaveBeenCalledWith(0.5);
+    fireEvent.click(screen.getByRole("button", { name: "Double the tempo" }));
+    expect(hook.scaleTempo).toHaveBeenCalledWith(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Move loop end one beat later" }));
+    expect(hook.setLoopTrim).toHaveBeenLastCalledWith({ endMs: 500 });
+    fireEvent.click(screen.getByRole("button", { name: "Move loop start 10 ms earlier" }));
+    expect(hook.setLoopTrim).toHaveBeenLastCalledWith({ startMs: -10 });
   });
 });

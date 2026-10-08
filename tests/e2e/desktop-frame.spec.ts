@@ -72,7 +72,9 @@ test("phones keep the full-screen layout with no frame", async ({ page }) => {
   const frame = page.locator(".app-frame");
   await expect(frame).toHaveCSS("border-radius", "0px");
   expect((await frame.boundingBox())!.width).toBe(390);
-  const tabBar = await page.getByRole("navigation", { name: "Primary" }).boundingBox();
+  const nav = page.getByRole("navigation", { name: "Primary" });
+  await expect(nav).toBeVisible();
+  const tabBar = await nav.boundingBox();
   expect(Math.round(tabBar!.y + tabBar!.height)).toBe(844);
 });
 
@@ -111,4 +113,23 @@ test("help sheet stays inside the frame on a short desktop window", async ({ pag
   expect(box.y).toBeGreaterThanOrEqual(frame.y);
   expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width);
   expect(box.y + box.height).toBeLessThanOrEqual(frame.y + frame.height);
+});
+
+test("the framed app has no scrollbar when its content fits", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoApp(page);
+
+  await expect(page.getByRole("heading", { level: 2, name: /record/i })).toBeVisible();
+  const overflow = await page.locator("#root").evaluate((root) => root.scrollHeight - root.clientHeight);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("the version lives in the help sheet's About section", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoApp(page);
+
+  await expect(page.getByText(/^v\d+\.\d+\.\d+/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Help and about" }).click();
+  const about = page.getByRole("dialog", { name: /help and about riff/i }).getByRole("region", { name: "About" });
+  await expect(about).toContainText(/v\d+\.\d+\.\d+/);
 });

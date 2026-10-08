@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { DEFAULT_PALETTE_ID, isPaletteId, type PaletteId } from "../lib/palettes";
+import { PALETTE_STORAGE_KEY } from "../lib/themeBoot";
 import { syncThemeColorMeta } from "./useThemePreference";
 
-export const PALETTE_STORAGE_KEY = "riff:palette";
+export { PALETTE_STORAGE_KEY };
 
 export function readPalettePreference(): PaletteId {
   if (typeof window === "undefined") return DEFAULT_PALETTE_ID;

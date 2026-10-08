@@ -1,0 +1,42 @@
+/* Self-hosted fonts so the PWA renders correctly offline. Latin subsets only, WOFF2 only
+   (every browser Riff supports reads it); other scripts fall back to the system stacks in
+   tokens.css. vite.config.ts preloads these same files, so they arrive with the CSS.
+
+   font-display (https://web.dev/articles/preload-optional-fonts):
+   - block for the two pixel display fonts: the title and timer never draw in Courier and
+     then swap, which is the jump people saw on load. They are tiny and preloaded, so the
+     block is rarely felt, and the service worker serves them instantly after the first visit.
+   - optional for body text: a preloaded optional font is used if it is ready for the first
+     render (it nearly always is) and never swaps in later, so lines never re-wrap. */
+
+@font-face {
+  font-family: "Silkscreen";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(@fontsource/silkscreen/files/silkscreen-latin-400-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "VT323";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(@fontsource/vt323/files/vt323-latin-400-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url(@fontsource/atkinson-hyperlegible/files/atkinson-hyperlegible-latin-400-normal.woff2) format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 700;
+  font-display: optional;
+  src: url(@fontsource/atkinson-hyperlegible/files/atkinson-hyperlegible-latin-700-normal.woff2) format("woff2");
+}

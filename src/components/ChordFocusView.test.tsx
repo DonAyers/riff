@@ -86,7 +86,11 @@ describe("ChordFocusView", () => {
       expect.arrayContaining([expect.objectContaining({ label: "G", role: "color" })]),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove note E" }));
+    const removeE = screen.getByRole("button", { name: "Remove note E" });
+    // An icon, not a "−" glyph, so it centres like the other icon buttons.
+    expect(removeE.textContent).toBe("");
+    expect(removeE.querySelector("svg")).not.toBeNull();
+    fireEvent.click(removeE);
 
     expect(onNotesChange).toHaveBeenLastCalledWith(
       expect.not.arrayContaining([expect.objectContaining({ id: "e" })]),
