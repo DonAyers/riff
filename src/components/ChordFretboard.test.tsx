@@ -88,6 +88,8 @@ describe("ChordFretboard", () => {
     const diagram = screen.getByRole("img", { name: /fretboard for c major/i });
     expect(diagram).toBeInTheDocument();
     expect(diagram.querySelector("svg")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Strum C Major down" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Low E string muted" })).toBeDisabled();
 
     expect(mockChartInstances).toHaveLength(1);
     expect(mockChartInstances[0].settings).toEqual(

@@ -1,0 +1,77 @@
+.strum-pad {
+  display: grid;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.strum-pad__strums,
+.strum-pad__strings,
+.strum-pad__engine {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.strum-pad__strums {
+  grid-template-columns: 1fr 1fr;
+}
+
+.strum-pad__strings {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.strum-pad__engine {
+  grid-template-columns: 1fr 1fr;
+  justify-self: center;
+}
+
+.strum-pad button {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--surface-border);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.strum-pad button:hover:not(:disabled) {
+  background: var(--surface-strong);
+}
+
+.strum-pad button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.strum-pad button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.strum-pad .strum-pad__strum {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.strum-pad .strum-pad__strum:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, var(--fg));
+}
+
+.strum-pad .strum-pad__engine-option {
+  min-height: 36px;
+  padding: 0 0.9rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.strum-pad .strum-pad__engine-option[aria-checked="true"] {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
