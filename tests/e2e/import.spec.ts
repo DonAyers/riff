@@ -172,3 +172,35 @@ test("import button is disabled while recording", async ({ page }) => {
   // Clean up: stop recording
   await page.getByRole("button", { name: /stop recording/i }).click();
 });
+
+test("tapping strum on a chord shape plays the synth strum and plucks single strings", async ({ page }) => {
+  test.setTimeout(120000);
+
+  await page.addInitScript(() => {
+    const started: number[] = [];
+    (window as unknown as { __strumStarts: number[] }).__strumStarts = started;
+    const originalStart = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (...args: Parameters<typeof originalStart>) {
+      started.push(this.buffer?.duration ?? 0);
+      return originalStart.apply(this, args);
+    };
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoApp(page);
+  await importFixtureAndAnalyzeAutomatically(page, "guitar-c-major-clean.wav");
+
+  await page.getByRole("button", { name: /explore chord c major/i }).first().click();
+  const explorer = page.locator(".chord-map-explorer");
+  await expect(explorer.locator(".chord-fretboard__diagram")).toBeVisible();
+
+  const starts = () => page.evaluate(() => (window as unknown as { __strumStarts: number[] }).__strumStarts.slice());
+  const before = (await starts()).length;
+
+  await explorer.getByRole("button", { name: /strum .* down/i }).click();
+  await expect.poll(async () => (await starts()).length).toBe(before + 1);
+  // A rendered strum rings for a couple of seconds.
+  expect((await starts()).at(-1)).toBeGreaterThan(2);
+
+  await explorer.getByRole("button", { name: /pluck high e string/i }).click();
+  await expect.poll(async () => (await starts()).length).toBe(before + 2);
+});

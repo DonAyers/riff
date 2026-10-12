@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { OPEN, SILENT, SVGuitarChord, type Barre, type Chord, type ChordSettings, type Finger } from "svguitar";
 import type { GuitarVoicing } from "../lib/chordVoicings";
+import { StrumPad } from "./StrumPad";
 import "./ChordFretboard.css";
 
 interface ChordFretboardProps {
@@ -154,6 +155,7 @@ export function ChordFretboard({ voicing, chordName }: ChordFretboardProps) {
         role="img"
         aria-label={ariaLabel}
       />
+      <StrumPad frets={voicing.frets} chordName={chordName} />
     </div>
   );
 }
