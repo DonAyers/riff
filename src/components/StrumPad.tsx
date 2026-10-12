@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Midi } from "tonal";
 import { voicingToMidi } from "../lib/pluckSynth";
 import { getStrumPlayer, type StrumEngine } from "../lib/strumPlayer";
@@ -12,14 +12,13 @@ interface StrumPadProps {
 const STRING_LABELS = ["Low E", "A", "D", "G", "B", "High E"] as const;
 
 export function StrumPad({ frets, chordName }: StrumPadProps) {
-  const [engine, setEngine] = useState<StrumEngine>(() => getStrumPlayer().getEngine());
+  const player = getStrumPlayer();
+  // The engine lives on the shared player, so every mounted pad shows the same choice.
+  const engine = useSyncExternalStore(player.subscribe, player.getEngine);
   const notes = voicingToMidi(frets);
   const chordLabel = chordName ?? "chord";
 
-  const chooseEngine = (next: StrumEngine) => {
-    getStrumPlayer().setEngine(next);
-    setEngine(next);
-  };
+  const chooseEngine = (next: StrumEngine) => player.setEngine(next);
 
   return (
     <div className="strum-pad">
@@ -27,7 +26,7 @@ export function StrumPad({ frets, chordName }: StrumPadProps) {
         <button
           type="button"
           className="strum-pad__strum"
-          onClick={() => getStrumPlayer().strum(frets, "down")}
+          onClick={() => player.strum(frets, "down")}
           aria-label={`Strum ${chordLabel} down`}
         >
           Strum ↓
@@ -35,7 +34,7 @@ export function StrumPad({ frets, chordName }: StrumPadProps) {
         <button
           type="button"
           className="strum-pad__strum"
-          onClick={() => getStrumPlayer().strum(frets, "up")}
+          onClick={() => player.strum(frets, "up")}
           aria-label={`Strum ${chordLabel} up`}
         >
           Strum ↑
@@ -48,7 +47,7 @@ export function StrumPad({ frets, chordName }: StrumPadProps) {
             type="button"
             className="strum-pad__string"
             disabled={midi === null}
-            onClick={() => getStrumPlayer().pluck(frets, index)}
+            onClick={() => player.pluck(frets, index)}
             aria-label={midi === null ? `${STRING_LABELS[index]} string muted` : `Pluck ${STRING_LABELS[index]} string (${Midi.midiToNoteName(midi, { sharps: true })})`}
           >
             {midi === null ? "×" : Midi.midiToNoteName(midi, { pitchClass: true, sharps: true })}

@@ -17,6 +17,8 @@ export interface StrumPlayer {
   pluck: (frets: readonly number[], stringIndex: number) => void;
   setEngine: (engine: StrumEngine) => void;
   getEngine: () => StrumEngine;
+  /** Calls `listener` when the engine changes; returns an unsubscribe. */
+  subscribe: (listener: () => void) => () => void;
   dispose: () => void;
 }
 
@@ -54,6 +56,10 @@ export function createStrumPlayer(
   const stringVoices = new Map<number, Voice>();
   const cache = new Map<string, AudioBuffer>();
   let samplerPromise: Promise<Soundfont> | null = null;
+  let loadedSampler: Soundfont | null = null;
+  // Bumped on every play so a sampled strum still loading never starts late.
+  let playRequest = 0;
+  const listeners = new Set<() => void>();
 
   // Must run inside the click handler: iOS only unlocks audio from a gesture.
   function getContext(): AudioContext {
@@ -120,7 +126,10 @@ export function createStrumPlayer(
       samplerPromise = import("smplr")
         .then(({ Soundfont: SoundfontPlayer }) => {
           const sampler = new SoundfontPlayer(ctx, { instrument: SAMPLE_INSTRUMENT });
-          return sampler.load.then(() => sampler);
+          return sampler.load.then(() => {
+            loadedSampler = sampler;
+            return sampler;
+          });
         })
         .catch((error: unknown) => {
           samplerPromise = null;
@@ -130,10 +139,19 @@ export function createStrumPlayer(
     return samplerPromise;
   }
 
+  // Stops whatever is ringing on either engine before a new strum or pick.
+  function stopEverything() {
+    playRequest += 1;
+    chokeAll();
+    loadedSampler?.stop();
+  }
+
   function playSampled(notes: Array<number | null>, offsets: Array<number | null>) {
     const ctx = getContext();
+    stopEverything();
+    const request = playRequest;
     void getSampler(ctx).then((sampler) => {
-      sampler.stop();
+      if (request !== playRequest) return;
       const at = ctx.currentTime + 0.01;
       notes.forEach((midi, index) => {
         const offset = offsets[index];
@@ -156,7 +174,7 @@ export function createStrumPlayer(
       const buffer = cached(`strum:${frets.join(",")}:${direction}`, (sampleRate) =>
         renderStrum(notes, sampleRate, { direction }),
       );
-      chokeAll();
+      stopEverything();
       strumVoice = start(buffer);
     },
     pluck(frets, stringIndex) {
@@ -169,17 +187,27 @@ export function createStrumPlayer(
       }
       const buffer = cached(`note:${midi}`, (sampleRate) => renderNote(midi, sampleRate));
       // A new pick on the same string stops the old vibration; others ring on.
+      playRequest += 1;
+      loadedSampler?.stop();
       choke(stringVoices.get(stringIndex));
       stringVoices.set(stringIndex, start(buffer));
     },
     setEngine(next) {
+      if (next === engine) return;
+      stopEverything();
       engine = next;
+      listeners.forEach((listener) => listener());
     },
     getEngine() {
       return engine;
     },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     dispose() {
-      chokeAll();
+      stopEverything();
+      listeners.clear();
       cache.clear();
       void context?.close().catch(() => {});
       context = null;

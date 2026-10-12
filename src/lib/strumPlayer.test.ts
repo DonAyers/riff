@@ -141,4 +141,41 @@ describe("createStrumPlayer", () => {
     expect(times).toEqual([...times].sort((a, b) => a - b));
     expect(context.sources).toHaveLength(0);
   });
+
+  it("switching engines stops the other engine's ringing strum", async () => {
+    const player = createStrumPlayer(createContext);
+    player.strum(C_MAJOR);
+    player.setEngine("sample");
+    expect(context.sources[0].stop).toHaveBeenCalled();
+
+    player.strum(C_MAJOR);
+    await vi.waitFor(() => expect(smplrStart).toHaveBeenCalled());
+    player.setEngine("synth");
+    expect(smplrStop).toHaveBeenCalled();
+  });
+
+  it("drops a sampled strum still loading when a newer tap plays the synth", async () => {
+    const player = createStrumPlayer(createContext);
+    player.setEngine("sample");
+    player.strum(C_MAJOR);
+    player.setEngine("synth");
+    player.strum(C_MAJOR);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(smplrStart).not.toHaveBeenCalled();
+    expect(context.sources).toHaveLength(1);
+  });
+
+  it("tells subscribers when the engine changes", () => {
+    const player = createStrumPlayer(createContext);
+    const listener = vi.fn();
+    const unsubscribe = player.subscribe(listener);
+
+    player.setEngine("sample");
+    player.setEngine("sample");
+    unsubscribe();
+    player.setEngine("synth");
+
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });

@@ -2,13 +2,29 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StrumPad } from "./StrumPad";
 
-const player = {
-  strum: vi.fn(),
-  pluck: vi.fn(),
-  setEngine: vi.fn(),
-  getEngine: vi.fn(() => "synth"),
-  dispose: vi.fn(),
-};
+const { player } = vi.hoisted(() => {
+  let engine = "synth";
+  const listeners = new Set<() => void>();
+  return {
+    player: {
+      strum: vi.fn(),
+      pluck: vi.fn(),
+      setEngine: vi.fn((next: string) => {
+        engine = next;
+        listeners.forEach((listener) => listener());
+      }),
+      getEngine: () => engine,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      dispose: vi.fn(),
+      reset: () => {
+        engine = "synth";
+      },
+    },
+  };
+});
 
 vi.mock("../lib/strumPlayer", () => ({
   getStrumPlayer: () => player,
@@ -17,6 +33,7 @@ vi.mock("../lib/strumPlayer", () => ({
 describe("StrumPad", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    player.reset();
   });
 
   it("strums the shape down and up", () => {
@@ -48,5 +65,20 @@ describe("StrumPad", () => {
 
     expect(player.setEngine).toHaveBeenCalledWith("sample");
     expect(screen.getByRole("radio", { name: "Sampled" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("keeps every mounted pad's switch in step with the shared player", () => {
+    render(
+      <>
+        <StrumPad frets={[0, 2, 2, 0, 0, 0]} chordName="Em" />
+        <StrumPad frets={[-1, 0, 2, 2, 1, 0]} chordName="Am" />
+      </>,
+    );
+
+    fireEvent.click(screen.getAllByRole("radio", { name: "Sampled" })[0]);
+
+    screen.getAllByRole("radio", { name: "Sampled" }).forEach((radio) => {
+      expect(radio).toHaveAttribute("aria-checked", "true");
+    });
   });
 });
