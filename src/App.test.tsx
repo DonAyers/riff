@@ -101,9 +101,14 @@ vi.mock("./components/Looper", () => ({
 vi.mock("./components/SongBuilder", () => ({
   SongBuilder: () => <div data-testid="song-builder" />,
 }));
-vi.mock("./lib/chordVoicings", () => ({
-  lookupVoicings: vi.fn(),
-}));
+vi.mock("./lib/chordVoicings", () => {
+  const lookupVoicings = vi.fn();
+  return {
+    lookupVoicings,
+    voicingsForChord: (chordName: string | null, played?: unknown) =>
+      played ? [played, ...lookupVoicings(chordName)] : lookupVoicings(chordName),
+  };
+});
 vi.mock("./lib/chordSubstitutions", () => ({
   getVariateSuggestions: vi.fn(),
 }));
@@ -627,6 +632,34 @@ describe("App mic permission fallback", () => {
     expect(screen.getByRole("button", { name: /next shape/i })).toBeInTheDocument();
     expect(await screen.findByTestId("chord-fretboard")).toBeInTheDocument();
     expect(screen.queryByTestId("piano-roll")).not.toBeInTheDocument();
+  });
+
+  it("shows the shape the chord was played with and its voicing in the chord lane", async () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({
+        notes: [{ midi: 43, name: "G2", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        uniqueNotes: [{ midi: 43, name: "G2", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+        chord: "C Major/G",
+        chordTimeline: [{
+          chord: "CM/G",
+          label: "C Major/G",
+          startTimeS: 0,
+          endTimeS: 1,
+          notes: ["G2", "C3", "E3", "G3", "C4", "E4"],
+          bassNote: "G2",
+          voicing: { frets: [3, 3, 2, 0, 1, 0], fingers: [3, 4, 2, 0, 1, 0], barres: [], baseFret: 1 },
+        }],
+      }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /guitar/i }));
+    fireEvent.click(screen.getByRole("button", { name: /shape/i }));
+
+    expect(screen.getByText(/played shape · 1 of \d+/i)).toBeInTheDocument();
+    expect(screen.getByTestId("voicing-summary")).toHaveTextContent("2nd inversion · G2 C3 E3 G3 C4 E4");
+    expect(await screen.findByTestId("chord-fretboard")).toBeInTheDocument();
   });
 
   it("lets the chord lane swap to a suggested guitar substitution and clear it", () => {

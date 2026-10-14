@@ -184,7 +184,7 @@ test("guitar lane still shows shapes and exports after deferred analysis UI load
   await switchLane(page, "Guitar");
   await page.getByRole("button", { name: "Shape" }).click();
 
-  await expect(page.getByText(/shape 1 of/i)).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/shape (· )?1 of/i)).toBeVisible({ timeout: 10000 });
   await expect(page.locator(".chord-fretboard__diagram")).toBeVisible({ timeout: 10000 });
 
   await openExportScreen(page);

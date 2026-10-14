@@ -173,9 +173,9 @@ export function useRiffSession() {
 
     try {
       const detectionResult = await detect(sourceAudio, {
-        confidenceThreshold: profile.confidenceThreshold,
         onsetThreshold: profile.onsetThreshold,
-        maxPolyphony: profile.maxPolyphony,
+        frameThreshold: profile.frameThreshold,
+        minNoteLenFrames: profile.minNoteLenFrames,
       });
 
       analysisAudio = detectionResult.audio;

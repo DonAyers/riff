@@ -1,7 +1,7 @@
 import { useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { X } from "lucide-react";
-import type { ChordEvent } from "../lib/chordDetector";
-import { lookupVoicings } from "../lib/chordVoicings";
+import { describeVoicing, type ChordEvent } from "../lib/chordDetector";
+import { voicingsForChord } from "../lib/chordVoicings";
 import { ChordFretboard } from "./ChordFretboard";
 import "./SelectedChordDialog.css";
 
@@ -20,7 +20,9 @@ export function SelectedChordDialog({
   onVoicingChange,
   onClose,
 }: SelectedChordDialogProps) {
-  const voicings = lookupVoicings(chord);
+  const playedVoicing = context?.voicing;
+  const voicings = voicingsForChord(chord, playedVoicing);
+  const voicingLine = describeVoicing(context);
   const activeVoicing = voicings[voicingIndex] ?? null;
   const hasMultipleVoicings = voicings.length > 1;
 
@@ -79,9 +81,14 @@ export function SelectedChordDialog({
             </p>
           )}
           <h2>{chord}</h2>
+          {voicingLine && (
+            <p className="selected-chord-sheet__meta" data-testid="voicing-summary">{voicingLine}</p>
+          )}
           {activeVoicing ? (
             <p className="selected-chord-sheet__meta">
-              Guitar voicing {voicingIndex + 1} of {voicings.length}
+              {playedVoicing && voicingIndex === 0
+                ? `Played shape · 1 of ${voicings.length}`
+                : `Guitar voicing ${voicingIndex + 1} of ${voicings.length}`}
             </p>
           ) : (
             <p className="selected-chord-sheet__meta">

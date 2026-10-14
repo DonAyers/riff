@@ -48,9 +48,9 @@ export interface DetectedNote {
 }
 
 export interface DetectOptions {
-  confidenceThreshold?: number;
   onsetThreshold?: number;
-  maxPolyphony?: number;
+  frameThreshold?: number;
+  minNoteLenFrames?: number;
 }
 
 export interface DetectResult {
@@ -192,9 +192,9 @@ export function usePitchDetection(): UsePitchDetectionReturn {
           type: "detect",
           requestId,
           audio,
-          confidenceThreshold: pending.options?.confidenceThreshold,
           onsetThreshold: pending.options?.onsetThreshold,
-          maxPolyphony: pending.options?.maxPolyphony,
+          frameThreshold: pending.options?.frameThreshold,
+          minNoteLenFrames: pending.options?.minNoteLenFrames,
         },
         [audio.buffer]
       );
@@ -377,9 +377,9 @@ export function usePitchDetection(): UsePitchDetectionReturn {
               type: "detect",
               requestId,
               audio,
-              confidenceThreshold: options?.confidenceThreshold,
               onsetThreshold: options?.onsetThreshold,
-              maxPolyphony: options?.maxPolyphony,
+              frameThreshold: options?.frameThreshold,
+              minNoteLenFrames: options?.minNoteLenFrames,
             },
             [audio.buffer]
           );

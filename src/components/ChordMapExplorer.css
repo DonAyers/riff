@@ -159,6 +159,11 @@
   font-size: 0.72rem;
 }
 
+.chord-map-explorer__voicing {
+  display: block;
+  margin-top: 0.2rem;
+}
+
 .chord-map-explorer__shape-actions {
   display: grid;
   gap: 0.34rem;

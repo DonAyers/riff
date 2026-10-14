@@ -88,6 +88,36 @@ function synthKnownClip(): Float32Array {
   return output;
 }
 
+/** Open C (x32010: C3 E3 G3 C4 E4) strummed down, with plucked-string decay. */
+function synthOpenCStrum(): Float32Array {
+  const strumMidis = [48, 52, 55, 60, 64];
+  const leadInS = 0.2;
+  const strumSpreadS = 0.02;
+  const ringS = 2.2;
+  const totalSamples = Math.floor((leadInS + ringS + 0.4) * SAMPLE_RATE);
+  const output = new Float32Array(totalSamples);
+
+  strumMidis.forEach((midi, stringIndex) => {
+    const frequency = midiToFrequency(midi);
+    const start = Math.floor((leadInS + stringIndex * strumSpreadS) * SAMPLE_RATE);
+    const durationSamples = Math.floor(ringS * SAMPLE_RATE);
+
+    for (let i = 0; i < durationSamples; i++) {
+      const t = i / SAMPLE_RATE;
+      const attack = Math.min(1, i / (SAMPLE_RATE * 0.003));
+      let sample = 0;
+      for (let harmonic = 1; harmonic <= 6; harmonic++) {
+        // Higher partials die away faster, like a real string.
+        const decay = Math.exp(-t * (1.2 + harmonic * 0.8));
+        sample += (Math.sin(2 * Math.PI * frequency * harmonic * t) / harmonic) * decay;
+      }
+      output[start + i] += sample * 0.06 * attack;
+    }
+  });
+
+  return output;
+}
+
 export default async function globalSetup(): Promise<void> {
   const fixtureDir = path.resolve(process.cwd(), "tests", "fixtures");
   const fixtureFile = path.resolve(fixtureDir, "known-c-major.wav");
@@ -95,4 +125,5 @@ export default async function globalSetup(): Promise<void> {
   fs.mkdirSync(fixtureDir, { recursive: true });
   const samples = synthKnownClip();
   writeWavMono16(fixtureFile, samples, SAMPLE_RATE);
+  writeWavMono16(path.resolve(fixtureDir, "open-c-strum.wav"), synthOpenCStrum(), SAMPLE_RATE);
 }

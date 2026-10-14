@@ -63,7 +63,7 @@ IndexedDB (metadata) + OPFS (PCM/compressed audio)
 - **AudioWorklet for capture:** Replaces deprecated `ScriptProcessorNode`; runs in a dedicated audio thread.
 - **iOS resampling:** iOS Safari ignores sample-rate requests and always returns 44,100 Hz. After recording, if the actual sample rate ≠ 22,050 Hz, an `OfflineAudioContext` resamples before sending to the worker.
 - **Storage:** IndexedDB (`idb`) for riff metadata; Origin Private File System (OPFS) for raw audio blobs.
-- **Instrument profiles** (`src/lib/instrumentProfiles.ts`): Three profiles (Default, Guitar, Piano) parameterize MIDI range, amplitude threshold, polyphony limit, and chord-windowing. Profiles are applied after detection to filter `DetectedNote[]`.
+- **Instrument profiles** (`src/lib/instrumentProfiles.ts`): Three profiles (Default, Guitar, Piano) parameterize MIDI range, amplitude threshold, Basic Pitch decoding thresholds, and chord-windowing. Profiles are applied after detection to filter `DetectedNote[]`.
 
 ### Module Map
 

@@ -53,7 +53,7 @@ test("imported analysis can switch to chord lane and keep playback controls avai
   await expect(page.getByRole("heading", { level: 2, name: "Analyze chords" })).toBeVisible();
   await page.getByRole("button", { name: "Shape" }).click();
 
-  const voicingLabel = page.getByText(/shape \d+ of \d+/i);
+  const voicingLabel = page.getByText(/shape (· )?\d+ of \d+/i);
   await expect(voicingLabel).toBeVisible({ timeout: 10000 });
   await expect(page.locator(".chord-lane-panel .chord-fretboard__diagram")).toBeVisible();
 
@@ -123,7 +123,7 @@ test("clicking a detected chord opens the selected chord sheet", async ({ page }
 
   const dialog = page.getByRole("dialog", { name: "Selected guitar chord" });
   await expect(dialog).toBeVisible();
-  const voicingLabel = dialog.getByText(/guitar voicing \d+ of \d+/i);
+  const voicingLabel = dialog.getByText(/(guitar voicing|played shape ·) \d+ of \d+/i);
   await expect(voicingLabel).toBeVisible();
   await expect(dialog.locator(".chord-fretboard__diagram")).toBeVisible();
 

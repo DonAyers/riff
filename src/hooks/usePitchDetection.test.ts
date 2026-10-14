@@ -9,9 +9,9 @@ interface DetectRequestMessage {
   type: "detect";
   requestId: number;
   audio: Float32Array;
-  confidenceThreshold?: number;
   onsetThreshold?: number;
-  maxPolyphony?: number;
+  frameThreshold?: number;
+  minNoteLenFrames?: number;
 }
 
 interface SentWorkerMessage {

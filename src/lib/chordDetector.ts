@@ -1,13 +1,28 @@
-import { Chord, Note } from "tonal";
+import { Chord, Midi, Note } from "tonal";
+import type { GuitarVoicing } from "./chordVoicings";
 import { buildStrumClusters, type NoteStrumCluster } from "./guitarStrumPlayback";
 import type { MappedNote } from "./noteMapper";
+import { chooseVoicingPath, solveVoicing, voicingMidiNotes } from "./voicingSolver";
 
 export interface ChordEvent {
   chord: string;
   label: string;
   startTimeS: number;
   endTimeS: number;
+  /**
+   * The chord's notes, lowest first (e.g. ["C3", "E3", "G3"]): the played shape's notes when one was
+   * found (so detection ghosts like harmonics drop out), otherwise every note heard.
+   * Absent on sessions saved before voicings.
+   */
+  notes?: string[];
+  /** Lowest note that counts as the bass (e.g. "E3"). */
+  bassNote?: string;
+  /** Most likely shape the chord was played with, worked out from the notes. */
+  voicing?: GuitarVoicing;
 }
+
+/** Notes quieter than this share of the loudest note can't be the bass (sub-bass ghosts, sympathetic strings). */
+const BASS_MIN_RELATIVE_AMPLITUDE = 0.25;
 
 type PitchClassWeights = Map<string, number>;
 
@@ -110,11 +125,19 @@ function buildChordContextNotes(
   });
 }
 
-function lowestPitchClass(notes: readonly MappedNote[]): string | undefined {
-  return notes.reduce<MappedNote | null>((lowest, note) => {
+function bassNote(notes: readonly MappedNote[]): MappedNote | undefined {
+  const loudest = Math.max(...notes.map((note) => note.amplitude));
+  const candidates = notes.filter((note) => note.amplitude >= loudest * BASS_MIN_RELATIVE_AMPLITUDE);
+  return candidates.reduce<MappedNote | undefined>((lowest, note) => {
     if (!lowest || note.midi < lowest.midi) return note;
     return lowest;
-  }, null)?.pitchClass;
+  }, undefined);
+}
+
+function noteStack(notes: readonly MappedNote[]): string[] {
+  return [...new Map(notes.map((note) => [note.midi, note.name])).entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, name]) => name);
 }
 
 function sortByWeight(pitchClasses: readonly string[], weights: PitchClassWeights | undefined): string[] {
@@ -278,38 +301,96 @@ export function detectChordTimeline(notes: MappedNote[], windowS: number): Chord
   // No windowing — fall back to pooling all pitch classes
   if (windowS <= 0) {
     const pitchClasses = uniquePitchClasses(notes.map((n) => n.pitchClass));
+    const bass = bassNote(notes);
     const detected = detectChord(pitchClasses, {
-      bassPitchClass: lowestPitchClass(notes),
+      bassPitchClass: bass?.pitchClass,
       weights: buildPitchClassWeights(notes),
     });
     if (!detected) return [];
     const startTimeS = Math.min(...notes.map((note) => note.startTimeS));
     const endTimeS = Math.max(...notes.map((note) => note.startTimeS + note.durationS));
-    return [{ chord: detected, label: formatChordName(detected), startTimeS, endTimeS }];
+    // Pooling a whole recording mixes every chord, so there is no single voicing to report.
+    return [{ chord: detected, label: formatChordName(detected), startTimeS, endTimeS, bassNote: bass?.name }];
   }
 
   const clusters = buildStrumClusters(notes, windowS);
 
-  return clusters.flatMap((cluster) => {
+  const detected = clusters.flatMap((cluster) => {
     const clusterNotes = cluster.noteIndices.map((index) => notes[index]);
     const contextNotes = buildChordContextNotes(notes, cluster, windowS);
     const pitchClasses = uniquePitchClasses(contextNotes.map((n) => n.pitchClass));
+    const bass = bassNote(contextNotes);
     const chord = detectChord(pitchClasses, {
-      bassPitchClass: lowestPitchClass(contextNotes),
+      bassPitchClass: bass?.pitchClass,
       weights: buildPitchClassWeights(contextNotes),
     });
     if (!chord) return [];
 
-    const startTimeS = Math.min(...clusterNotes.map((note) => note.startTimeS));
-    const endTimeS = Math.max(...contextNotes.map(noteEndTimeS));
-
-    return [{
+    const event: ChordEvent = {
       chord,
       label: formatChordName(chord),
-      startTimeS,
-      endTimeS,
-    }];
+      startTimeS: Math.min(...clusterNotes.map((note) => note.startTimeS)),
+      endTimeS: Math.max(...contextNotes.map(noteEndTimeS)),
+      notes: noteStack(contextNotes),
+      bassNote: bass?.name,
+    };
+    return [{ event, contextNotes }];
   });
+
+  const voicings = chooseVoicingPath(
+    detected.map(({ event, contextNotes }) => solveVoicing(contextNotes, event.chord)),
+  );
+
+  return detected.map(({ event }, index) => {
+    const voicing = voicings[index]?.voicing;
+    if (!voicing) return event;
+
+    const notes = voicingMidiNotes(voicing.frets).map((midi) => Midi.midiToNoteName(midi, { sharps: true }));
+    return { ...event, voicing, notes };
+  });
+}
+
+/** The chord that rang longest, used as the recording's summary chord. */
+export function dominantChordEvent(events: readonly ChordEvent[]): ChordEvent | null {
+  if (events.length === 0) return null;
+
+  return events.reduce((best, current) => {
+    const currentSpan = current.endTimeS - current.startTimeS;
+    const bestSpan = best.endTimeS - best.startTimeS;
+    return currentSpan > bestSpan ? current : best;
+  });
+}
+
+const INVERSION_BY_INTERVAL: Record<number, string> = {
+  3: "1st inversion",
+  4: "1st inversion",
+  6: "2nd inversion",
+  7: "2nd inversion",
+  8: "2nd inversion",
+  9: "3rd inversion",
+  10: "3rd inversion",
+  11: "3rd inversion",
+};
+
+/**
+ * Describe which chord tone is in the bass, e.g. "Root position" or "1st inversion".
+ * Falls back to "D in the bass" when the bass is not a chord tone.
+ */
+export function describeInversion(chordSymbol: string | null | undefined, bassPitchClass: string | null | undefined): string | null {
+  if (!chordSymbol || !bassPitchClass) return null;
+
+  const chord = Chord.get(chordSymbol);
+  if (chord.empty || !chord.tonic) return null;
+
+  const interval = semitonesBetween(chord.tonic, bassPitchClass);
+  if (interval === null) return null;
+  if (interval === 0) return "Root position";
+
+  const isChordTone = chord.notes.some((note) => samePitchClass(note, bassPitchClass));
+  const inversion = INVERSION_BY_INTERVAL[interval];
+  if (isChordTone && inversion) return inversion;
+
+  return `${Note.pitchClass(bassPitchClass)} in the bass`;
 }
 
 /**
@@ -319,16 +400,7 @@ export function detectChordsWindowed(
   notes: MappedNote[],
   windowS: number,
 ): string | null {
-  const events = detectChordTimeline(notes, windowS);
-  if (events.length === 0) return null;
-
-  const largest = events.reduce((best, current) => {
-    const currentSpan = current.endTimeS - current.startTimeS;
-    const bestSpan = best.endTimeS - best.startTimeS;
-    return currentSpan > bestSpan ? current : best;
-  });
-
-  return largest.chord;
+  return dominantChordEvent(detectChordTimeline(notes, windowS))?.chord ?? null;
 }
 
 /**
@@ -369,4 +441,16 @@ export function formatChordName(symbol: string): string {
 
   const bass = chord.root && !samePitchClass(chord.root, chord.tonic) ? `/${chord.root}` : "";
   return `${root} ${label}${bass}`;
+}
+
+/** One line describing how a detected chord was voiced, e.g. "1st inversion · E3 G3 C4". */
+export function describeVoicing(event: Pick<ChordEvent, "chord" | "bassNote" | "notes"> | null | undefined): string | null {
+  if (!event) return null;
+
+  const parts = [
+    describeInversion(event.chord, event.bassNote ? Note.pitchClass(event.bassNote) : null),
+    event.notes && event.notes.length > 0 ? event.notes.join(" ") : null,
+  ].filter((part): part is string => Boolean(part));
+
+  return parts.length > 0 ? parts.join(" · ") : null;
 }

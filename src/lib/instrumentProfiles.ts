@@ -1,13 +1,16 @@
 export interface InstrumentProfile {
   label: string;
   midiRange: [number, number];
-  maxPolyphony: number;
   minAmplitude: number;
   minDurationS: number;
   /** Notes within this window (seconds) are grouped into one chord. 0 = no windowing. */
   chordWindowS: number;
-  confidenceThreshold: number;
+  /** Basic Pitch onset probability needed to start a note. */
   onsetThreshold: number;
+  /** Basic Pitch frame probability needed to keep a note sounding. */
+  frameThreshold: number;
+  /** Shortest note Basic Pitch keeps, in ~11.6 ms model frames. */
+  minNoteLenFrames: number;
 }
 
 export const PROFILE_IDS = ["default", "guitar"] as const;
@@ -25,22 +28,22 @@ export const PROFILES: Record<ProfileId, InstrumentProfile> = {
   default: {
     label: "Full range",
     midiRange: [21, 108],
-    maxPolyphony: 5,
     minAmplitude: 0,
     minDurationS: 0,
     chordWindowS: 0,
-    confidenceThreshold: 0.5,
-    onsetThreshold: 0.3,
+    onsetThreshold: 0.5,
+    frameThreshold: 0.3,
+    minNoteLenFrames: 5,
   },
   guitar: {
     label: "Guitar",
     midiRange: [40, 88],
-    maxPolyphony: 6,
     minAmplitude: 0.15,
     minDurationS: 0.05,
     chordWindowS: 0.15,
-    confidenceThreshold: 0.5,
-    onsetThreshold: 0.3,
+    onsetThreshold: 0.5,
+    frameThreshold: 0.3,
+    minNoteLenFrames: 6,
   },
 };
 

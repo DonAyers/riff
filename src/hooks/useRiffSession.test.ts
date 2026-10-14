@@ -433,9 +433,9 @@ describe("useRiffSession", () => {
     });
 
     expect(mockDetect).toHaveBeenCalledWith(sourceAudio.analysisAudio, {
-      confidenceThreshold: PROFILES.guitar.confidenceThreshold,
       onsetThreshold: PROFILES.guitar.onsetThreshold,
-      maxPolyphony: PROFILES.guitar.maxPolyphony,
+      frameThreshold: PROFILES.guitar.frameThreshold,
+      minNoteLenFrames: PROFILES.guitar.minNoteLenFrames,
     });
     expect(mockDetectChordTimeline).toHaveBeenCalledWith(
       [
