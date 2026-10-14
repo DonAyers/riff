@@ -44,7 +44,8 @@ const VOICINGS: VoicingDictionary = {
 };
 
 function normalizeLabelChordName(chordName: string) {
-  const trimmed = chordName.trim();
+  // Shapes are stored per chord quality, so a label's slash bass ("C Major/E") doesn't change the lookup.
+  const trimmed = chordName.trim().replace(/\/[A-G](?:#|b)?$/, "");
   const labelMatch = trimmed.match(/^([A-G](?:#|b)?)[\s-]+(.+)$/);
 
   if (!labelMatch) {
@@ -114,4 +115,17 @@ export function lookupVoicings(chordName: string | null): GuitarVoicing[] {
   combined.sort((a, b) => a.baseFret - b.baseFret);
 
   return combined;
+}
+function sameShape(a: GuitarVoicing, b: GuitarVoicing) {
+  return a.frets.every((fret, index) => fret === b.frets[index]);
+}
+
+/**
+ * Shapes to show for a chord: the shape it was actually played with first (when known),
+ * then the saved shapes for that chord.
+ */
+export function voicingsForChord(chordName: string | null, playedVoicing?: GuitarVoicing | null): GuitarVoicing[] {
+  const saved = lookupVoicings(chordName);
+  if (!playedVoicing) return saved;
+  return [playedVoicing, ...saved.filter((voicing) => !sameShape(voicing, playedVoicing))];
 }

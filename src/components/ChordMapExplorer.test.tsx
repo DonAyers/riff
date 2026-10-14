@@ -3,10 +3,20 @@ import { describe, expect, it, vi } from "vitest";
 import { ChordMapExplorer } from "./ChordMapExplorer";
 
 vi.mock("./ChordFretboard", () => ({
-  ChordFretboard: ({ chordName }: { chordName?: string | null }) => (
-    <div data-testid="chord-fretboard">Shape for {chordName}</div>
+  ChordFretboard: ({ chordName, voicing }: { chordName?: string | null; voicing?: { frets: number[] } }) => (
+    <div data-testid="chord-fretboard" data-frets={voicing?.frets.join(",")}>Shape for {chordName}</div>
   ),
 }));
+
+const playedCOverG = {
+  chord: "CM/G",
+  label: "C Major/G",
+  startTimeS: 0,
+  endTimeS: 1,
+  notes: ["G2", "C3", "E3", "G3", "C4", "E4"],
+  bassNote: "G2",
+  voicing: { frets: [3, 3, 2, 0, 1, 0] as [number, number, number, number, number, number], fingers: [3, 4, 2, 0, 1, 0] as [number, number, number, number, number, number], barres: [], baseFret: 1 },
+};
 
 describe("ChordMapExplorer", () => {
   it("shows collapsed chord changes and updates the inline shape when a chord is selected", () => {
@@ -61,5 +71,23 @@ describe("ChordMapExplorer", () => {
       "C Major",
       expect.objectContaining({ label: "C Major" }),
     );
+  });
+
+  it("shows the played shape and voicing for a detected chord", () => {
+    render(<ChordMapExplorer fallbackChord={null} events={[playedCOverG]} />);
+
+    expect(screen.getByText("Played shape")).toBeInTheDocument();
+    expect(screen.getByTestId("voicing-summary")).toHaveTextContent("2nd inversion");
+    expect(screen.getByTestId("chord-fretboard")).toHaveAttribute("data-frets", "3,3,2,0,1,0");
+  });
+
+  it("opens a suggestion's chord sheet without the detected chord's played shape", () => {
+    const onOpenChord = vi.fn();
+    render(<ChordMapExplorer fallbackChord={null} events={[playedCOverG]} onOpenChord={onOpenChord} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /am relative minor/i }));
+    fireEvent.click(screen.getByRole("button", { name: /open full chord sheet/i }));
+
+    expect(onOpenChord).toHaveBeenCalledWith("Am", undefined);
   });
 });

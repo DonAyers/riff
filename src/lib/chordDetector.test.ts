@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { detectChord, formatChordName, detectChordTimeline, detectChordsWindowed } from "./chordDetector";
-import type { MappedNote } from "./noteMapper";
+import {
+  describeInversion,
+  describeVoicing,
+  detectChord,
+  detectChordTimeline,
+  detectChordsWindowed,
+  dominantChordEvent,
+  formatChordName,
+} from "./chordDetector";
+import { mapNoteEvents, type MappedNote } from "./noteMapper";
+
+function strum(midis: number[], startTimeS = 0, amplitude = 0.8, spreadS = 0.01): MappedNote[] {
+  return mapNoteEvents(
+    midis.map((pitchMidi, index) => ({ pitchMidi, startTimeS: startTimeS + index * spreadS, durationS: 1, amplitude })),
+  );
+}
+
+const frets = (event: { voicing?: { frets: number[] } } | undefined) =>
+  event?.voicing?.frets.map((fret) => (fret < 0 ? "x" : String(fret))).join("");
 
 function note(pitchClass: string, midi: number, startTimeS: number, durationS = 0.3): MappedNote {
   return { midi, name: `${pitchClass}4`, pitchClass, octave: 4, startTimeS, durationS, amplitude: 0.8 };
@@ -194,5 +211,100 @@ describe("detectChordTimeline", () => {
 
     expect(labels[0]).toBe("E Minor");
     expect(labels).toContain("C Major");
+  });
+});
+
+describe("chord voicing on the timeline", () => {
+  it("reports the played notes in pitch order, the bass note and the played shape", () => {
+    const [event] = detectChordTimeline(strum([48, 52, 55, 60, 64]), 0.15);
+
+    expect(event?.label).toBe("C Major");
+    expect(event?.notes).toEqual(["C3", "E3", "G3", "C4", "E4"]);
+    expect(event?.bassNote).toBe("C3");
+    expect(frets(event)).toBe("x32010");
+  });
+
+  it("names an inversion and shows the shape with the low string", () => {
+    const [event] = detectChordTimeline(strum([43, 48, 52, 55, 60, 64]), 0.15);
+
+    expect(event?.chord).toBe("CM/G");
+    expect(event?.label).toBe("C Major/G");
+    expect(event?.bassNote).toBe("G2");
+    expect(frets(event)).toBe("332010");
+  });
+
+  it("lists the played shape's notes, so overtones Basic Pitch reported drop out", () => {
+    const notes = [...strum([48, 52, 55, 60, 64]), ...strum([67, 72], 0.01, 0.3)];
+    const [event] = detectChordTimeline(notes, 0.15);
+
+    expect(frets(event)).toBe("x32010");
+    expect(event?.notes).toEqual(["C3", "E3", "G3", "C4", "E4"]);
+  });
+
+  it("builds each strum's shape from its own notes, not a neighbouring strum's", () => {
+    const notes = [...strum([48, 52, 55, 60, 64]), ...strum([43, 47, 50, 55, 59, 67], 0.2)];
+    const events = detectChordTimeline(notes, 0.15);
+
+    expect(events).toHaveLength(2);
+    expect(frets(events[0])).toBe("x32010");
+    expect(frets(events[1])).toBe("320003");
+  });
+
+  it("ignores a quiet sub-bass ghost when picking the bass note", () => {
+    const notes = [...strum([48, 52, 55, 60, 64]), ...strum([43], 0.02, 0.18)];
+    const [event] = detectChordTimeline(notes, 0.15);
+
+    expect(event?.chord).not.toContain("/");
+    expect(event?.bassNote).toBe("C3");
+  });
+
+  it("keeps a progression's shapes in one neck position", () => {
+    // A-shape C barre at fret 3, then a G triad that is playable open or at fret 3-5.
+    const notes = [...strum([48, 55, 60, 64, 67]), ...strum([55, 59, 62], 1)];
+    const events = detectChordTimeline(notes, 0.15);
+
+    expect(frets(events[0])).toBe("x35553");
+    expect(frets(events[1])).toBe("xx543x");
+  });
+});
+
+describe("describeInversion", () => {
+  it("names root position and inversions of triads and sevenths", () => {
+    expect(describeInversion("C", "C")).toBe("Root position");
+    expect(describeInversion("C/E", "E")).toBe("1st inversion");
+    expect(describeInversion("C/G", "G")).toBe("2nd inversion");
+    expect(describeInversion("G7/F", "F")).toBe("3rd inversion");
+    expect(describeInversion("Am/C", "C")).toBe("1st inversion");
+  });
+
+  it("falls back to naming the bass note when it is not a chord tone", () => {
+    expect(describeInversion("C/D", "D")).toBe("D in the bass");
+  });
+
+  it("returns null without a chord or bass", () => {
+    expect(describeInversion(null, "C")).toBeNull();
+    expect(describeInversion("C", undefined)).toBeNull();
+  });
+});
+
+describe("dominantChordEvent", () => {
+  it("returns the longest event, matching detectChordsWindowed", () => {
+    const notes = [...strum([48, 52, 55, 60, 64]), ...strum([43, 47, 50, 55, 59, 67], 2)];
+    const events = detectChordTimeline(notes, 0.15);
+    events[1] = { ...events[1]!, endTimeS: events[1]!.startTimeS + 5 };
+
+    expect(dominantChordEvent(events)).toBe(events[1]);
+    expect(dominantChordEvent([])).toBeNull();
+  });
+});
+
+describe("describeVoicing", () => {
+  it("joins the inversion and the note stack", () => {
+    expect(describeVoicing({ chord: "CM/E", bassNote: "E3", notes: ["E3", "G3", "C4"] })).toBe("1st inversion · E3 G3 C4");
+  });
+
+  it("works for sessions saved before voicings existed", () => {
+    expect(describeVoicing({ chord: "CM" })).toBeNull();
+    expect(describeVoicing(null)).toBeNull();
   });
 });

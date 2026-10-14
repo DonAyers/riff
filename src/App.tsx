@@ -34,9 +34,9 @@ import { SessionPicker } from "./components/SessionPicker";
 import { StorageEvictionPrompt } from "./components/StorageEvictionPrompt";
 import { OnboardingSheet, hasSeenOnboarding } from "./components/OnboardingSheet";
 import { AppTabBar } from "./components/AppTabBar";
-import { lookupVoicings } from "./lib/chordVoicings";
+import { voicingsForChord } from "./lib/chordVoicings";
 import { getVariateSuggestions } from "./lib/chordSubstitutions";
-import type { ChordEvent } from "./lib/chordDetector";
+import { describeVoicing, dominantChordEvent, type ChordEvent } from "./lib/chordDetector";
 import { detectStorageEvictionRisk } from "./lib/storageEvictionRisk";
 import { BUILDER_PATH, HOME_PATH, LOOPER_PATH, SETTINGS_PATH, TUNER_PATH } from "./lib/routes";
 import { useGlobalKeyboardShortcuts } from "./hooks/useGlobalKeyboardShortcuts";
@@ -491,7 +491,11 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
   const activeWorkflow = WORKFLOW_COPY[activeLane];
   const activeLoadingCopy = ANALYSIS_LOADING_COPY[activeLane];
   const displayedChord = variateOverride ?? chord;
-  const chordVoicings = lookupVoicings(displayedChord);
+  // A variation picked by the player wasn't played, so only the detected chord has a played shape.
+  const playedChordEvent = variateOverride ? null : dominantChordEvent(chordTimeline);
+  const playedVoicing = playedChordEvent?.label === displayedChord ? playedChordEvent.voicing : undefined;
+  const playedVoicingLine = playedChordEvent?.label === displayedChord ? describeVoicing(playedChordEvent) : null;
+  const chordVoicings = voicingsForChord(displayedChord, playedVoicing);
   const variateSuggestions = getVariateSuggestions(displayedChord);
   const activeVoicing = chordVoicings[activeVoicingIndex] ?? null;
   const exportShortcutTargetRef = useRef<HTMLButtonElement>(null);
@@ -1104,8 +1108,13 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                                         <span className="chord-lane-panel__kicker">Guitar shape</span>
                                         <h3>{displayedChord ?? "Detected chord"}</h3>
                                         <p>
-                                          Shape {activeVoicingIndex + 1} of {chordVoicings.length}
+                                          {playedVoicing && activeVoicingIndex === 0
+                                            ? `Played shape · 1 of ${chordVoicings.length}`
+                                            : `Shape ${activeVoicingIndex + 1} of ${chordVoicings.length}`}
                                         </p>
+                                        {playedVoicingLine && (
+                                          <p data-testid="voicing-summary">{playedVoicingLine}</p>
+                                        )}
                                       </div>
                                       <button
                                         type="button"

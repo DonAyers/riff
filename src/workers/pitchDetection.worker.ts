@@ -1,14 +1,12 @@
 import type { NoteEventTime } from "@spotify/basic-pitch";
 
 import { loadBundledGraphModel } from "./basicPitchModel";
+import { decodeNoteEvents, type NoteDecodingOptions } from "./noteDecoding";
 
-interface DetectRequest {
+interface DetectRequest extends NoteDecodingOptions {
   type: "detect";
   requestId: number;
   audio: Float32Array;
-  confidenceThreshold?: number;
-  onsetThreshold?: number;
-  maxPolyphony?: number;
 }
 
 interface PreloadRequest {
@@ -119,7 +117,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     return;
   }
 
-  const { requestId, audio, confidenceThreshold = 0.5, onsetThreshold = 0.3, maxPolyphony = 5 } = message;
+  const { requestId, audio, onsetThreshold, frameThreshold, minNoteLenFrames } = message;
 
   try {
     const module = await loadBasicPitchModule();
@@ -146,8 +144,11 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       }
     );
 
-    const noteEvents = module.outputToNotesPoly(frames, onsets, confidenceThreshold, onsetThreshold, maxPolyphony);
-    const timedNotes = module.noteFramesToTime(noteEvents);
+    const timedNotes = decodeNoteEvents(module, frames, onsets, {
+      onsetThreshold,
+      frameThreshold,
+      minNoteLenFrames,
+    });
 
     const result: ResultResponse = {
       type: "result",

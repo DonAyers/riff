@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ChordEvent } from "../lib/chordDetector";
+import { describeVoicing, type ChordEvent } from "../lib/chordDetector";
 import type { ChordSuggestion } from "../lib/chordSuggestions";
-import { lookupVoicings } from "../lib/chordVoicings";
+import { voicingsForChord } from "../lib/chordVoicings";
 import { ChordFocusView } from "./ChordFocusView";
 import { ChordFretboard } from "./ChordFretboard";
 import "./ChordMapExplorer.css";
@@ -75,7 +75,10 @@ export function ChordMapExplorer({ events, fallbackChord, onOpenChord }: ChordMa
   const selectedChange = changes[Math.min(selectedIndex, Math.max(changes.length - 1, 0))] ?? null;
   const activeChord = selectedSuggestionChord ?? selectedChange?.chord ?? fallbackChord;
   const openChordName = selectedSuggestionChord ?? selectedChange?.label ?? activeChord;
-  const voicings = lookupVoicings(activeChord);
+  const playedEvent = selectedSuggestionChord ? null : selectedChange?.events[0] ?? null;
+  const playedVoicing = playedEvent?.voicing;
+  const voicingLine = describeVoicing(playedEvent);
+  const voicings = voicingsForChord(activeChord, playedVoicing);
   const activeVoicing = voicings[voicingIndex] ?? null;
 
   useEffect(() => {
@@ -148,9 +151,12 @@ export function ChordMapExplorer({ events, fallbackChord, onOpenChord }: ChordMa
         <section className="chord-map-explorer__shape" aria-label={`Guitar shape for ${activeChord}`}>
           <div className="chord-map-explorer__shape-header">
             <div>
-              <p className="chord-map-explorer__kicker">{selectedSuggestionChord ? "Variant shape" : "Detected shape"}</p>
+              <p className="chord-map-explorer__kicker">
+                {selectedSuggestionChord ? "Variant shape" : playedVoicing && voicingIndex === 0 ? "Played shape" : "Detected shape"}
+              </p>
               <h4>{selectedSuggestionChord ?? selectedChange.label}</h4>
               <span>{formatRange(selectedChange)}</span>
+              {voicingLine && <span className="chord-map-explorer__voicing" data-testid="voicing-summary">{voicingLine}</span>}
             </div>
             <div className="chord-map-explorer__shape-actions">
               {selectedSuggestionChord && (
@@ -196,7 +202,7 @@ export function ChordMapExplorer({ events, fallbackChord, onOpenChord }: ChordMa
           <button
             type="button"
             className="chord-map-explorer__open"
-            onClick={() => onOpenChord(openChordName, selectedChange.events[0])}
+            onClick={() => onOpenChord(openChordName, selectedSuggestionChord ? undefined : selectedChange.events[0])}
           >
             Open full chord sheet
           </button>

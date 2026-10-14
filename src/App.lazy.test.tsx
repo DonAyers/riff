@@ -171,6 +171,8 @@ function mockAppModules(options: MockAppModulesOptions = {}) {
   }));
   vi.doMock("./lib/chordVoicings", () => ({
     lookupVoicings: lookupVoicingsMock,
+    voicingsForChord: (chordName: string | null, played?: unknown) =>
+      played ? [played, ...lookupVoicingsMock(chordName)] : lookupVoicingsMock(chordName),
   }));
   vi.doMock("./lib/chordSubstitutions", () => ({
     getVariateSuggestions: getVariateSuggestionsMock,

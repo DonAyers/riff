@@ -15,13 +15,15 @@ describe("instrumentProfiles", () => {
   it.each(PROFILE_IDS)("profile '%s' has valid midi range", (id: ProfileId) => {
     const p = PROFILES[id];
     expect(p.midiRange[0]).toBeLessThan(p.midiRange[1]);
-    expect(p.maxPolyphony).toBeGreaterThan(0);
-    expect(p.confidenceThreshold).toBeGreaterThan(0);
     expect(p.onsetThreshold).toBeGreaterThan(0);
+    expect(p.frameThreshold).toBeGreaterThan(0);
+    expect(p.minNoteLenFrames).toBeGreaterThan(0);
   });
 
-  it("guitar profile has polyphony of 6 (6 strings)", () => {
-    expect(PROFILES.guitar.maxPolyphony).toBe(6);
+  it("keeps the Basic Pitch decoding values the app has always used", () => {
+    // These used to reach Basic Pitch through shifted arguments; the names now match the slots.
+    expect(PROFILES.guitar).toMatchObject({ onsetThreshold: 0.5, frameThreshold: 0.3, minNoteLenFrames: 6 });
+    expect(PROFILES.default).toMatchObject({ onsetThreshold: 0.5, frameThreshold: 0.3, minNoteLenFrames: 5 });
   });
 
   it("guitar profile filters out low sub-bass notes", () => {
