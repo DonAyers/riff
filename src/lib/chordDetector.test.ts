@@ -241,6 +241,15 @@ describe("chord voicing on the timeline", () => {
     expect(event?.notes).toEqual(["C3", "E3", "G3", "C4", "E4"]);
   });
 
+  it("builds each strum's shape from its own notes, not a neighbouring strum's", () => {
+    const notes = [...strum([48, 52, 55, 60, 64]), ...strum([43, 47, 50, 55, 59, 67], 0.2)];
+    const events = detectChordTimeline(notes, 0.15);
+
+    expect(events).toHaveLength(2);
+    expect(frets(events[0])).toBe("x32010");
+    expect(frets(events[1])).toBe("320003");
+  });
+
   it("ignores a quiet sub-bass ghost when picking the bass note", () => {
     const notes = [...strum([48, 52, 55, 60, 64]), ...strum([43], 0.02, 0.18)];
     const [event] = detectChordTimeline(notes, 0.15);

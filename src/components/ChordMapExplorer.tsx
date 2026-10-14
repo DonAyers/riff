@@ -202,7 +202,7 @@ export function ChordMapExplorer({ events, fallbackChord, onOpenChord }: ChordMa
           <button
             type="button"
             className="chord-map-explorer__open"
-            onClick={() => onOpenChord(openChordName, selectedChange.events[0])}
+            onClick={() => onOpenChord(openChordName, selectedSuggestionChord ? undefined : selectedChange.events[0])}
           >
             Open full chord sheet
           </button>

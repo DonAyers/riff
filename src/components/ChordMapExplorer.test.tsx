@@ -80,4 +80,14 @@ describe("ChordMapExplorer", () => {
     expect(screen.getByTestId("voicing-summary")).toHaveTextContent("2nd inversion");
     expect(screen.getByTestId("chord-fretboard")).toHaveAttribute("data-frets", "3,3,2,0,1,0");
   });
+
+  it("opens a suggestion's chord sheet without the detected chord's played shape", () => {
+    const onOpenChord = vi.fn();
+    render(<ChordMapExplorer fallbackChord={null} events={[playedCOverG]} onOpenChord={onOpenChord} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /am relative minor/i }));
+    fireEvent.click(screen.getByRole("button", { name: /open full chord sheet/i }));
+
+    expect(onOpenChord).toHaveBeenCalledWith("Am", undefined);
+  });
 });

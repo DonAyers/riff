@@ -139,6 +139,24 @@ describe("usePitchDetection", () => {
     expect((thrown as { audio: Float32Array }).audio).toEqual(new Float32Array([0.1, 0.2]));
   });
 
+  it("forwards Basic Pitch decoding options on the first request and on the crash retry", async () => {
+    const { result } = renderHook(() => usePitchDetection());
+    const options = { onsetThreshold: 0.55, frameThreshold: 0.25, minNoteLenFrames: 7 };
+
+    act(() => {
+      void result.current.detect(new Float32Array([0.1, 0.2]), options).catch(() => undefined);
+    });
+
+    const firstWorker = MockWorker.instances[0];
+    expect(firstWorker.sentMessages[0]?.message).toMatchObject({ type: "detect", ...options });
+
+    act(() => {
+      firstWorker.emitError("Worker crashed");
+    });
+
+    expect(MockWorker.instances[1]?.sentMessages[0]?.message).toMatchObject({ type: "detect", ...options });
+  });
+
   it("restarts the worker once and retries an in-flight detect after a worker crash", async () => {
     const { result } = renderHook(() => usePitchDetection());
     const firstWorker = MockWorker.instances[0];

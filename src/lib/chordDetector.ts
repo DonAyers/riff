@@ -334,11 +334,13 @@ export function detectChordTimeline(notes: MappedNote[], windowS: number): Chord
       notes: noteStack(contextNotes),
       bassNote: bass?.name,
     };
-    return [{ event, contextNotes }];
+    return [{ event, clusterNotes }];
   });
 
+  // The wider context helps name the chord, but it can reach into a neighbouring strum,
+  // so the shape is built only from this strum's own notes.
   const voicings = chooseVoicingPath(
-    detected.map(({ event, contextNotes }) => solveVoicing(contextNotes, event.chord)),
+    detected.map(({ event, clusterNotes }) => solveVoicing(clusterNotes, event.chord)),
   );
 
   return detected.map(({ event }, index) => {
