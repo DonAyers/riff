@@ -329,6 +329,12 @@ describe("chord naming robustness (from the strum benchmark)", () => {
     expect(event?.chord).toBe("CM");
   });
 
+  it("ignores the same quiet overtone when pooling without a window", () => {
+    const notes = [...strum([48, 52, 55, 60, 64]), ...strum([71], 0.03, 0.29)];
+    const [event] = detectChordTimeline(notes, 0);
+    expect(event?.chord).toBe("CM");
+  });
+
   it("keeps a quiet note that doubles a pitch class already played lower", () => {
     // Open E: the B3 is a twelfth above E2 but B is also played as B2.
     const notes = [...strum([40, 47, 52, 56, 64]), ...strum([59], 0.03, 0.3)];

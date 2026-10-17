@@ -348,11 +348,12 @@ export function detectChordTimeline(notes: MappedNote[], windowS: number): Chord
 
   // No windowing — fall back to pooling all pitch classes
   if (windowS <= 0) {
-    const pitchClasses = uniquePitchClasses(notes.map((n) => n.pitchClass));
-    const bass = bassNote(notes);
+    const namingNotes = withoutOvertoneChordTones(notes);
+    const pitchClasses = uniquePitchClasses(namingNotes.map((n) => n.pitchClass));
+    const bass = bassNote(namingNotes);
     const detected = detectChord(pitchClasses, {
       bassPitchClass: bass?.pitchClass,
-      weights: buildPitchClassWeights(notes),
+      weights: buildPitchClassWeights(namingNotes),
     });
     if (!detected) return [];
     const startTimeS = Math.min(...notes.map((note) => note.startTimeS));

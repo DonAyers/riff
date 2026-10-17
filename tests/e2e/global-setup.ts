@@ -88,7 +88,7 @@ function synthKnownClip(): Float32Array {
   return output;
 }
 
-/** Open C (x32010: C3 E3 G3 C4 E4) strummed down, with plucked-string decay. */
+/** A chord's notes strummed low to high, with plucked-string decay. */
 function synthStrum(strumMidis: readonly number[]): Float32Array {
   const leadInS = 0.2;
   const strumSpreadS = 0.02;

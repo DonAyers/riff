@@ -202,6 +202,6 @@ test("tapping strum on a chord shape plays the synth strum and plucks single str
   expect((await starts()).at(-1)).toBeGreaterThan(2);
 
   // The explorer leads with the played shape, so pluck whichever string actually sounds.
-  await explorer.getByRole("button", { name: /^pluck .* string/i }).first().click();
+  await explorer.getByRole("button", { name: /^pluck .* string/i, disabled: false }).first().click();
   await expect.poll(async () => (await starts()).length).toBe(before + 2);
 });

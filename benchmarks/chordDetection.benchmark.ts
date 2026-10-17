@@ -14,7 +14,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { Chord, Note } from "tonal";
 import { expect, it } from "vitest";
-import { BasicPitch } from "@spotify/basic-pitch";
+import type { BasicPitch } from "@spotify/basic-pitch";
 import { detectChordTimeline, dominantChordEvent } from "../src/lib/chordDetector";
 import { PROFILES } from "../src/lib/instrumentProfiles";
 import { filterNotes, mapNoteEvents } from "../src/lib/noteMapper";
@@ -135,11 +135,13 @@ async function runCase(getBasicPitch: () => BasicPitch, chordCase: ChordCase, di
 it("scores chord detection on rendered guitar strums", async () => {
   const workerGlobal = globalThis as Record<string, unknown>;
   workerGlobal.window ??= globalThis;
-  // Loaded lazily so cached runs never touch the model.
+  // The model itself is loaded lazily so cached runs never touch it.
+  // Imported after the window alias exists, as the worker does, since the bundle can expect one.
+  const { BasicPitch: BasicPitchClass } = await import("@spotify/basic-pitch");
   let basicPitch: BasicPitch | null = null;
-  const getBasicPitch = () => (basicPitch ??= new BasicPitch(
+  const getBasicPitch = () => (basicPitch ??= new BasicPitchClass(
     // Basic Pitch bundles its own copy of the tfjs types, as in the worker.
-    loadModel() as unknown as ConstructorParameters<typeof BasicPitch>[0],
+    loadModel() as unknown as ConstructorParameters<typeof BasicPitchClass>[0],
   ));
 
   const results: CaseResult[] = [];

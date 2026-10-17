@@ -233,7 +233,9 @@ export function solveVoicing(
   const missingCost = (note: HeardCandidateNote) => note.likelyHarmonic
     ? COST.missingHarmonic
     : COST.missingNote + COST.missingLoudNote * (note.amplitude / loudest);
-  const heardChromas = new Set(heard.map((note) => note.midi % 12));
+  // Masked by a played (not overtone) note of the same pitch class lower down.
+  const isMaskedDoubling = (midi: number) =>
+    heard.some((note) => !note.likelyHarmonic && note.midi < midi && (midi - note.midi) % 12 === 0);
   const best = new Map<string, VoicingCandidate>();
 
   const consider = (frets: Frets, isKnownShape: boolean) => {
@@ -246,7 +248,7 @@ export function solveVoicing(
     const unheardMidis = [...shapeMidis].filter((midi) => !heardMidis.has(midi));
     const unheard = unheardMidis.length;
     const unheardCost = unheardMidis.reduce(
-      (total, midi) => total + (heardChromas.has(midi % 12) ? COST.unheardDoubling : COST.unheardNote),
+      (total, midi) => total + (isMaskedDoubling(midi) ? COST.unheardDoubling : COST.unheardNote),
       0,
     );
     if (missingNotes.length === heard.length) return;

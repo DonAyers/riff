@@ -134,7 +134,7 @@ re-runs in seconds (`BENCHMARK_FRESH=1` re-runs the model). Cases live in
 |---|---|---|
 | Exact chord (notes, root and bass) | 78.7% | 95.7% |
 | Right notes, bass ignored | 96.8% | 98.9% |
-| Right shape (standard tuning only) | 60.0% | 68.8% |
+| Right shape (standard tuning only) | 60.0% | 70.0% |
 
 What changed, and why:
 
