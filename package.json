@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "release:check": "npm run test && npm run build"
+    "release:check": "npm run test && npm run build",
+    "benchmark:chords": "vitest run --config vitest.benchmark.config.ts"
   },
   "keywords": [],
   "author": "",

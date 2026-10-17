@@ -2,7 +2,13 @@ import { Chord, Midi, Note } from "tonal";
 import type { GuitarVoicing } from "./chordVoicings";
 import { buildStrumClusters, type NoteStrumCluster } from "./guitarStrumPlayback";
 import type { MappedNote } from "./noteMapper";
-import { chooseVoicingPath, solveVoicing, voicingMidiNotes } from "./voicingSolver";
+import {
+  chooseVoicingPath,
+  isLikelyOvertone,
+  solveVoicing,
+  STRONG_HARMONIC_INTERVALS,
+  voicingMidiNotes,
+} from "./voicingSolver";
 
 export interface ChordEvent {
   chord: string;
@@ -125,6 +131,23 @@ function buildChordContextNotes(
   });
 }
 
+/**
+ * Drop notes that are probably overtones Basic Pitch reported as extra notes, but only when
+ * nothing else plays their pitch class, so they would otherwise add a false chord tone
+ * (e.g. the quiet B4 above E3 that turns open C into Cmaj7).
+ */
+// Naming is stricter than shape solving: dropping a pitch class changes the chord's name, so a
+// note must be one of the strongest partials and clearly quieter (under half) than its source.
+const NAMING_OVERTONE = { intervals: STRONG_HARMONIC_INTERVALS, maxRelativeAmplitude: 0.5 } as const;
+
+function withoutOvertoneChordTones(notes: readonly MappedNote[]): MappedNote[] {
+  const overtones = new Set(notes.filter((note) => isLikelyOvertone(note, notes, NAMING_OVERTONE)));
+  const realChromas = new Set(
+    notes.filter((note) => !overtones.has(note)).map((note) => pitchClassChroma(note.pitchClass)),
+  );
+  return notes.filter((note) => !overtones.has(note) || realChromas.has(pitchClassChroma(note.pitchClass)));
+}
+
 function bassNote(notes: readonly MappedNote[]): MappedNote | undefined {
   const loudest = Math.max(...notes.map((note) => note.amplitude));
   const candidates = notes.filter((note) => note.amplitude >= loudest * BASS_MIN_RELATIVE_AMPLITUDE);
@@ -223,6 +246,9 @@ function rankCandidates(
     const bTonicMatchesBass = samePitchClass(bChord.tonic, options.bassPitchClass);
     const tier = (candidate: ChordCandidate, isSlash: boolean, tonicMatchesBass: boolean) => {
       const fallbackPenalty = candidate.isFallback ? 3 : 0;
+      // A "minor #5" is almost always a major triad over its third (E G C is C/E), so let
+      // the slash name win.
+      if (Chord.get(candidate.symbol).type === "minor augmented") return fallbackPenalty + 3;
       if (!isSlash && tonicMatchesBass) return fallbackPenalty;
       if (!isSlash) return fallbackPenalty + 1;
       return fallbackPenalty + 2;
@@ -244,6 +270,28 @@ function rankCandidates(
 
     return a.index - b.index;
   });
+}
+
+/** How guitarists usually spell black-key roots: F#m rather than Gbm, Bb rather than A#. */
+const PREFERRED_BLACK_KEY_SPELLING: Record<number, string> = { 1: "C#", 3: "Eb", 6: "F#", 8: "Ab", 10: "Bb" };
+
+/**
+ * Respell a detected symbol the way it is usually written. Basic Pitch notes are always
+ * named with flats, so without this D/F# reads "DM/Gb" and F#m reads "Gbm".
+ */
+export function spellChordSymbol(symbol: string): string {
+  const [tonic, type, bass] = Chord.tokenize(symbol);
+  const tonicChroma = pitchClassChroma(tonic);
+  if (!tonic || tonicChroma === null) return symbol;
+
+  const root = PREFERRED_BLACK_KEY_SPELLING[tonicChroma] ?? tonic;
+  if (!bass) return `${root}${type}`;
+
+  // Spell a chord-tone bass the way the chord spells it (the F# in D major).
+  const bassChroma = pitchClassChroma(bass);
+  const chordTone = Chord.getChord(type, root).notes.find((note) => pitchClassChroma(note) === bassChroma);
+  const spelledBass = chordTone ?? (bassChroma !== null ? PREFERRED_BLACK_KEY_SPELLING[bassChroma] : undefined) ?? bass;
+  return `${root}${type}/${spelledBass}`;
 }
 
 /**
@@ -287,7 +335,7 @@ export function detectChord(pitchClasses: string[], options: DetectChordOptions 
 
   if (candidates.length === 0) return null;
 
-  return rankCandidates(candidates, options)[0].symbol;
+  return spellChordSymbol(rankCandidates(candidates, options)[0].symbol);
 }
 
 /**
@@ -300,11 +348,12 @@ export function detectChordTimeline(notes: MappedNote[], windowS: number): Chord
 
   // No windowing — fall back to pooling all pitch classes
   if (windowS <= 0) {
-    const pitchClasses = uniquePitchClasses(notes.map((n) => n.pitchClass));
-    const bass = bassNote(notes);
+    const namingNotes = withoutOvertoneChordTones(notes);
+    const pitchClasses = uniquePitchClasses(namingNotes.map((n) => n.pitchClass));
+    const bass = bassNote(namingNotes);
     const detected = detectChord(pitchClasses, {
       bassPitchClass: bass?.pitchClass,
-      weights: buildPitchClassWeights(notes),
+      weights: buildPitchClassWeights(namingNotes),
     });
     if (!detected) return [];
     const startTimeS = Math.min(...notes.map((note) => note.startTimeS));
@@ -317,7 +366,7 @@ export function detectChordTimeline(notes: MappedNote[], windowS: number): Chord
 
   const detected = clusters.flatMap((cluster) => {
     const clusterNotes = cluster.noteIndices.map((index) => notes[index]);
-    const contextNotes = buildChordContextNotes(notes, cluster, windowS);
+    const contextNotes = withoutOvertoneChordTones(buildChordContextNotes(notes, cluster, windowS));
     const pitchClasses = uniquePitchClasses(contextNotes.map((n) => n.pitchClass));
     const bass = bassNote(contextNotes);
     const chord = detectChord(pitchClasses, {

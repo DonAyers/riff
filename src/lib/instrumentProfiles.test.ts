@@ -6,6 +6,7 @@ import {
   PROFILE_IDS,
   type ProfileId,
 } from "./instrumentProfiles";
+import { TUNING_PRESETS } from "./guitarTuner";
 
 describe("instrumentProfiles", () => {
   it("exposes only the shared default and guitar profile ids", () => {
@@ -26,8 +27,9 @@ describe("instrumentProfiles", () => {
     expect(PROFILES.default).toMatchObject({ onsetThreshold: 0.5, frameThreshold: 0.3, minNoteLenFrames: 5 });
   });
 
-  it("guitar profile filters out low sub-bass notes", () => {
-    expect(PROFILES.guitar.midiRange[0]).toBeGreaterThanOrEqual(40);
+  it("guitar profile keeps the lowest string of every tuner preset but filters sub-bass below it", () => {
+    const lowestOpenString = Math.min(...TUNING_PRESETS.flatMap((preset) => preset.strings.map((string) => string.midi)));
+    expect(PROFILES.guitar.midiRange[0]).toBe(lowestOpenString);
   });
 
   it("falls back to the guitar-first profile for stale or unknown ids", () => {

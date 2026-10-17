@@ -120,3 +120,45 @@ Skip chroma (A), timbre string ID (D) and audio-to-tab models (E) for now; D is 
 - Alternate tunings aren't covered by any of them; generate labelled chords synthetically.
 
 Licences for GuitarSet and IDMT weren't confirmed (Zenodo is unreachable from the cloud container). Keep the audio out of the repo; score against a local copy with a script.
+
+## Benchmark and tuning round (Oct 2026)
+
+`npm run benchmark:chords` renders 47 chord shapes (open, sevenths, barres, power chords,
+inversions, drop D, half-step down, DADGAD) with the Karplus-Strong strum synth, strums each
+down and up, runs real Basic Pitch inference in Node, and scores the guitar pipeline. Basic
+Pitch's output is cached under `benchmarks/results/cache/`, so tuning the post-processing
+re-runs in seconds (`BENCHMARK_FRESH=1` re-runs the model). Cases live in
+`benchmarks/chordCases.ts`.
+
+| 94 strums | main before | after |
+|---|---|---|
+| Exact chord (notes, root and bass) | 78.7% | 95.7% |
+| Right notes, bass ignored | 96.8% | 98.9% |
+| Right shape (standard tuning only) | 60.0% | 70.0% |
+
+What changed, and why:
+
+- **Guitar range starts at D2 (MIDI 38).** It started at E2, which dropped the low string of
+  drop D and half-step-down tunings and gave those chords the wrong bass.
+- **Slash names win over "minor #5".** E G C is C/E, not Em#5; F# A D is D/F#, not F#m#5.
+- **Guitar spelling.** Basic Pitch names notes with flats, so labels read Gbm and DM/Gb (which
+  the label formatter then showed as plain "D Major"). Roots now use F#, C#, Eb, Ab, Bb and a
+  chord-tone bass is spelled from the chord (D/F#).
+- **Overtone ghosts are dropped when naming,** but only the strongest partials (octave,
+  twelfth, double octave), only when under half the level of the note below, and only when no
+  other note plays that pitch class. Looser rules stripped real chord tones: the F#4 in B7 is
+  the twelfth of B2, and the F#4 in drop-D D lines up with D2's 5th harmonic.
+- **Unheard octave doublings are cheap in the shape solver.** The top string of open G or A is
+  often masked by the same note an octave below, so a known shape is no longer passed over for
+  missing it.
+
+Known limits, left for later:
+
+- The synth's 98 Hz body mode adds a ghost G2 that turns Cadd9 into Cadd9/G. Real acoustic
+  guitars have an air resonance near there too, so this may show up on real recordings.
+- Several shapes share the same notes (G barre at 3 vs open G, C barre at 3 vs open C). Without
+  string timbre the solver picks the more common open shape unless the progression says
+  otherwise.
+- The solver always assumes standard tuning. Passing the tuner's selected tuning through would
+  fix shapes for alternate tunings.
+- The cases are synthetic. GuitarSet or Guitar-TECHS recordings would test real playing.

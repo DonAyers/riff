@@ -16,6 +16,7 @@ npm run test:watch       # Run Vitest in watch mode
 npm run test:coverage    # Coverage report (v8, HTML)
 npm run test:e2e         # Run Playwright E2E tests
 npm run release:check    # Validate release (test + build)
+npm run benchmark:chords # Score chord detection on synthetic guitar strums (real Basic Pitch, cached)
 ```
 
 Run a single Vitest test file:

@@ -37,7 +37,8 @@ export const PROFILES: Record<ProfileId, InstrumentProfile> = {
   },
   guitar: {
     label: "Guitar",
-    midiRange: [40, 88],
+    // D2 is the lowest open string among the tuner's presets (drop D, DADGAD, open G/D).
+    midiRange: [38, 88],
     minAmplitude: 0.15,
     minDurationS: 0.05,
     chordWindowS: 0.15,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chooseVoicingPath,
+  isLikelyOvertone,
   scorePlayability,
   solveVoicing,
   voicingMidiNotes,
@@ -87,6 +88,12 @@ describe("solveVoicing", () => {
     expect(voicingMidiNotes(best!.voicing.frets)).toEqual([45, 52, 57]);
   });
 
+  it("fills in an unheard octave doubling on the top string of a known shape", () => {
+    // Open G 320003 strummed down; the high G4 is masked by the G3 an octave below.
+    const [best] = solveVoicing(notes(43, 47, 50, 55, 59), "GM");
+    expect(shape(best?.voicing)).toBe("3 2 0 0 0 3");
+  });
+
   it("returns nothing for an empty note set", () => {
     expect(solveVoicing([], "C")).toEqual([]);
   });
@@ -119,5 +126,21 @@ describe("chooseVoicingPath", () => {
     const cheap = candidate([-1, 3, 2, 0, 1, 0], 1);
     const path = chooseVoicingPath([[cheap, candidate([-1, 3, 5, 5, 5, 3], 3)], []]);
     expect(path).toEqual([cheap, null]);
+  });
+});
+
+describe("isLikelyOvertone", () => {
+  const loudB2 = { midi: 47, amplitude: 0.8 };
+
+  it("flags a quiet twelfth above a louder note", () => {
+    expect(isLikelyOvertone({ midi: 66, amplitude: 0.4 }, [loudB2])).toBe(true);
+  });
+
+  it("can be limited to some intervals and a stricter loudness ratio", () => {
+    const options = { intervals: [12, 19, 24], maxRelativeAmplitude: 0.5 };
+    expect(isLikelyOvertone({ midi: 66, amplitude: 0.42 }, [loudB2], options)).toBe(false);
+    expect(isLikelyOvertone({ midi: 66, amplitude: 0.3 }, [loudB2], options)).toBe(true);
+    // A major third two octaves up (the 5th harmonic) is outside the limited set.
+    expect(isLikelyOvertone({ midi: 75, amplitude: 0.2 }, [loudB2], options)).toBe(false);
   });
 });
