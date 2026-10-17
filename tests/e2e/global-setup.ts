@@ -89,8 +89,7 @@ function synthKnownClip(): Float32Array {
 }
 
 /** Open C (x32010: C3 E3 G3 C4 E4) strummed down, with plucked-string decay. */
-function synthOpenCStrum(): Float32Array {
-  const strumMidis = [48, 52, 55, 60, 64];
+function synthStrum(strumMidis: readonly number[]): Float32Array {
   const leadInS = 0.2;
   const strumSpreadS = 0.02;
   const ringS = 2.2;
@@ -125,5 +124,7 @@ export default async function globalSetup(): Promise<void> {
   fs.mkdirSync(fixtureDir, { recursive: true });
   const samples = synthKnownClip();
   writeWavMono16(fixtureFile, samples, SAMPLE_RATE);
-  writeWavMono16(path.resolve(fixtureDir, "open-c-strum.wav"), synthOpenCStrum(), SAMPLE_RATE);
+  writeWavMono16(path.resolve(fixtureDir, "open-c-strum.wav"), synthStrum([48, 52, 55, 60, 64]), SAMPLE_RATE);
+  // D/F# 2x0232: F#2 D3 A3 D4 F#4.
+  writeWavMono16(path.resolve(fixtureDir, "d-over-f-sharp-strum.wav"), synthStrum([42, 50, 57, 62, 66]), SAMPLE_RATE);
 }

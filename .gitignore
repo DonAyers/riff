@@ -17,3 +17,4 @@ tsconfig.tsbuildinfo
 .claude/settings.local.json
 skills/
 skills-lock.json
+benchmarks/results/

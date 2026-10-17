@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   describeInversion,
   describeVoicing,
+  spellChordSymbol,
   detectChord,
   detectChordTimeline,
   detectChordsWindowed,
@@ -306,5 +307,67 @@ describe("describeVoicing", () => {
   it("works for sessions saved before voicings existed", () => {
     expect(describeVoicing({ chord: "CM" })).toBeNull();
     expect(describeVoicing(null)).toBeNull();
+  });
+});
+
+describe("chord naming robustness (from the strum benchmark)", () => {
+  it("names a first-inversion major triad as a slash chord, not a minor #5", () => {
+    // C/E: 032010
+    const [event] = detectChordTimeline(strum([40, 48, 52, 55, 60, 64]), 0.15);
+    expect(event?.chord).toBe("CM/E");
+  });
+
+  it("names D/F# rather than F#m#5", () => {
+    const [event] = detectChordTimeline(strum([42, 50, 57, 62, 66]), 0.15);
+    expect(event?.chord).toBe("DM/F#");
+  });
+
+  it("ignores a quiet overtone that would add a chord tone nothing else plays", () => {
+    // Open C plus a quiet B4, the twelfth above E3, which Basic Pitch reports as a note.
+    const notes = [...strum([48, 52, 55, 60, 64]), ...strum([71], 0.03, 0.29)];
+    const [event] = detectChordTimeline(notes, 0.15);
+    expect(event?.chord).toBe("CM");
+  });
+
+  it("keeps a quiet note that doubles a pitch class already played lower", () => {
+    // Open E: the B3 is a twelfth above E2 but B is also played as B2.
+    const notes = [...strum([40, 47, 52, 56, 64]), ...strum([59], 0.03, 0.3)];
+    const [event] = detectChordTimeline(notes, 0.15);
+    expect(event?.chord).toBe("EM");
+  });
+
+  it("keeps a fifth on the top string that is also the twelfth of the bass", () => {
+    // Open B7 x21202: the F#4 is a twelfth above B2 but is a played string at about half its level.
+    const notes = [...strum([47, 51, 57, 59]), ...strum([66], 0.04, 0.42)];
+    const [event] = detectChordTimeline(notes, 0.15);
+    expect(event?.chord).toBe("B7");
+  });
+
+  it("keeps a major third that lines up with the bass's fifth harmonic", () => {
+    // Drop-D open D: the F#4 is 28 semitones above D2, but it is the chord's only third.
+    const notes = [...strum([38, 45, 50, 57, 62]), ...strum([66], 0.05, 0.45)];
+    const [event] = detectChordTimeline(notes, 0.15);
+    expect(event?.chord).toBe("DM");
+  });
+
+  it("keeps a real colour tone that is as loud as the chord", () => {
+    // Cmaj7 x32000 played with a loud B3.
+    const [event] = detectChordTimeline(strum([48, 52, 55, 59, 64]), 0.15);
+    expect(event?.chord).toBe("Cmaj7");
+  });
+});
+
+describe("spellChordSymbol", () => {
+  it("spells black-key roots and chord-tone basses the way guitarists write them", () => {
+    expect(spellChordSymbol("Gbm")).toBe("F#m");
+    expect(spellChordSymbol("DM/Gb")).toBe("DM/F#");
+    expect(spellChordSymbol("A#7")).toBe("Bb7");
+    expect(spellChordSymbol("Gb5/Db")).toBe("F#5/C#");
+  });
+
+  it("leaves natural roots and non-chord basses alone", () => {
+    expect(spellChordSymbol("CM/G")).toBe("CM/G");
+    expect(spellChordSymbol("Am7")).toBe("Am7");
+    expect(spellChordSymbol("C/D")).toBe("C/D");
   });
 });

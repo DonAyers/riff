@@ -47,6 +47,8 @@ const COST = {
   missingLoudNote: 2,
   missingHarmonic: 0.75,
   unheardNote: 1.5,
+  // An octave doubling is often masked by the lower note, so a missing one is cheap.
+  unheardDoubling: 0.5,
   knownShapeBonus: 1,
   positionShiftPerFret: 0.35,
 } as const;
@@ -160,10 +162,34 @@ function enumerateAssignments(midis: readonly number[], tuning: readonly number[
   return results;
 }
 
-/** Octave, octave + fifth and two octaves: the overtones Basic Pitch most often reports as extra notes. */
-const HARMONIC_INTERVALS = [12, 19, 24];
+/**
+ * Semitones from a string's fundamental to its 2nd, 3rd, 4th, 5th, 6th and 8th harmonics:
+ * the overtones Basic Pitch most often reports as extra notes.
+ */
+export const HARMONIC_INTERVALS: readonly number[] = [12, 19, 24, 28, 31, 36];
+/**
+ * The 2nd, 3rd and 4th harmonics only: the strongest partials of a plucked string. The 5th and
+ * 6th land on a chord's own third and fifth, so treating them as ghosts would strip real chord tones.
+ */
+export const STRONG_HARMONIC_INTERVALS: readonly number[] = [12, 19, 24];
 /** Real doubled notes in a strum ring about as loud as the note below; overtones are clearly quieter. */
 const HARMONIC_MAX_RELATIVE_AMPLITUDE = 0.75;
+
+export interface OvertoneOptions {
+  intervals?: readonly number[];
+  maxRelativeAmplitude?: number;
+}
+
+/** True when a note is probably an overtone of a louder, lower note rather than a played string. */
+export function isLikelyOvertone(
+  note: HeardNote,
+  others: readonly HeardNote[],
+  { intervals = HARMONIC_INTERVALS, maxRelativeAmplitude = HARMONIC_MAX_RELATIVE_AMPLITUDE }: OvertoneOptions = {},
+): boolean {
+  return others.some((lower) =>
+    intervals.includes(note.midi - lower.midi) && note.amplitude < lower.amplitude * maxRelativeAmplitude,
+  );
+}
 
 interface HeardCandidateNote extends HeardNote {
   likelyHarmonic: boolean;
@@ -179,9 +205,7 @@ function prepareHeardNotes(notes: readonly HeardNote[]): HeardCandidateNote[] {
   const unique = [...loudestByMidi.values()];
   const withHarmonicFlag = unique.map((note) => ({
     ...note,
-    likelyHarmonic: unique.some((lower) =>
-      HARMONIC_INTERVALS.includes(note.midi - lower.midi) && note.amplitude < lower.amplitude * HARMONIC_MAX_RELATIVE_AMPLITUDE,
-    ),
+    likelyHarmonic: isLikelyOvertone(note, unique),
   }));
 
   // Six strings means at most six notes; keep real-sounding notes ahead of probable overtones.
@@ -209,6 +233,7 @@ export function solveVoicing(
   const missingCost = (note: HeardCandidateNote) => note.likelyHarmonic
     ? COST.missingHarmonic
     : COST.missingNote + COST.missingLoudNote * (note.amplitude / loudest);
+  const heardChromas = new Set(heard.map((note) => note.midi % 12));
   const best = new Map<string, VoicingCandidate>();
 
   const consider = (frets: Frets, isKnownShape: boolean) => {
@@ -218,13 +243,18 @@ export function solveVoicing(
     const shapeMidis = new Set(voicingMidiNotes(frets, tuning));
     const heardMidis = new Set(heard.map((note) => note.midi));
     const missingNotes = heard.filter((note) => !shapeMidis.has(note.midi));
-    const unheard = [...shapeMidis].filter((midi) => !heardMidis.has(midi)).length;
+    const unheardMidis = [...shapeMidis].filter((midi) => !heardMidis.has(midi));
+    const unheard = unheardMidis.length;
+    const unheardCost = unheardMidis.reduce(
+      (total, midi) => total + (heardChromas.has(midi % 12) ? COST.unheardDoubling : COST.unheardNote),
+      0,
+    );
     if (missingNotes.length === heard.length) return;
 
     const cost =
       playability +
       missingNotes.reduce((total, note) => total + missingCost(note), 0) +
-      unheard * COST.unheardNote -
+      unheardCost -
       (isKnownShape ? COST.knownShapeBonus : 0);
 
     const key = frets.join(",");
