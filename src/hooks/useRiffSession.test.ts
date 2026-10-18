@@ -557,6 +557,51 @@ describe("useRiffSession", () => {
     );
   });
 
+  it("still saves a take discarded mid-save but leaves the cleared screen alone", async () => {
+    const sourceAudio = {
+      analysisAudio: new Float32Array([0.1, -0.1, 0.2]),
+      storedAudio: new Float32Array([0.1, -0.1, 0.2, 0.3]),
+      storedSampleRate: 44100,
+    };
+    mockDetect.mockResolvedValue({
+      audio: sourceAudio.analysisAudio,
+      notes: [{ pitchMidi: 60, startTimeS: 0, durationS: 0.25, amplitude: 0.8 }],
+    });
+    let finishSave: (saved: boolean) => void = () => {};
+    mockSavePcmToOpfs.mockReturnValue(new Promise<boolean>((resolve) => { finishSave = resolve; }));
+    mockSaveSession.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRiffSession());
+
+    await waitFor(() => {
+      expect(mockPreload).toHaveBeenCalled();
+    });
+
+    let analysis: Promise<void> = Promise.resolve();
+    act(() => {
+      analysis = result.current.handleAnalyze(sourceAudio);
+    });
+    await waitFor(() => {
+      expect(result.current.notes).toHaveLength(1);
+    });
+
+    // The player taps New recording while the take is still being written to storage.
+    act(() => {
+      result.current.handleDiscardRecording();
+    });
+
+    await act(async () => {
+      finishSave(true);
+      await analysis;
+    });
+
+    expect(mockSaveSession).toHaveBeenCalledTimes(1);
+    expect(result.current.savedRiffs).toHaveLength(1);
+    expect(result.current.notes).toHaveLength(0);
+    expect(result.current.activeSessionId).toBeNull();
+    expect(result.current.activeRiffName).toBe("riff");
+  });
+
   it("deletes persisted audio when removing a saved session", async () => {
     const session = {
       id: "saved-1",
