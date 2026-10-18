@@ -960,7 +960,7 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                         <p className="analysis-panel__description">{activeWorkflow.description}</p>
                       </div>
                       <LaneToggle activeLane={activeLane} onChange={handleLaneChange} />
-                      {!isLoading && (
+                      {!isLoading && hasResults && (
                         <button
                           type="button"
                           className="analyze-btn new-recording-btn"

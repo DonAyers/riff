@@ -71,6 +71,12 @@ export function useRiffSession() {
   const pendingSourceAudioRef = useRef<{ pcm: Float32Array; sampleRate: number } | null>(null);
   /** Tracks import context so handleAnalyze can set source/importFileName. */
   const importContextRef = useRef<{ fileName: string } | null>(null);
+  /**
+   * Bumped whenever the take on screen is replaced or cleared. Analysis keeps saving
+   * after detection finishes, so it checks this before writing to the screen state:
+   * a take the player has already left still goes to the library, but doesn't come back.
+   */
+  const takeGenerationRef = useRef(0);
 
   useEffect(() => {
     const scheduler = globalThis as typeof globalThis & {
@@ -144,6 +150,7 @@ export function useRiffSession() {
   }, [audioPlayback, midiPlayback]);
 
   const handleStart = useCallback(() => {
+    takeGenerationRef.current += 1;
     resetAnalysisState();
     setHasRecording(false);
     setHasPendingAnalysis(false);
@@ -163,6 +170,9 @@ export function useRiffSession() {
       : pendingSourceAudioRef.current;
     if (!sourceAudio || !storedAudio) return;
 
+    const generation = takeGenerationRef.current;
+    const isCurrentTake = () => takeGenerationRef.current === generation;
+
     if (providedAudio) {
       pendingAnalysisAudioRef.current = providedAudio.analysisAudio;
       pendingSourceAudioRef.current = storedAudio;
@@ -177,6 +187,8 @@ export function useRiffSession() {
         frameThreshold: profile.frameThreshold,
         minNoteLenFrames: profile.minNoteLenFrames,
       });
+
+      if (!isCurrentTake()) return;
 
       analysisAudio = detectionResult.audio;
       pendingAnalysisAudioRef.current = analysisAudio;
@@ -222,8 +234,10 @@ export function useRiffSession() {
           if (saved) {
             audioFormat = "compressed";
             audioMime = result.mime;
-            setCompressedBlob(result.blob);
-            setCompressedMime(result.mime);
+            if (isCurrentTake()) {
+              setCompressedBlob(result.blob);
+              setCompressedMime(result.mime);
+            }
           } else {
             audioFileName = null;
           }
@@ -241,7 +255,7 @@ export function useRiffSession() {
       }
 
       const riffName = `Take ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-      setActiveRiffName(riffName);
+      if (isCurrentTake()) setActiveRiffName(riffName);
 
       const importContext = importContextRef.current;
       const now = Date.now();
@@ -268,11 +282,12 @@ export function useRiffSession() {
       try {
         await saveSession(newSession);
         setSavedRiffs((prev) => [newSession, ...prev]);
-        setActiveSessionId(newSession.id);
+        if (isCurrentTake()) setActiveSessionId(newSession.id);
       } catch {
         // Ignore save failures.
       }
     } catch (error) {
+      if (!isCurrentTake()) return;
       if (error instanceof PitchDetectionError && error.audio) {
         pendingAnalysisAudioRef.current = error.audio;
       } else {
@@ -308,6 +323,7 @@ export function useRiffSession() {
   }, [audioPlayback, autoProcess, handleAnalyze, midiPlayback, resetAnalysisState, stopRecording]);
 
   const handleImport = useCallback(async (file: File) => {
+    takeGenerationRef.current += 1;
     setIsImporting(true);
     setImportError(null);
     resetAnalysisState();
@@ -349,6 +365,7 @@ export function useRiffSession() {
   }, [audioPlayback, autoProcess, handleAnalyze, resetAnalysisState, resetPlaybackState]);
 
   const handleLoadSavedRiff = useCallback(async (session: RiffSession) => {
+    takeGenerationRef.current += 1;
     pendingAnalysisAudioRef.current = null;
     pendingSourceAudioRef.current = null;
     setHasPendingAnalysis(false);
@@ -415,6 +432,7 @@ export function useRiffSession() {
   }, [audioPlayback, midiPlayback, profileId, resetPlaybackState, setProfileId]);
 
   const handleLoadDemoAnalysis = useCallback(() => {
+    takeGenerationRef.current += 1;
     resetPlaybackState();
     pendingAnalysisAudioRef.current = null;
     pendingSourceAudioRef.current = null;
@@ -435,6 +453,7 @@ export function useRiffSession() {
   }, [midiPlayback, profileId, resetPlaybackState]);
 
   const handleDiscardRecording = useCallback(() => {
+    takeGenerationRef.current += 1;
     resetPlaybackState();
     resetAnalysisState();
     pendingAnalysisAudioRef.current = null;
