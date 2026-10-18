@@ -156,11 +156,12 @@
 
 .custom-palette__import-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xs);
 }
 
 .custom-palette__input {
-  flex: 1;
+  flex: 1 1 10rem;
   min-width: 0;
   min-height: 2.75rem;
   padding: var(--space-sm) var(--space-md);

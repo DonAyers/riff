@@ -614,6 +614,44 @@ describe("App mic permission fallback", () => {
     expect(await screen.findByTestId("export-panel")).toBeInTheDocument();
   });
 
+  it("leaves the results for a fresh Record screen from the New recording button", async () => {
+    const resultsState = createSessionState({
+      notes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+      uniqueNotes: [{ midi: 60, name: "C4", startTimeS: 0, durationS: 1, amplitude: 0.8 }],
+      chord: "C",
+      hasRecording: true,
+    });
+    let sessionState = resultsState;
+    const handleDiscardRecording = vi.fn(() => {
+      sessionState = createSessionState({ handleDiscardRecording });
+    });
+    resultsState.handleDiscardRecording = handleDiscardRecording;
+    useRiffSessionMock.mockImplementation(() => sessionState as ReturnType<typeof useRiffSession>);
+
+    const { rerender } = render(<App />);
+
+    expect(await screen.findByTestId("chord-map-explorer")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /new recording/i }));
+    rerender(<App />);
+
+    expect(handleDiscardRecording).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("region", { name: /capture/i })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /analysis/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /record/i })).toBeInTheDocument();
+  });
+
+  it("hides the New recording button while analysis is still running", () => {
+    useRiffSessionMock.mockReturnValue(
+      createSessionState({ isLoading: true, progress: 10, hasRecording: true }) as ReturnType<typeof useRiffSession>
+    );
+
+    render(<App />);
+
+    expect(screen.getByTestId("progress-bar-panel")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /new recording/i })).not.toBeInTheDocument();
+  });
+
   it("switches to chord lane and shows the fretboard state", async () => {
     useRiffSessionMock.mockReturnValue(
       createSessionState({

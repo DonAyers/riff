@@ -13,6 +13,7 @@ import {
 import {
   FlaskConical,
   HelpCircle,
+  Mic,
   Moon,
   RotateCcw,
   Settings,
@@ -559,6 +560,19 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
     setShowDiscardConfirmation(true);
   }, [performDiscardTake, skipDiscardConfirmation]);
 
+  // Leaves the results and goes back to the Record screen. The take is already in the
+  // library (analysis saves it), so this only clears what is on screen.
+  const handleNewRecording = useCallback(() => {
+    handleDiscardRecording();
+    setShowDiscardConfirmation(false);
+    setSelectedChordName(null);
+    setSelectedChordContext(null);
+    setSelectedChordVoicingIndex(0);
+    setVariateOverride(null);
+    setAnalysisScreen("summary");
+    setHomeStage("record");
+  }, [handleDiscardRecording]);
+
   const handleLoadSavedRiffForFlow = useCallback((session: Parameters<typeof handleLoadSavedRiff>[0]) => {
     void handleLoadSavedRiff(session);
     setShowDiscardConfirmation(false);
@@ -946,6 +960,16 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                         <p className="analysis-panel__description">{activeWorkflow.description}</p>
                       </div>
                       <LaneToggle activeLane={activeLane} onChange={handleLaneChange} />
+                      {!isLoading && (
+                        <button
+                          type="button"
+                          className="analyze-btn new-recording-btn"
+                          onClick={handleNewRecording}
+                        >
+                          <Mic size={14} strokeWidth={2.2} aria-hidden="true" />
+                          New recording
+                        </button>
+                      )}
                     </div>
 
                     {isLoading ? (
@@ -1160,7 +1184,7 @@ function RiffWorkspace({ activeRoute, isActive, navigate, themeControls }: RiffW
                         <button
                           type="button"
                           className="analyze-btn analyze-btn--secondary"
-                          onClick={() => setHomeStage("record")}
+                          onClick={handleNewRecording}
                         >
                           <RotateCcw size={14} strokeWidth={2} aria-hidden="true" />
                           Record again
