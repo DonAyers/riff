@@ -36,7 +36,7 @@ test("guitar tuner can listen from its dedicated route", async ({ page }) => {
   await expect(tuner.getByRole("button", { name: /start tuner/i })).toBeVisible();
 });
 
-test("tuner reads a flat A string and tells the player to tune up", async ({ page }) => {
+test("tuner reads a flat A string without a visible tune-up hint", async ({ page }) => {
   await useToneAsMicrophone(page, 107);
   await gotoApp(page);
   await page.goto("/tuner");
@@ -45,7 +45,12 @@ test("tuner reads a flat A string and tells the player to tune up", async ({ pag
   await tuner.getByRole("button", { name: /start tuner/i }).click();
 
   await expect(tuner.getByTestId("tuner-note")).toHaveText("A2");
+  // The direction stays in the live status for screen readers, but is clipped off screen.
   await expect(tuner.getByTestId("tuner-hint")).toHaveText("Tune up");
+  const hiddenHint = tuner.getByTestId("tuner-hint").getByText("Tune up");
+  await expect(hiddenHint).toHaveCSS("clip", "rect(0px, 0px, 0px, 0px)");
+  const box = await hiddenHint.boundingBox();
+  expect(box?.width ?? 0).toBeLessThanOrEqual(1);
   await expect(tuner.getByRole("meter", { name: /tuning cents/i })).toHaveAttribute(
     "aria-valuetext",
     /flat/

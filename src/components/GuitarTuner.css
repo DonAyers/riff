@@ -129,9 +129,24 @@
 
 .guitar-tuner__hint {
   margin: 0;
+  /* Hold one line so the readout does not jump when the hint is screen-reader only. */
+  min-height: 1.25em;
+  line-height: 1.25;
   color: var(--tuner-tone);
   font-size: var(--text-xl);
   font-weight: 700;
+}
+
+.guitar-tuner__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .guitar-tuner--idle .guitar-tuner__hint {
