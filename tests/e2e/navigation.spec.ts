@@ -24,6 +24,24 @@ test("bottom tab bar moves between record, builder and tuner", async ({ page }) 
   await expect(page.getByRole("button", { name: /start recording/i })).toBeVisible();
 });
 
+for (const tab of [
+  { name: "Tuner", url: /\/tuner$/, heading: "Guitar tuner" },
+  { name: "Looper", url: /\/looper$/, heading: "Looper" },
+]) {
+  test(`leaving the Record screen for ${tab.name} hides the Record screen`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoApp(page);
+
+    const nav = page.getByRole("navigation", { name: "Primary" });
+    await nav.getByRole("link", { name: tab.name }).click();
+    await expect(page).toHaveURL(tab.url);
+
+    // The Record screen stays mounted to keep its state, but it must not stay on screen.
+    await expect(page.getByRole("button", { name: /start recording/i })).toBeHidden();
+    await expect(page.getByRole("heading", { level: 2, name: tab.heading })).toBeInViewport();
+  });
+}
+
 test("tab bar does not cover the record button on a small phone", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await gotoApp(page);
