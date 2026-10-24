@@ -73,12 +73,13 @@ describe("GuitarTuner", () => {
     expect(start).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a big note with a tune-up hint when flat", () => {
+  it("keeps the tune-up direction for screen readers only when flat", () => {
     useGuitarTunerMock.mockReturnValue(hookReturn({ state: "listening", reading: reading(-22) }));
     const { container } = render(<GuitarTuner />);
 
     expect(screen.getByTestId("tuner-note")).toHaveTextContent("A2");
     expect(screen.getByTestId("tuner-hint")).toHaveTextContent("Tune up");
+    expect(screen.getByText("Tune up")).toHaveClass("guitar-tuner__sr-only");
     expect(screen.getByText("−22¢")).toBeInTheDocument();
     expect(screen.getByRole("meter", { name: /tuning cents/i })).toHaveAttribute(
       "aria-valuetext",
@@ -88,17 +89,19 @@ describe("GuitarTuner", () => {
     expect(screen.getByRole("button", { name: /^A string/ })).toHaveClass("guitar-tuner__string--active");
   });
 
-  it("shows tune down when sharp and in tune near zero", () => {
+  it("hides tune down visually when sharp and shows in tune near zero", () => {
     useGuitarTunerMock.mockReturnValue(hookReturn({ state: "listening", reading: reading(9) }));
     const { container, rerender } = render(<GuitarTuner />);
 
     expect(screen.getByTestId("tuner-hint")).toHaveTextContent("Tune down");
+    expect(screen.getByText("Tune down")).toHaveClass("guitar-tuner__sr-only");
     expect(container.querySelector(".guitar-tuner--close")).toBeInTheDocument();
 
     useGuitarTunerMock.mockReturnValue(hookReturn({ state: "listening", reading: reading(1.4) }));
     rerender(<GuitarTuner />);
 
     expect(screen.getByTestId("tuner-hint")).toHaveTextContent("In tune");
+    expect(screen.getByTestId("tuner-hint").querySelector(".guitar-tuner__sr-only")).toBeNull();
     expect(screen.getByText("+1¢")).toBeInTheDocument();
     expect(container.querySelector(".guitar-tuner--in-tune")).toBeInTheDocument();
   });

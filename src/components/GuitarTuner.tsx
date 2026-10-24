@@ -29,12 +29,19 @@ function getTone(reading: TuningReading | null): TunerTone {
   return Math.abs(reading.cents) <= CLOSE_RANGE_CENTS ? "close" : "far";
 }
 
-function getHint(reading: TuningReading | null, isListening: boolean): string {
-  if (!isListening) return "Tap start, then pluck one string";
-  if (!reading) return "Pluck one string";
-  if (reading.held) return reading.inTune ? "In tune" : "Pluck again";
-  if (reading.inTune) return "In tune";
-  return reading.cents < 0 ? "Tune up" : "Tune down";
+interface TunerHint {
+  text: string;
+  /** Spoken by screen readers only; the note colour and meter already show direction. */
+  visuallyHidden: boolean;
+}
+
+function getHint(reading: TuningReading | null, isListening: boolean): TunerHint {
+  const shown = (text: string): TunerHint => ({ text, visuallyHidden: false });
+  if (!isListening) return shown("Tap start, then pluck one string");
+  if (!reading) return shown("Pluck one string");
+  if (reading.held) return shown(reading.inTune ? "In tune" : "Pluck again");
+  if (reading.inTune) return shown("In tune");
+  return { text: reading.cents < 0 ? "Tune up" : "Tune down", visuallyHidden: true };
 }
 
 function splitNote(note: string): { pitchClass: string; octave: string } {
@@ -172,7 +179,7 @@ export function GuitarTuner({ disabled = false }: GuitarTunerProps) {
           {octave && <span className="guitar-tuner__note-octave">{octave}</span>}
         </div>
         <p className="guitar-tuner__hint" role="status" data-testid="tuner-hint">
-          {hint}
+          {hint.visuallyHidden ? <span className="guitar-tuner__sr-only">{hint.text}</span> : hint.text}
         </p>
         <p className="guitar-tuner__numbers">
           <span>{reading ? formatCents(reading.cents) : "— ¢"}</span>
