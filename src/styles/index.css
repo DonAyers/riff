@@ -4,6 +4,12 @@
   padding: 0;
 }
 
+/* The browser's own [hidden] rule loses to any class that sets display, so a
+   hidden element with display: grid would stay on screen. Make hidden win. */
+[hidden]:not([hidden="until-found"]) {
+  display: none !important;
+}
+
 :root {
   color-scheme: light;
   /* Height of the visible app area: the window on phones, the frame on desktop. */
